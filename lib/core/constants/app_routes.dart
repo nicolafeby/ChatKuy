@@ -1,3 +1,4 @@
+import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/material.dart';
 
 abstract class AppRouteName {
@@ -11,6 +12,6 @@ abstract class AppRouteName {
 
 class AppRoute {
   static Map<String, Widget Function(BuildContext)> getMapRouteScreen(BuildContext context) {
-    return {};
+    return {AppRouteName.login: (_) => LoginScreen(), AppRouteName.register: (_) => RegisterScreen()};
   }
 }
