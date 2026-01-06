@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import 'core/constants/app_strings.dart';
@@ -9,11 +10,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: AppStrings.appName,
-      debugShowCheckedModeBanner: false,
-      initialRoute: AppRouteName.login,
-      routes: AppRoute.getMapRouteScreen(context),
+    return ScreenUtilInit(
+      builder: (context, child) {
+        return GetMaterialApp(
+          title: AppStrings.appName,
+          debugShowCheckedModeBanner: false,
+          initialRoute: AppRouteName.login,
+          routes: AppRoute.getMapRouteScreen(context),
+        );
+      },
     );
   }
 }
