@@ -1,4 +1,4 @@
-package com.example.chatkuy
+package com.ncladr.chatkuy
 
 import io.flutter.embedding.android.FlutterActivity
 

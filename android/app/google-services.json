@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "682810797194",
+    "firebase_url": "https://chatkuy-3f559-default-rtdb.firebaseio.com",
+    "project_id": "chatkuy-3f559",
+    "storage_bucket": "chatkuy-3f559.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682810797194:android:95d2db202c2bf933cd5173",
+        "android_client_info": {
+          "package_name": "com.ncladr.chatkuy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7lvkBms8uzAmdHH0mgovtsdGgF4YgjmU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
