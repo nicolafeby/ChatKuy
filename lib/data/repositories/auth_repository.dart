@@ -1,20 +1,11 @@
-import 'package:chatkuy/data/datasources/auth_firebase_datasource.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 
-class AuthRepository {
-  final AuthFirebaseDatasource datasource;
+abstract class AuthRepository {
+  Stream<UserModel?> authStateChanges();
 
-  AuthRepository(this.datasource);
+  Future<UserModel> login({required String email, required String password});
 
-  Future<UserCredential> login(String email, String password) {
-    return datasource.login(email, password);
-  }
+  Future<UserModel> register({required String email, required String password, required String name});
 
-  Future<UserCredential> register(String email, String password) {
-    return datasource.register(email, password);
-  }
-
-  Future<void> logout() => datasource.logout();
-
-  User? get currentUser => datasource.currentUser;
+  Future<void> logout();
 }
