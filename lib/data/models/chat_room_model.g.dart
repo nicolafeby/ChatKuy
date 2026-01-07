@@ -9,10 +9,9 @@ part of 'chat_room_model.dart';
 ChatRoomModel _$ChatRoomModelFromJson(Map<String, dynamic> json) =>
     ChatRoomModel(
       id: json['id'] as String? ?? '',
-      participantIds:
-          (json['participantIds'] as List<dynamic>)
-              .map((e) => e as String)
-              .toList(),
+      participantIds: (json['participantIds'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
       lastMessage: json['lastMessage'] as String,
       updatedAt: ChatRoomModel._fromJson(json['updatedAt']),
     );

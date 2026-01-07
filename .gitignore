@@ -120,3 +120,5 @@ app.*.symbols
 
 .env
 .vscode
+**/*.g.dart
+**/*.freezed.dart

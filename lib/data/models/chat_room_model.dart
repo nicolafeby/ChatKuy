@@ -17,8 +17,7 @@ class ChatRoomModel {
     required this.updatedAt,
   });
 
-  factory ChatRoomModel.fromJson(Map<String, dynamic> json) =>
-      _$ChatRoomModelFromJson(json);
+  factory ChatRoomModel.fromJson(Map<String, dynamic> json) => _$ChatRoomModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatRoomModelToJson(this);
 
