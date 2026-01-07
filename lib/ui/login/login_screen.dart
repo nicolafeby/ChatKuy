@@ -1,13 +1,16 @@
+import 'package:chatkuy/core/constants/app_routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
-import 'package:chatkuy/stores/login/login_store.dart';
+import 'package:chatkuy/stores/auth/login/login_store.dart';
+import 'package:chatkuy/stores/password_field/password_field_store.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:get/get_utils/src/extensions/widget_extensions.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +22,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   LoginStore store = LoginStore();
+  PasswordFieldStore passwordStore = PasswordFieldStore();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,7 +49,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 errorText: store.errorEmail,
               ),
               20.verticalSpace,
-              TextfieldPasswordWidget(),
+              TextfieldPasswordWidget.verify(
+                onValidPassword: (password) {
+                  store.password = password;
+                },
+              ),
               8.verticalSpace,
               Align(
                 alignment: Alignment.centerRight,
@@ -52,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text(
                     'Lupa Password?',
                     style: TextStyle(
-                      fontSize: 16.sp,
+                      fontSize: 14.sp,
                       decoration: TextDecoration.underline,
                     ),
                   ),
@@ -60,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               50.verticalSpace,
               ButtonWidget(
-                onPressed: () {},
+                onPressed: !store.isValid ? null : () {},
                 title: 'Masuk',
               ),
               48.verticalSpace,
@@ -70,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: <InlineSpan>[
                     TextSpan(
                       text: 'Masuk',
-                      recognizer: TapGestureRecognizer()..onTap = () {},
+                      recognizer: TapGestureRecognizer()..onTap = () => Get.toNamed(AppRouteName.REGISTER_SCREEN),
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                         decorationColor: AppColor.primaryColor,

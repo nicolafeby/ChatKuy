@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ButtonWidget extends StatelessWidget {
-  final Function() onPressed;
+  final Function()? onPressed;
   final String title;
   const ButtonWidget({super.key, required this.onPressed, required this.title});
 

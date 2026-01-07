@@ -4,11 +4,6 @@ import 'package:mobx/mobx.dart';
 
 part 'password_field_store.g.dart';
 
-enum PasswordType {
-  verify,
-  create,
-}
-
 class PasswordFieldStore = _PasswordFieldStore with _$PasswordFieldStore;
 
 abstract class _PasswordFieldStore with Store {
@@ -57,6 +52,11 @@ abstract class _PasswordFieldStore with Store {
   }
 
   @computed
-  bool get createPasswordPassed =>
-      passwordError == null && confirmPasswordError == null && password.isNotEmpty && confirmPassword.isNotEmpty;
+  bool get isCreatePasswordValid {
+    if (password.isEmpty || confirmPassword.isEmpty) return false;
+    if (passwordError != null) return false;
+    if (password != confirmPassword) return false;
+
+    return true;
+  }
 }

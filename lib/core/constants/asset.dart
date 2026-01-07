@@ -8,4 +8,5 @@ class AppAsset {
 
   static const String imgChatKuyWithTextAndIcon = '${imagePath}img_chat_kuy_with_text_and_icon.png';
   static const String imgFaceSmile = '${imagePath}img_face_smile.png';
+  static const String imgFaceWink = '${imagePath}img_face_wink.png';
 }

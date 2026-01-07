@@ -1,7 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:mobx/mobx.dart';
-import 'package:get/get.dart'; // hanya untuk util isEmail
+import 'package:get/get.dart';
 
 part 'login_store.g.dart';
 
@@ -10,6 +10,9 @@ class LoginStore = _LoginStore with _$LoginStore;
 abstract class _LoginStore with Store {
   @observable
   String? email;
+
+  @observable
+  String? password;
 
   @observable
   String? errorEmail;
@@ -26,5 +29,6 @@ abstract class _LoginStore with Store {
     }
   }
 
-  bool get isValid => errorEmail == null;
+  
+  bool get isValid => errorEmail == null && password != null && email != null;
 }

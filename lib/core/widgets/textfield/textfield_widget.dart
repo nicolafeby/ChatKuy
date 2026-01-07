@@ -25,10 +25,13 @@ class TextfieldWidget extends StatelessWidget {
       textInputAction: textInputAction,
       keyboardType: textInputType,
       cursorColor: AppColor.primaryColor,
+      
       decoration: InputDecoration(
         labelText: label,
         errorText: errorText,
-        floatingLabelStyle: TextStyle(color: AppColor.primaryColor),
+        floatingLabelStyle: TextStyle(
+            color: errorText != null ? Colors.red : AppColor.primaryColor,
+          ),
         floatingLabelBehavior: FloatingLabelBehavior.auto,
         hintText: hintText,
       ),
