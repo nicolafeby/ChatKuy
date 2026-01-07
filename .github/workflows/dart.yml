@@ -28,11 +28,10 @@ jobs:
       #   run: flutter analyze
 
       # - name: Run flutter test
-      #   run: flutter test 
-
+      #   run: flutter test
 
       - name: Build APK
-        run: flutter build apk --release --build-number=${{ github.run_number }}
+        run: flutter build apk  --release --split-debug-info=build/flutter_mapping --build-number=${{ github.run_number }}
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
