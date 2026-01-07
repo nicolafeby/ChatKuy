@@ -25,6 +25,7 @@ class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
             color: store.passwordError != null ? Colors.red : AppColor.primaryColor,
           ),
           labelText: 'Password',
+          hintText: 'Masukan Password',
           errorText: store.passwordError,
           prefixIcon: Icon(Icons.lock),
           suffixIcon: IconButton(
