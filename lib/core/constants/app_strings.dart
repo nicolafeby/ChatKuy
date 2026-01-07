@@ -1,8 +1,5 @@
-// class AppStrings {
-//   AppStrings._();
-// }
-
-abstract class AppStrings {
+class AppStrings {
+  AppStrings._();
   static const appName = 'ChatKuy';
   static const somethingWentWrong = 'Terjadi kesalahan';
   static const noData = 'Data tidak tersedia';
