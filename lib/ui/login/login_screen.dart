@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get_utils/src/extensions/widget_extensions.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,6 +12,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Column(children: [SizedBox(height: 32)])).paddingAll(20);
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(children: [
+        SizedBox(height: 32),
+      ]).paddingAll(20.r),
+    );
   }
 }

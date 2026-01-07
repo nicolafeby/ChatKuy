@@ -59,6 +59,7 @@ dev_dependencies:
   json_serializable: ^6.9.5
   build_runner: ^2.5.4
   mobx_codegen: ^2.7.1
+  mockito: ^5.4.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
