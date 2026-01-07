@@ -27,8 +27,15 @@ jobs:
       # - name: Analyze
       #   run: flutter analyze
 
-      - name: Run tests
-        run: flutter test
+      - name: Run flutter test
+        run: |
+          flutter test \
+            --dart-define=APP_ENV=test \
+            --dart-define=FIREBASE_PROJECT_ID=test-project \
+            --dart-define=FIRESTORE_USERS_COLLECTION=users \
+            --dart-define=FIRESTORE_CHAT_ROOMS_COLLECTION=chat_rooms \
+            --dart-define=FIRESTORE_MESSAGES_COLLECTION=messages
+
 
       - name: Build APK
         run: flutter build apk --release --build-number=${{ github.run_number }}
