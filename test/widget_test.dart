@@ -15,7 +15,7 @@ Future<void> main() async {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(
-    fileName: '.env',
+    fileName: '.env.example',
     isOptional: true,
   );
   authServiceTest();
