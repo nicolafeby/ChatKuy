@@ -28,13 +28,7 @@ jobs:
       #   run: flutter analyze
 
       - name: Run flutter test
-        run: |
-          flutter test \
-            --dart-define=APP_ENV=test \
-            --dart-define=FIREBASE_PROJECT_ID=test-project \
-            --dart-define=FIRESTORE_USERS_COLLECTION=users \
-            --dart-define=FIRESTORE_CHAT_ROOMS_COLLECTION=chat_rooms \
-            --dart-define=FIRESTORE_MESSAGES_COLLECTION=messages
+        run: flutter test 
 
 
       - name: Build APK
