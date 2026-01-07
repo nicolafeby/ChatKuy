@@ -1,4 +1,4 @@
-import 'package:chatkuy/core/constants/app_routes.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
@@ -29,8 +29,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         builder: (context) => SingleChildScrollView(
           child: Column(
             children: [
-              Image.asset(AppAsset.imgFaceWink, height: 150.r),
-              32.verticalSpace,
+              // Image.asset(AppAsset.imgFaceWink, height: 150.r),
+              // 32.verticalSpace,
               Text(
                 'Selamat Datang',
                 style: TextStyle(fontSize: 30.sp),
@@ -64,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               48.verticalSpace,
               Text.rich(
                 TextSpan(
-                  text: 'Tidak punya akun? ', // Default style applied to this segment
+                  text: 'Sudah punya akun? ', // Default style applied to this segment
                   children: <InlineSpan>[
                     TextSpan(
                       text: 'Masuk',

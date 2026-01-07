@@ -1,4 +1,4 @@
-import 'package:chatkuy/core/constants/app_routes.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
@@ -68,7 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               50.verticalSpace,
               ButtonWidget(
-                onPressed: !store.isValid ? null : () {},
+                onPressed: !store.isValid
+                    ? null
+                    : () {
+                        Get.toNamed(AppRouteName.BASE_SCREEN);
+                      },
                 title: 'Masuk',
               ),
               48.verticalSpace,
@@ -77,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   text: 'Tidak punya akun? ', // Default style applied to this segment
                   children: <InlineSpan>[
                     TextSpan(
-                      text: 'Masuk',
+                      text: 'Daftar',
                       recognizer: TapGestureRecognizer()..onTap = () => Get.toNamed(AppRouteName.REGISTER_SCREEN),
                       style: TextStyle(
                         decoration: TextDecoration.underline,

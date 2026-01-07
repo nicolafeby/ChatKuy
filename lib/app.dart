@@ -1,11 +1,12 @@
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'core/constants/app_strings.dart';
-import 'core/constants/app_routes.dart';
+import 'core/constants/routes.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -20,9 +21,6 @@ class MyApp extends StatelessWidget {
               errorBorder: OutlineInputBorder(
                 borderSide: BorderSide(color: Colors.red),
               ),
-              // enabledBorder: OutlineInputBorder(
-              //   borderSide: BorderSide(color: Colors.teal),
-              // ),
               border: OutlineInputBorder(
                 borderSide: BorderSide(color: AppColor.primaryColor),
                 borderRadius: BorderRadius.circular(10.r),
@@ -35,6 +33,10 @@ class MyApp extends StatelessWidget {
             appBarTheme: AppBarTheme(
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.white,
+            ),
+            bottomNavigationBarTheme: BottomNavigationBarThemeData(
+              backgroundColor: Colors.white,
+              elevation: 10,
             ),
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.white,
