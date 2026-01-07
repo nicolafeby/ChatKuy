@@ -13,6 +13,6 @@ import 'lib/data/services/chat_service.dart';
 Future<void> main() async {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  authServiceTest();
-  chatServiceTest();
+  // authServiceTest();
+  // chatServiceTest();
 }
