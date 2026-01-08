@@ -47,6 +47,7 @@ Future<void> authServiceTest() async {
 
   test('LOGIN SUCCESS', () async {
     when(mockUser.uid).thenReturn('uid-1');
+    when(mockUser.emailVerified).thenReturn(true); // ✅ WAJIB
     when(mockCredential.user).thenReturn(mockUser);
 
     when(auth.signInWithEmailAndPassword(
@@ -63,6 +64,7 @@ Future<void> authServiceTest() async {
     when(snapshot.data()).thenReturn({
       'name': 'Test User',
       'email': 'test@mail.com',
+      'isEmailVerified': true,
     });
 
     final result = await service.login(
@@ -77,6 +79,9 @@ Future<void> authServiceTest() async {
 
   test('REGISTER SUCCESS', () async {
     when(mockUser.uid).thenReturn('uid-2');
+    when(mockUser.emailVerified).thenReturn(false);
+    when(mockUser.sendEmailVerification()).thenAnswer((_) async {});
+
     when(mockCredential.user).thenReturn(mockUser);
 
     when(auth.createUserWithEmailAndPassword(
@@ -98,6 +103,7 @@ Future<void> authServiceTest() async {
     expect(result.id, 'uid-2');
     expect(result.name, 'New User');
 
+    verify(mockUser.sendEmailVerification()).called(1);
     verify(userDoc.set(any)).called(1);
   });
 

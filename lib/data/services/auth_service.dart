@@ -39,7 +39,7 @@ class AuthService implements AuthRepository {
 
     final doc = await firestore.collection(EnvConfig.usersCollection).doc(user.uid).get();
 
-    return UserModel.fromJson(doc.data()!);
+    return UserModel.fromJson(doc.data()!).copyWith(id: doc.id);
   }
 
   @override
