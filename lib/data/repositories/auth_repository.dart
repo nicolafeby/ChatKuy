@@ -7,5 +7,9 @@ abstract class AuthRepository {
 
   Future<UserModel> register({required String email, required String password, required String name});
 
+  Future<bool> refreshEmailVerification();
+
+  Future<void> resendEmailVerification() ;
+
   Future<void> logout();
 }
