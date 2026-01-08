@@ -53,11 +53,9 @@ abstract class _LoginStore with Store {
         password: password ?? '',
       );
 
-      // ObservableFuture untuk state UI
       loginFuture = ObservableFuture(future);
 
       final resp = await future;
-      log('resp: $resp');
 
       loginResponse = resp;
       onSuccess.call();

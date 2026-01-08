@@ -38,6 +38,9 @@ abstract class _RegisterStore with Store {
   ObservableFuture<UserModel?>? registerFuture;
 
   @observable
+  ObservableFuture<void>? resendEmailFuture;
+
+  @observable
   ObservableFuture<bool>? emailVerificationFuture;
 
   void initAuthListener() {
@@ -164,7 +167,11 @@ abstract class _RegisterStore with Store {
     error.general = null;
 
     try {
-      await service.resendEmailVerification();
+      final future = service.resendEmailVerification();
+      resendEmailFuture = ObservableFuture(future);
+      await resendEmailFuture;
+
+      // log('Response: ${}')
     } on FirebaseAuthException catch (e) {
       log('🔥 FirebaseAuthException');
       log('➡️ code    : ${e.code}');

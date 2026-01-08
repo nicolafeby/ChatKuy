@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/config/env_config.dart';
+import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -34,7 +35,7 @@ class AuthService implements AuthRepository {
     final user = cred.user!;
 
     if (!user.emailVerified) {
-      throw Exception('email-not-verified');
+      throw Exception(AppStrings.emailNotVerified);
     }
 
     final doc = await firestore.collection(EnvConfig.usersCollection).doc(user.uid).get();

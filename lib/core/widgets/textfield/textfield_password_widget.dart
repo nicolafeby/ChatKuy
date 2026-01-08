@@ -79,9 +79,9 @@ class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
                   widget.onValidPassword(null);
                 }
               },
-
               obscureText: !store.isPasswordVisible,
               cursorColor: AppColor.primaryColor,
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 floatingLabelStyle: TextStyle(
                   color: store.passwordError != null ? Colors.red : AppColor.primaryColor,

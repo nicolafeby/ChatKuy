@@ -44,7 +44,7 @@ class FailedBottomsheet extends StatelessWidget {
             style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w300),
           ),
           32.verticalSpace,
-          ButtonWidget(onPressed: () => onButtonPressed ?? Get.back(), title: buttonText!)
+          ButtonWidget(onPressed: onButtonPressed ?? () => Get.back(), title: buttonText!)
         ],
       ),
     );

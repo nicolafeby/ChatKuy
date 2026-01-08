@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
@@ -7,8 +8,10 @@ import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/services/auth_service.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
+import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -28,6 +31,10 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
     service: getIt<AuthRepository>(),
   );
 
+  RegisterStore registerStore = RegisterStore(
+    service: getIt<AuthRepository>(),
+  );
+
   List<ReactionDisposer> _reaction = [];
 
   @override
@@ -43,15 +50,36 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
           }
         }),
         reaction((p0) => store.error.general, (p0) {
-          if (p0 != null) {
+          if (p0 == null) return;
+          if (p0.code.contains(AppStrings.emailNotVerified)) {
             Get.bottomSheet(
               FailedBottomsheet(
-                title: 'Ooops!! Terjadi Kesalahan',
+                title: AppStrings.oopsTerjadiKesalahan,
                 message: p0.message.toString(),
                 buttonText: 'Verifikasi Sekarang',
+                onButtonPressed: () {
+                  registerStore.resendEmailVerification();
+                },
+              ),
+            );
+          } else {
+            Get.bottomSheet(
+              FailedBottomsheet(
+                title: AppStrings.oopsTerjadiKesalahan,
+                message: p0.message.toString(),
               ),
             );
           }
+        }),
+        reaction((p0) => registerStore.resendEmailFuture?.status, (p0) {
+          if (p0 == FutureStatus.pending) {
+            showLoading();
+          } else {
+            dismissLoading();
+          }
+        }),
+        reaction((p0) => registerStore.error.general, (p0) {
+          if (p0 == null) return;
         }),
       ];
     });
@@ -110,14 +138,20 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               ),
               50.verticalSpace,
               ButtonWidget(
-                onPressed:
-                    !store.isValid ? null : () => store.login(onSuccess: () => Get.toNamed(AppRouteName.BASE_SCREEN)),
+                onPressed: !store.isValid
+                    ? null
+                    : () => store.login(
+                          onSuccess: () async {
+                            await Future.delayed(Duration(milliseconds: 500));
+                            Get.toNamed(AppRouteName.BASE_SCREEN);
+                          },
+                        ),
                 title: 'Masuk',
               ),
               48.verticalSpace,
               Text.rich(
                 TextSpan(
-                  text: 'Tidak punya akun? ', // Default style applied to this segment
+                  text: 'Tidak punya akun? ',
                   children: <InlineSpan>[
                     TextSpan(
                       text: 'Daftar',
@@ -125,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                         decorationColor: AppColor.primaryColor,
-                        fontWeight: FontWeight.bold, // Specific style for "bold"
+                        fontWeight: FontWeight.bold,
                         color: Colors.blue,
                       ),
                     ),

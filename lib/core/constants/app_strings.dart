@@ -4,4 +4,6 @@ class AppStrings {
   static const somethingWentWrong = 'Terjadi kesalahan';
   static const noData = 'Data tidak tersedia';
   static const retry = 'Coba lagi';
+  static const emailNotVerified = 'email-not-verified';
+  static const oopsTerjadiKesalahan = 'Ooops!! Terjadi Kesalahan';
 }
