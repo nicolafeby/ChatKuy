@@ -1,9 +1,12 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 import 'package:get/get.dart';
 
@@ -29,7 +32,7 @@ abstract class _RegisterStore with Store {
   StreamSubscription<UserModel?>? _authSub;
 
   @observable
-  UserModel? currentUser;
+  UserModel? registerResponse;
 
   @observable
   ObservableFuture<UserModel?>? registerFuture;
@@ -40,7 +43,7 @@ abstract class _RegisterStore with Store {
   void initAuthListener() {
     _authSub = service.authStateChanges().listen(
       (user) {
-        currentUser = user;
+        registerResponse = user;
       },
     );
   }
@@ -77,47 +80,114 @@ abstract class _RegisterStore with Store {
   }
 
   @action
-  void register() {
-    error.general = null;
+  Future<void> register({required VoidCallback onSuccessRegister}) async {
+    try {
+      error.general = null;
 
-    registerFuture = ObservableFuture(
-      service.register(
+      final future = service.register(
         email: email ?? '',
         password: password ?? '',
         name: name ?? '',
-      ),
-    );
+      );
 
-    registerFuture!.then((user) {
-      currentUser = user;
-    }).catchError((e) {
-      error.general = e.toString();
-    });
+      registerFuture = ObservableFuture(future);
+
+      final resp = await future;
+      log('success register response: $resp');
+      registerResponse = resp;
+      onSuccessRegister.call();
+    } on FirebaseAuthException catch (e) {
+      log('🔥 FirebaseAuthException');
+      log('➡️ code    : ${e.code}');
+      log('➡️ message : ${e.message}');
+
+      error.general = e;
+    } on FirebaseException catch (e) {
+      log('🔥 FirebaseException');
+      log('➡️ plugin  : ${e.plugin}');
+      log('➡️ code    : ${e.code}');
+      log('➡️ message : ${e.message}');
+
+      error.general = e;
+    } catch (e) {
+      // ❌ UNKNOWN ERROR
+      log('❌ Unknown error: $e');
+
+      error.general = FirebaseAuthException(
+        code: 'unknown',
+        message: e.toString(),
+      );
+    }
   }
 
   @action
-  void refreshEmailVerification() {
+  Future<void> refreshEmailVerification() async {
     error.general = null;
 
-    emailVerificationFuture = ObservableFuture(
-      service.refreshEmailVerification(),
-    );
+    try {
+      final future = service.refreshEmailVerification();
+      emailVerificationFuture = ObservableFuture(future);
 
-    emailVerificationFuture!.then((verified) {
-      if (verified && currentUser != null) {
-        currentUser = currentUser!.copyWith(isEmailVerified: true);
+      final verified = await future;
+
+      if (verified && registerResponse != null) {
+        registerResponse = registerResponse!.copyWith(isEmailVerified: true);
       }
-    }).catchError((e) {
-      error.general = e.toString();
-    });
+    } on FirebaseAuthException catch (e) {
+      log('🔥 FirebaseAuthException');
+      log('➡️ code    : ${e.code}');
+      log('➡️ message : ${e.message}');
+
+      error.general = e;
+    } on FirebaseException catch (e) {
+      log('🔥 FirebaseException');
+      log('➡️ plugin  : ${e.plugin}');
+      log('➡️ code    : ${e.code}');
+      log('➡️ message : ${e.message}');
+
+      error.general = FirebaseAuthException(
+        code: e.code,
+        message: e.message,
+      );
+    } catch (e) {
+      log('❌ Unknown error: $e');
+
+      error.general = FirebaseAuthException(
+        code: 'unknown',
+        message: e.toString(),
+      );
+    }
   }
 
   @action
   Future<void> resendEmailVerification() async {
+    error.general = null;
+
     try {
       await service.resendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      log('🔥 FirebaseAuthException');
+      log('➡️ code    : ${e.code}');
+      log('➡️ message : ${e.message}');
+
+      error.general = e;
+    } on FirebaseException catch (e) {
+      log('🔥 FirebaseException');
+      log('➡️ plugin  : ${e.plugin}');
+      log('➡️ code    : ${e.code}');
+      log('➡️ message : ${e.message}');
+
+      error.general = FirebaseAuthException(
+        code: e.code,
+        message: e.message,
+      );
     } catch (e) {
-      error.general = e.toString();
+      log('❌ Unknown error: $e');
+
+      error.general = FirebaseAuthException(
+        code: 'unknown',
+        message: e.toString(),
+      );
     }
   }
 
@@ -138,5 +208,5 @@ abstract class _RegisterErrorStore with Store {
   String? name;
 
   @observable
-  String? general;
+  FirebaseException? general;
 }

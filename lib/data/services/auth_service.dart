@@ -34,7 +34,7 @@ class AuthService implements AuthRepository {
     final user = cred.user!;
 
     if (!user.emailVerified) {
-      throw Exception('Email belum diverifikasi');
+      throw Exception('email-not-verified');
     }
 
     final doc = await firestore.collection(EnvConfig.usersCollection).doc(user.uid).get();

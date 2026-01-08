@@ -1,16 +1,20 @@
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/widgets/base_layout.dart';
+import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
+import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
-import 'package:chatkuy/stores/password_field/password_field_store.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:mobx/mobx.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,9 +23,47 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  LoginStore store = LoginStore();
-  PasswordFieldStore passwordStore = PasswordFieldStore();
+class _LoginScreenState extends State<LoginScreen> with BaseLayout {
+  LoginStore store = LoginStore(
+    service: getIt<AuthRepository>(),
+  );
+
+  List<ReactionDisposer> _reaction = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reaction = [
+        reaction((p0) => store.loginFuture?.status, (p0) {
+          if (p0 == FutureStatus.pending) {
+            showLoading();
+          } else {
+            dismissLoading();
+          }
+        }),
+        reaction((p0) => store.error.general, (p0) {
+          if (p0 != null) {
+            Get.bottomSheet(
+              FailedBottomsheet(
+                title: 'Ooops!! Terjadi Kesalahan',
+                message: p0.message.toString(),
+                buttonText: 'Verifikasi Sekarang',
+              ),
+            );
+          }
+        }),
+      ];
+    });
+  }
+
+  @override
+  void dispose() {
+    for (var d in _reaction) {
+      d();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textInputType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 onChanged: store.validateEmail,
-                errorText: store.errorEmail,
+                errorText: store.error.email,
               ),
               20.verticalSpace,
               TextfieldPasswordWidget.verify(
@@ -68,11 +110,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               50.verticalSpace,
               ButtonWidget(
-                onPressed: !store.isValid
-                    ? null
-                    : () {
-                        Get.toNamed(AppRouteName.BASE_SCREEN);
-                      },
+                onPressed:
+                    !store.isValid ? null : () => store.login(onSuccess: () => Get.toNamed(AppRouteName.BASE_SCREEN)),
                 title: 'Masuk',
               ),
               48.verticalSpace,

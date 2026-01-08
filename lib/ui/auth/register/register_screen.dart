@@ -28,24 +28,37 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
     service: getIt<AuthRepository>(),
   );
 
+  List<ReactionDisposer> _reaction = [];
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      reaction((p0) => store.registerFuture?.status, (p0) {
-        if (p0 == FutureStatus.pending) {
-          showLoading();
-        } else {
-          dismissLoading();
-        }
-      });
-      reaction((p0) => store.error.general, (p0) {
-        if (p0 != null) {
-          Get.bottomSheet(FailedBottomsheet(title: 'Ooops!! Terjadi Kesalahan', message: p0));
-        }
-      });
+      _reaction = [
+        reaction((p0) => store.registerFuture?.status, (p0) {
+          if (p0 == FutureStatus.pending) {
+            showLoading();
+          } else {
+            dismissLoading();
+          }
+        }),
+        reaction((p0) => store.error.general, (p0) {
+          if (p0 != null) {
+            Get.bottomSheet(FailedBottomsheet(title: 'Ooops!! Terjadi Kesalahan', message: p0.message.toString()));
+          }
+        }),
+      ];
     });
+  }
+
+  @override
+  void dispose() {
+    for (var d in _reaction) {
+      d();
+    }
+    
+    super.dispose();
   }
 
   @override
@@ -94,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
               ),
               50.verticalSpace,
               ButtonWidget(
-                onPressed: !store.isValid ? null : () => store.register(),
+                onPressed: !store.isValid ? null : () => store.register(onSuccessRegister: () {}),
                 title: 'Daftar',
               ),
               48.verticalSpace,
