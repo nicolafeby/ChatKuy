@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'lib/data/services/auth_service.dart';
 import 'lib/data/services/chat_service.dart';
+import 'lib/data/services/presence_service.dart';
 
 Future<void> main() async {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -20,4 +21,5 @@ Future<void> main() async {
   );
   authServiceTest();
   chatServiceTest();
+  presenceServiceTest();
 }
