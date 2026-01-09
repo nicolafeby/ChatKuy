@@ -14,39 +14,40 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      builder: (_, child) => child!,
-      child: GetMaterialApp(
-        theme: ThemeData(
-          inputDecorationTheme: InputDecorationTheme(
-            errorBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.red),
+      builder: (_, __) {
+        return GetMaterialApp(
+          theme: ThemeData(
+            inputDecorationTheme: InputDecorationTheme(
+              errorBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.red),
+              ),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: AppColor.primaryColor),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: AppColor.primaryColor),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
             ),
-            border: OutlineInputBorder(
-              borderSide: BorderSide(color: AppColor.primaryColor),
-              borderRadius: BorderRadius.circular(10.r),
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppColor.primaryColor),
-              borderRadius: BorderRadius.circular(10.r),
+            bottomNavigationBarTheme: BottomNavigationBarThemeData(
+              backgroundColor: Colors.white,
+              elevation: 10,
             ),
+            useMaterial3: true,
+            scaffoldBackgroundColor: Colors.white,
+            fontFamily: GoogleFonts.wellfleet().fontFamily,
           ),
-          appBarTheme: AppBarTheme(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-          ),
-          bottomNavigationBarTheme: BottomNavigationBarThemeData(
-            backgroundColor: Colors.white,
-            elevation: 10,
-          ),
-          useMaterial3: true,
-          scaffoldBackgroundColor: Colors.white,
-          fontFamily: GoogleFonts.wellfleet().fontFamily,
-        ),
-        title: AppStrings.appName,
-        debugShowCheckedModeBanner: false,
-        initialRoute: AppRouteName.BASE_SCREEN,
-        getPages: AppRoute.pages,
-      ),
+          title: AppStrings.appName,
+          debugShowCheckedModeBanner: false,
+          initialRoute: AppRouteName.BASE_SCREEN,
+          getPages: AppRoute.pages,
+        );
+      },
     );
   }
 }

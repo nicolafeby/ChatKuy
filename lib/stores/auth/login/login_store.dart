@@ -93,6 +93,23 @@ abstract class _LoginStore with Store {
     }
   }
 
+  @action
+  Future<void> logout({required VoidCallback onSuccess}) async {
+    error.general = null;
+
+    try {
+      await service.logout();
+    } catch (e, s) {
+      log('⚠️ Logout failed, continuing anyway');
+      log('$e');
+      log('$s');
+    } finally {
+      await storageService.clear();
+      await Future.delayed(Duration(milliseconds: 200));
+      onSuccess.call();
+    }
+  }
+
   bool get isValid => error.email == null && password != null && email != null;
 }
 

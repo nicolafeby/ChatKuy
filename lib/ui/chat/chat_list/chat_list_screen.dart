@@ -11,7 +11,7 @@ class ChatListScreen extends StatelessWidget {
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
-        'Chat',
+        'Percakapan',
         style: TextStyle(fontSize: 28.sp),
       ),
       actions: [
