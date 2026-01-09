@@ -8,10 +8,10 @@ import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
-import 'package:chatkuy/data/services/auth_service.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
+import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -53,19 +53,26 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
           if (p0 == null) return;
           if (p0.code.contains(AppStrings.emailNotVerified)) {
             Get.bottomSheet(
-              FailedBottomsheet(
+              BottomsheetWidget(
                 title: AppStrings.oopsTerjadiKesalahan,
+                asset: AppAsset.imgFaceSad,
                 message: p0.message.toString(),
                 buttonText: 'Verifikasi Sekarang',
                 onButtonPressed: () {
-                  registerStore.resendEmailVerification();
+                  final email = store.email;
+                  if (email == null) return;
+                  Get.toNamed(
+                    AppRouteName.VERIFY_SCREEN,
+                    arguments: VerifyArgument(email: email),
+                  );
                 },
               ),
             );
           } else {
             Get.bottomSheet(
-              FailedBottomsheet(
+              BottomsheetWidget(
                 title: AppStrings.oopsTerjadiKesalahan,
+                asset: AppAsset.imgFaceSad,
                 message: p0.message.toString(),
               ),
             );

@@ -44,11 +44,9 @@ abstract class _RegisterStore with Store {
   ObservableFuture<bool>? emailVerificationFuture;
 
   void initAuthListener() {
-    _authSub = service.authStateChanges().listen(
-      (user) {
-        registerResponse = user;
-      },
-    );
+    _authSub = service.authStateChanges().listen((user) {
+      registerResponse = user;
+    });
   }
 
   final RegExp _nameRegex = RegExp(r"^[a-zA-ZÀ-ÿ\s'-]+$");
@@ -163,7 +161,7 @@ abstract class _RegisterStore with Store {
   }
 
   @action
-  Future<void> resendEmailVerification() async {
+  Future<void> resendEmailVerification({VoidCallback? onSuccess}) async {
     error.general = null;
 
     try {
@@ -171,7 +169,7 @@ abstract class _RegisterStore with Store {
       resendEmailFuture = ObservableFuture(future);
       await resendEmailFuture;
 
-      // log('Response: ${}')
+      onSuccess?.call();
     } on FirebaseAuthException catch (e) {
       log('🔥 FirebaseAuthException');
       log('➡️ code    : ${e.code}');

@@ -1,3 +1,5 @@
+import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
@@ -8,6 +10,7 @@ import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
+import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -45,7 +48,13 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
         }),
         reaction((p0) => store.error.general, (p0) {
           if (p0 != null) {
-            Get.bottomSheet(FailedBottomsheet(title: 'Ooops!! Terjadi Kesalahan', message: p0.message.toString()));
+            Get.bottomSheet(
+              BottomsheetWidget(
+                asset: AppAsset.imgFaceSad,
+                title: AppStrings.oopsTerjadiKesalahan,
+                message: p0.message.toString(),
+              ),
+            );
           }
         }),
       ];
@@ -57,7 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
     for (var d in _reaction) {
       d();
     }
-    
+
     super.dispose();
   }
 
@@ -69,8 +78,6 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
         builder: (context) => SingleChildScrollView(
           child: Column(
             children: [
-              // Image.asset(AppAsset.imgFaceWink, height: 150.r),
-              // 32.verticalSpace,
               Text(
                 'Selamat Datang',
                 style: TextStyle(fontSize: 30.sp),
@@ -107,7 +114,31 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
               ),
               50.verticalSpace,
               ButtonWidget(
-                onPressed: !store.isValid ? null : () => store.register(onSuccessRegister: () {}),
+                onPressed: !store.isValid
+                    ? null
+                    : () => store.register(onSuccessRegister: () async {
+                          await Future.delayed(Duration(microseconds: 200));
+                          Get.bottomSheet(
+                            isDismissible: false,
+                            isScrollControlled: false,
+                            BottomsheetWidget(
+                              asset: AppAsset.imgFaceWink,
+                              restricBackNative: true,
+                              title: 'Horee!! Registrasi Berhasil',
+                              message: 'Yuk, verifikasi email kamu agar bisa mengakses semua fitur kami',
+                              buttonText: 'Verifikasi Sekarang',
+                              onButtonPressed: () {
+                                final email = store.email;
+
+                                if (email == null) return;
+                                Get.toNamed(
+                                  AppRouteName.VERIFY_SCREEN,
+                                  arguments: VerifyArgument(email: email),
+                                );
+                              },
+                            ),
+                          );
+                        }),
                 title: 'Daftar',
               ),
               48.verticalSpace,

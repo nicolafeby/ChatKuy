@@ -1,2 +1,2 @@
-export 'auth/login/_login.dart';
-export 'auth/register/_register.dart';
+export 'auth/_auth.dart';
+export 'base/_base.dart';

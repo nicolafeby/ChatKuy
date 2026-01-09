@@ -1,5 +1,5 @@
 import 'package:chatkuy/core/constants/color.dart';
-import 'package:chatkuy/stores/base_store.dart';
+import 'package:chatkuy/stores/base/base_store.dart';
 import 'package:chatkuy/ui/chat/chat_list/chat_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';

@@ -8,4 +8,5 @@ abstract class AppRouteName {
   static const chatList = '/chat-list';
   static const chatRoom = '/chat-room';
   static const profile = '/profile';
+  static const VERIFY_SCREEN = '/verify';
 }
