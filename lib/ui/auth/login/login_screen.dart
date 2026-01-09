@@ -8,6 +8,7 @@ import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
@@ -29,10 +30,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> with BaseLayout {
   LoginStore store = LoginStore(
     service: getIt<AuthRepository>(),
+    storageService: getIt<SecureStorageRepository>(),
   );
 
   RegisterStore registerStore = RegisterStore(
     service: getIt<AuthRepository>(),
+    storageService: getIt<SecureStorageRepository>(),
   );
 
   List<ReactionDisposer> _reaction = [];

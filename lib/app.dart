@@ -14,40 +14,39 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      builder: (context, child) {
-        return GetMaterialApp(
-          theme: ThemeData(
-            inputDecorationTheme: InputDecorationTheme(
-              errorBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.red),
-              ),
-              border: OutlineInputBorder(
-                borderSide: BorderSide(color: AppColor.primaryColor),
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: AppColor.primaryColor),
-                borderRadius: BorderRadius.circular(10.r),
-              ),
+      builder: (_, child) => child!,
+      child: GetMaterialApp(
+        theme: ThemeData(
+          inputDecorationTheme: InputDecorationTheme(
+            errorBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.red),
             ),
-            appBarTheme: AppBarTheme(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
+            border: OutlineInputBorder(
+              borderSide: BorderSide(color: AppColor.primaryColor),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            bottomNavigationBarTheme: BottomNavigationBarThemeData(
-              backgroundColor: Colors.white,
-              elevation: 10,
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: AppColor.primaryColor),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            useMaterial3: true,
-            scaffoldBackgroundColor: Colors.white,
-            fontFamily: GoogleFonts.wellfleet().fontFamily,
           ),
-          title: AppStrings.appName,
-          debugShowCheckedModeBanner: false,
-          initialRoute: AppRouteName.LOGIN_SCREEN,
-          routes: AppRoute.getMapRouteScreen(context),
-        );
-      },
+          appBarTheme: AppBarTheme(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+          ),
+          bottomNavigationBarTheme: BottomNavigationBarThemeData(
+            backgroundColor: Colors.white,
+            elevation: 10,
+          ),
+          useMaterial3: true,
+          scaffoldBackgroundColor: Colors.white,
+          fontFamily: GoogleFonts.wellfleet().fontFamily,
+        ),
+        title: AppStrings.appName,
+        debugShowCheckedModeBanner: false,
+        initialRoute: AppRouteName.BASE_SCREEN,
+        getPages: AppRoute.pages,
+      ),
     );
   }
 }

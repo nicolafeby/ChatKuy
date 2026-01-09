@@ -49,6 +49,8 @@ dependencies:
   font_awesome_flutter: ^10.9.1
   cached_network_image: ^3.4.1
   flutter_html: ^3.0.0
+  flutter_secure_storage: ^10.0.0
+  lottie: ^3.3.1
 
 dev_dependencies:
   flutter_test:
@@ -80,7 +82,7 @@ flutter:
     - .env
     - assets/images/
     - assets/icons/
-    # - assets/jsons/
+    - assets/jsons/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

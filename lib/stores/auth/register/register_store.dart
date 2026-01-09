@@ -5,6 +5,7 @@ import 'dart:developer';
 
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
@@ -16,7 +17,8 @@ class RegisterStore = _RegisterStore with _$RegisterStore;
 
 abstract class _RegisterStore with Store {
   final AuthRepository service;
-  _RegisterStore({required this.service});
+  final SecureStorageRepository storageService;
+  _RegisterStore({required this.service, required this.storageService});
 
   final error = RegisterErrorStore();
 

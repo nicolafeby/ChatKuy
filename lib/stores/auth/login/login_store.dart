@@ -2,8 +2,10 @@
 
 import 'dart:developer';
 
+import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
@@ -15,7 +17,11 @@ class LoginStore = _LoginStore with _$LoginStore;
 
 abstract class _LoginStore with Store {
   final AuthRepository service;
-  _LoginStore({required this.service});
+  final SecureStorageRepository storageService;
+  _LoginStore({
+    required this.service,
+    required this.storageService,
+  });
 
   @observable
   String? email;
@@ -58,6 +64,8 @@ abstract class _LoginStore with Store {
       final resp = await future;
 
       loginResponse = resp;
+
+      await AppContext.sessionStore.setLoggedIn(true);
       onSuccess.call();
     } on FirebaseAuthException catch (e) {
       log('🔥 FirebaseAuthException');

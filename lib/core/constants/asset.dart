@@ -14,4 +14,7 @@ class AppAsset {
 
   // icon
   static const String icEditOutlined = '${iconPath}ic_edit_outlined.png';
+
+  // json
+  static const String lottieSplash = '${jsonPath}splash_lottie.json';
 }

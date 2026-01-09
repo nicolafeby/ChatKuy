@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class VerifyScreen extends StatefulWidget {
 class _VerifyScreenState extends State<VerifyScreen> {
   RegisterStore store = RegisterStore(
     service: getIt<AuthRepository>(),
+    storageService: getIt<SecureStorageRepository>(),
   );
 
   List<ReactionDisposer> _reaction = [];
