@@ -1,11 +1,11 @@
 // ignore_for_file: unused_import
 
+import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:chatkuy/data/services/auth_service.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -19,8 +19,11 @@ import 'auth_service.mocks.dart';
   UserCredential,
   User,
   CollectionReference,
+  QueryDocumentSnapshot,
   DocumentReference,
   DocumentSnapshot,
+  Query,
+  QuerySnapshot,
 ])
 Future<void> authServiceTest() async {
   late MockFirebaseAuth auth;
@@ -31,7 +34,10 @@ Future<void> authServiceTest() async {
   late MockUserCredential mockCredential;
   late MockCollectionReference<Map<String, dynamic>> usersCollection;
   late MockDocumentReference<Map<String, dynamic>> userDoc;
-  late MockDocumentSnapshot<Map<String, dynamic>> snapshot;
+  late MockQueryDocumentSnapshot<Map<String, dynamic>> snapshot;
+
+  late MockQuery<Map<String, dynamic>> usersQuery;
+  late MockQuerySnapshot<Map<String, dynamic>> querySnapshot;
 
   setUp(() {
     auth = MockFirebaseAuth();
@@ -42,12 +48,16 @@ Future<void> authServiceTest() async {
     mockCredential = MockUserCredential();
     usersCollection = MockCollectionReference();
     userDoc = MockDocumentReference();
-    snapshot = MockDocumentSnapshot();
+    snapshot = MockQueryDocumentSnapshot();
+    usersQuery = MockQuery();
+    querySnapshot = MockQuerySnapshot();
   });
 
   test('LOGIN SUCCESS', () async {
     when(mockUser.uid).thenReturn('uid-1');
-    when(mockUser.emailVerified).thenReturn(true); // ✅ WAJIB
+    when(mockUser.emailVerified).thenReturn(true);
+    when(mockUser.email).thenReturn('test@mail.com');
+
     when(mockCredential.user).thenReturn(mockUser);
 
     when(auth.signInWithEmailAndPassword(
@@ -55,8 +65,20 @@ Future<void> authServiceTest() async {
       password: '123456',
     )).thenAnswer((_) async => mockCredential);
 
+    // ---------- Firestore where(username) ----------
     when(firestore.collection(EnvConfig.usersCollection)).thenReturn(usersCollection);
 
+    when(usersCollection.where(
+      UserModelFields.username,
+      isEqualTo: anyNamed('isEqualTo'),
+    )).thenReturn(usersQuery);
+
+    when(usersQuery.limit(1)).thenReturn(usersQuery);
+    when(usersQuery.get()).thenAnswer((_) async => querySnapshot);
+
+    when(querySnapshot.docs).thenReturn([snapshot]);
+
+    // ---------- Firestore doc(uid) ----------
     when(usersCollection.doc('uid-1')).thenReturn(userDoc);
     when(userDoc.get()).thenAnswer((_) async => snapshot);
 
@@ -64,11 +86,15 @@ Future<void> authServiceTest() async {
     when(snapshot.data()).thenReturn({
       'name': 'Test User',
       'email': 'test@mail.com',
+      'username': 'username',
+      'photoUrl': null,
       'isEmailVerified': true,
+      'isOnline': false,
+      'lastOnlineAt': null,
     });
 
     final result = await service.login(
-      email: 'test@mail.com',
+      username: 'username',
       password: '123456',
     );
 
@@ -98,6 +124,7 @@ Future<void> authServiceTest() async {
       email: 'new@mail.com',
       password: '123456',
       name: 'New User',
+      username: 'username',
     );
 
     expect(result.id, 'uid-2');

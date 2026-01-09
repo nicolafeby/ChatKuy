@@ -1,5 +1,3 @@
-// ignore_for_file: library_private_types_in_public_api
-
 import 'dart:developer';
 
 import 'package:chatkuy/app_context.dart';
@@ -9,7 +7,6 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
-import 'package:get/get.dart';
 
 part 'login_store.g.dart';
 
@@ -24,10 +21,13 @@ abstract class _LoginStore with Store {
   });
 
   @observable
-  String? email;
+  String? username;
 
   @observable
   String? password;
+
+  @observable
+  String? email;
 
   final error = LoginErrorStore();
 
@@ -38,37 +38,48 @@ abstract class _LoginStore with Store {
   UserModel? loginResponse;
 
   @action
-  void validateEmail(String value) {
-    email = value;
-    if (email?.isEmpty == true) {
-      error.email = 'Email tidak boleh kosong';
-    } else if (!GetUtils.isEmail(email!)) {
-      error.email = 'Format email tidak valid';
+  void validateUsername(String value) {
+    username = value;
+
+    final int letterCount = RegExp(r'[a-z]').allMatches(username ?? '').length;
+
+    if (username?.isEmpty == true) {
+      error.username = 'Username tidak boleh kosong';
+    } else if ((letterCount) <= 5) {
+      error.username = 'Username minimal 5 huruf';
     } else {
-      error.email = null;
+      error.username = null;
     }
   }
 
   @action
-  Future<void> login({required VoidCallback onSuccess}) async {
+  Future<void> login({
+    required VoidCallback onSuccess,
+  }) async {
     error.general = null;
 
     try {
       final future = service.login(
-        email: email ?? '',
+        username: username ?? '',
         password: password ?? '',
       );
 
       loginFuture = ObservableFuture(future);
 
-      final resp = await future;
+      final resp = await loginFuture;
+
+      if (resp == null) return;
 
       loginResponse = resp;
 
       await AppContext.sessionStore.setLoggedIn(true);
-      await Future.delayed(Duration(milliseconds: 200));
+
+      await Future.delayed(const Duration(milliseconds: 200));
+
       onSuccess.call();
     } on FirebaseAuthException catch (e) {
+      email = e.email;
+
       log('🔥 FirebaseAuthException');
       log('➡️ code    : ${e.code}');
       log('➡️ message : ${e.message}');
@@ -85,10 +96,11 @@ abstract class _LoginStore with Store {
         message: e.message,
       );
     } catch (e) {
-      log('❌ Unknown error: $e');
+      log('❌ Unknown error');
+      log(e.toString());
 
       error.general = FirebaseAuthException(
-        code: e.toString(),
+        code: 'unknown',
         message: e.toString(),
       );
     }
@@ -100,10 +112,9 @@ abstract class _LoginStore with Store {
 
     try {
       await service.logout();
-    } catch (e, s) {
+    } catch (e) {
       log('⚠️ Logout failed, continuing anyway');
       log('$e');
-      log('$s');
     } finally {
       await storageService.clear();
       await Future.delayed(Duration(milliseconds: 200));
@@ -111,14 +122,14 @@ abstract class _LoginStore with Store {
     }
   }
 
-  bool get isValid => error.email == null && password != null && email != null;
+  bool get isValid => error.username == null && password != null && username != null;
 }
 
 class LoginErrorStore = _LoginErrorStore with _$LoginErrorStore;
 
 abstract class _LoginErrorStore with Store {
   @observable
-  String? email;
+  String? username;
 
   @observable
   FirebaseException? general;

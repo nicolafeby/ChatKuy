@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class TextfieldWidget extends StatelessWidget {
   final String? hintText;
@@ -8,6 +9,7 @@ class TextfieldWidget extends StatelessWidget {
   final TextInputType? textInputType;
   final Function(String value)? onChanged;
   final String? errorText;
+  final List<TextInputFormatter>? inputFormatters;
   const TextfieldWidget({
     super.key,
     this.hintText,
@@ -16,6 +18,7 @@ class TextfieldWidget extends StatelessWidget {
     this.textInputType,
     this.onChanged,
     this.errorText,
+    this.inputFormatters,
   });
 
   @override
@@ -25,13 +28,13 @@ class TextfieldWidget extends StatelessWidget {
       textInputAction: textInputAction,
       keyboardType: textInputType,
       cursorColor: AppColor.primaryColor,
-      
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         errorText: errorText,
         floatingLabelStyle: TextStyle(
-            color: errorText != null ? Colors.red : AppColor.primaryColor,
-          ),
+          color: errorText != null ? Colors.red : AppColor.primaryColor,
+        ),
         floatingLabelBehavior: FloatingLabelBehavior.auto,
         hintText: hintText,
       ),

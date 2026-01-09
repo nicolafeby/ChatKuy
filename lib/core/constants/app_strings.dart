@@ -6,4 +6,5 @@ class AppStrings {
   static const retry = 'Coba lagi';
   static const emailNotVerified = 'email-not-verified';
   static const oopsTerjadiKesalahan = 'Ooops!! Terjadi Kesalahan';
+  static const userNotFound = 'Akun tidak ditemukan';
 }

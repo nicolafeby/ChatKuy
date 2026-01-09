@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
+import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
@@ -14,6 +15,7 @@ import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -98,6 +100,16 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
                 textInputAction: TextInputAction.next,
                 onChanged: store.validateName,
                 errorText: store.error.name,
+              ),
+              20.verticalSpace,
+              TextfieldWidget(
+                label: 'Username',
+                hintText: 'Masukan Username',
+                textInputType: TextInputType.name,
+                textInputAction: TextInputAction.next,
+                inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
+                onChanged: store.validateUsername,
+                errorText: store.error.username,
               ),
               20.verticalSpace,
               TextfieldWidget(

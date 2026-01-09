@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/config/env_config.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,23 +25,46 @@ class AuthService implements AuthRepository {
 
   @override
   Future<UserModel> login({
-    required String email,
+    required String username,
     required String password,
   }) async {
+    final query = await firestore
+        .collection(EnvConfig.usersCollection)
+        .where(
+          UserModelFields.username,
+          isEqualTo: username.toLowerCase(),
+        )
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) {
+      throw Exception(AppStrings.userNotFound);
+    }
+
+    final userDoc = query.docs.first;
+    final userData = UserModel.fromJson(userDoc.data());
+
     final cred = await auth.signInWithEmailAndPassword(
-      email: email,
+      email: userData.email,
       password: password,
     );
 
-    final user = cred.user!;
+    final firebaseUser = cred.user!;
 
-    if (!user.emailVerified) {
-      throw Exception(AppStrings.emailNotVerified);
+    if (!firebaseUser.emailVerified) {
+      throw FirebaseAuthException(code: AppStrings.emailNotVerified, email: userData.email);
     }
 
-    final doc = await firestore.collection(EnvConfig.usersCollection).doc(user.uid).get();
+    final userRef = firestore.collection(EnvConfig.usersCollection).doc(userDoc.id);
 
-    return UserModel.fromJson(doc.data()!).copyWith(id: doc.id);
+    final updatedUser = userData.copyWith(
+      isOnline: true,
+      lastOnlineAt: DateTime.now(),
+    );
+
+    await userRef.update(updatedUser.toJson());
+
+    return updatedUser.copyWith(id: userDoc.id);
   }
 
   @override
@@ -48,6 +72,7 @@ class AuthService implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    required String username,
   }) async {
     final cred = await auth.createUserWithEmailAndPassword(
       email: email,
@@ -56,17 +81,17 @@ class AuthService implements AuthRepository {
 
     final firebaseUser = cred.user!;
 
-    // 1️⃣ Kirim email verifikasi
     if (!firebaseUser.emailVerified) {
       await firebaseUser.sendEmailVerification();
     }
 
-    // 2️⃣ Simpan user ke Firestore
     final user = UserModel(
       id: firebaseUser.uid,
       name: name,
       email: email,
-      isEmailVerified: false, // optional
+      username: username,
+      isEmailVerified: false,
+      isOnline: false,
     );
 
     await firestore.collection(EnvConfig.usersCollection).doc(user.id).set(user.toJson());
@@ -104,6 +129,20 @@ class AuthService implements AuthRepository {
     if (user != null && !user.emailVerified) {
       await user.sendEmailVerification();
     }
+  }
+
+  @override
+  Future<bool> checkUsernameAvailable(String username) async {
+    final query = await firestore
+        .collection(EnvConfig.usersCollection)
+        .where(
+          UserModelFields.username,
+          isEqualTo: username.toLowerCase(),
+        )
+        .limit(1)
+        .get();
+
+    return query.docs.isEmpty;
   }
 
   @override

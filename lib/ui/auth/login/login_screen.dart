@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
@@ -15,6 +16,7 @@ import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -59,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               BottomsheetWidget(
                 title: AppStrings.oopsTerjadiKesalahan,
                 asset: AppAsset.imgFaceSad,
-                message: p0.message.toString(),
+                message: 'Mohon verifikasi email kamu agar bisa mengakses seluruh fitur',
                 buttonText: 'Verifikasi Sekarang',
                 onButtonPressed: () {
                   final email = store.email;
@@ -120,12 +122,13 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               ),
               50.verticalSpace,
               TextfieldWidget(
-                label: 'Email',
-                hintText: 'Masukan Email',
+                label: 'Username',
+                hintText: 'Masukan Username',
                 textInputType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                onChanged: store.validateEmail,
-                errorText: store.error.email,
+                onChanged: store.validateUsername,
+                errorText: store.error.username,
+                inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
               ),
               20.verticalSpace,
               TextfieldPasswordWidget.verify(
@@ -151,8 +154,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
                 onPressed: !store.isValid
                     ? null
                     : () => store.login(
-                          onSuccess: ()  {
-                            
+                          onSuccess: () {
                             Get.toNamed(AppRouteName.BASE_SCREEN);
                           },
                         ),

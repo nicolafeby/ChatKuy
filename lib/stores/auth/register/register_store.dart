@@ -29,6 +29,9 @@ abstract class _RegisterStore with Store {
   String? email;
 
   @observable
+  String? username;
+
+  @observable
   String? password;
 
   StreamSubscription<UserModel?>? _authSub;
@@ -83,6 +86,50 @@ abstract class _RegisterStore with Store {
   }
 
   @action
+  void validateUsername(String value) {
+    username = value;
+    final int letterCount = RegExp(r'[a-z]').allMatches(username ?? '').length;
+
+    if (username?.isEmpty == true) {
+      error.username = 'Username tidak boleh kosong';
+    } else if ((letterCount) <= 5) {
+      error.username = 'Username minimal 5 huruf';
+    } else {
+      error.username = null;
+      checkUsernameAvailability(username ?? '');
+    }
+  }
+
+  @observable
+  bool? isUsernameAvailable;
+
+  @observable
+  bool onCheckUsername = false;
+
+  @action
+  Future<void> checkUsernameAvailability(String value) async {
+    username = value.trim().toLowerCase();
+
+    onCheckUsername = true;
+    error.username = null;
+
+    try {
+      final available = await service.checkUsernameAvailable(username ?? '');
+
+      isUsernameAvailable = available;
+
+      if (!available) {
+        error.username = 'Username sudah digunakan';
+      }
+    } catch (e) {
+      error.username = 'Gagal mengecek username';
+      isUsernameAvailable = null;
+    } finally {
+      onCheckUsername = false;
+    }
+  }
+
+  @action
   Future<void> register({required VoidCallback onSuccessRegister}) async {
     try {
       error.general = null;
@@ -91,6 +138,7 @@ abstract class _RegisterStore with Store {
         email: email ?? '',
         password: password ?? '',
         name: name ?? '',
+        username: username ?? '',
       );
 
       registerFuture = ObservableFuture(future);
@@ -213,6 +261,9 @@ abstract class _RegisterErrorStore with Store {
 
   @observable
   String? name;
+
+  @observable
+  String? username;
 
   @observable
   FirebaseException? general;
