@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
@@ -19,6 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
   LoginStore store = LoginStore(
     service: getIt<AuthRepository>(),
     storageService: getIt<SecureStorageRepository>(),
+    presenceService: getIt<PresenceRepository>(),
   );
 
   @override

@@ -1,4 +1,5 @@
 import 'package:chatkuy/app_context.dart';
+import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -11,7 +12,10 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
   await AppContext.init();
+
   setupDI();
+
+  getIt<PresenceService>().init();
 
   runApp(const MyApp());
 }

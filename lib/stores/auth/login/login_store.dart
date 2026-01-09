@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -15,9 +16,11 @@ class LoginStore = _LoginStore with _$LoginStore;
 abstract class _LoginStore with Store {
   final AuthRepository service;
   final SecureStorageRepository storageService;
+  final PresenceRepository presenceService;
   _LoginStore({
     required this.service,
     required this.storageService,
+    required this.presenceService,
   });
 
   @observable
@@ -111,6 +114,7 @@ abstract class _LoginStore with Store {
     error.general = null;
 
     try {
+      await presenceService.setOffline();
       await service.logout();
     } catch (e) {
       log('⚠️ Logout failed, continuing anyway');

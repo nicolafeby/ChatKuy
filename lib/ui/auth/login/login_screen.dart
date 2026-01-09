@@ -9,6 +9,7 @@ import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
   LoginStore store = LoginStore(
     service: getIt<AuthRepository>(),
     storageService: getIt<SecureStorageRepository>(),
+    presenceService: getIt<PresenceRepository>(),
   );
 
   RegisterStore registerStore = RegisterStore(
