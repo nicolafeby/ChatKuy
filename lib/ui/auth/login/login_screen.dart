@@ -151,8 +151,8 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
                 onPressed: !store.isValid
                     ? null
                     : () => store.login(
-                          onSuccess: () async {
-                            await Future.delayed(Duration(milliseconds: 500));
+                          onSuccess: ()  {
+                            
                             Get.toNamed(AppRouteName.BASE_SCREEN);
                           },
                         ),

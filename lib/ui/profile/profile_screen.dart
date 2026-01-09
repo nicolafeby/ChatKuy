@@ -39,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           onTap: () => store.logout(
             onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
           ),
-          child: Icon(Icons.logout).paddingOnly(right: 20.r),
+          child: Icon(Icons.logout).paddingOnly(right: 16.r),
         ),
       ],
     );

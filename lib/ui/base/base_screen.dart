@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/stores/base/base_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
+import 'package:chatkuy/ui/friends/friend_list_sceeen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
@@ -15,7 +16,7 @@ class _BaseScreenState extends State<BaseScreen> {
   BaseStore store = BaseStore();
 
   static const List<Widget> _widgetOptions = <Widget>[
-    Center(child: Text('Home Page', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold))),
+    FriendListScreen(),
     ChatListScreen(),
     ProfileScreen(),
   ];
@@ -36,7 +37,6 @@ class _BaseScreenState extends State<BaseScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Teman'),
             BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Percakapan'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-            // BottomNavigationBarItem(icon: Icon(Icons.profile)),
           ],
         ),
       ),

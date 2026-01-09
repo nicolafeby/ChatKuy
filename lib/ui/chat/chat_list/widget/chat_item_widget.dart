@@ -22,15 +22,24 @@ class ChatItemWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Smith Mathew',
-                style: TextStyle(fontSize: 16.sp),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Smith Mathew',
+                    style: TextStyle(fontSize: 16.sp),
+                  ),
+                  Text(
+                    '12:00',
+                    style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                  ),
+                ],
               ),
               Text(
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 'Hope you’re doing well today Hope you’re doing well today..',
-                style: TextStyle(fontSize: 14.sp, color: Colors.grey),
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
               ),
             ],
           ),

@@ -66,6 +66,7 @@ abstract class _LoginStore with Store {
       loginResponse = resp;
 
       await AppContext.sessionStore.setLoggedIn(true);
+      await Future.delayed(Duration(milliseconds: 200));
       onSuccess.call();
     } on FirebaseAuthException catch (e) {
       log('🔥 FirebaseAuthException');
