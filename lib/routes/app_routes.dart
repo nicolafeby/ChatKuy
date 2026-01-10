@@ -22,5 +22,9 @@ class AppRoute {
       page: () => BaseScreen(),
       middlewares: [SessionGuard()],
     ),
+    GetPage(
+      name: AppRouteName.CHAT_ROOM_SCREEN,
+      page: () => ChatRoomScreen(),
+    ),
   ];
 }

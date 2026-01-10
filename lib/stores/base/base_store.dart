@@ -8,7 +8,7 @@ class BaseStore = _BaseStore with _$BaseStore;
 
 abstract class _BaseStore with Store {
   @observable
-  int selectedIndex = 0;
+  int selectedIndex = 1;
 
   @action
   void onTapItem(int index) {

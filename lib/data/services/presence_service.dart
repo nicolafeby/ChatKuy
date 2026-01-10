@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:chatkuy/core/config/env_config.dart';
 import 'package:chatkuy/data/models/user_presence_model.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -53,7 +54,7 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
       lastOnlineAt: DateTime.now(),
     );
 
-    await firestore.collection('users').doc(uid).update(presence.toJson());
+    await firestore.collection(EnvConfig.usersCollection).doc(uid).update(presence.toJson());
   }
 
   @override
@@ -66,6 +67,6 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
       lastOnlineAt: DateTime.now(),
     );
 
-    await firestore.collection('users').doc(uid).update(presence.toJson());
+    await firestore.collection(EnvConfig.usersCollection).doc(uid).update(presence.toJson());
   }
 }
