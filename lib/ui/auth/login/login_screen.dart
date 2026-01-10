@@ -157,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
                     ? null
                     : () => store.login(
                           onSuccess: () {
-                            Get.toNamed(AppRouteName.BASE_SCREEN);
+                            Get.offAllNamed(AppRouteName.BASE_SCREEN);
                           },
                         ),
                 title: 'Masuk',

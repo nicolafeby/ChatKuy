@@ -1,11 +1,17 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ChatItemWidget extends StatelessWidget {
   final VoidCallback onTap;
-  const ChatItemWidget({super.key, required this.onTap});
+  final ChatRoomModel room;
+  const ChatItemWidget({
+    super.key,
+    required this.onTap,
+    required this.room,
+  });
 
   @override
   Widget build(BuildContext context) {

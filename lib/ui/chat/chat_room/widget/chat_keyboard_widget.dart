@@ -1,7 +1,7 @@
+import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 
 class ChatKeyboardWidget extends StatelessWidget {
   final ChatRoomStore store;
@@ -13,7 +13,7 @@ class ChatKeyboardWidget extends StatelessWidget {
       top: false,
       bottom: true,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8.r),
+        padding: EdgeInsets.symmetric(vertical: 8.r, horizontal: 16.r),
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
@@ -23,31 +23,46 @@ class ChatKeyboardWidget extends StatelessWidget {
           ),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             SizedBox(
-              height: 42.h,
-              width: 0.81.sw,
+              width: 0.75.sw,
               child: TextField(
+                minLines: 1,
                 cursorHeight: 18.r,
                 controller: store.messageController,
+                textInputAction: TextInputAction.newline,
+                maxLines: 5,
                 decoration: InputDecoration(
+                  prefixIcon: InkWell(
+                    radius: 10,
+                    borderRadius: BorderRadius.circular(50.r),
+                    onTap: () {},
+                    child: Icon(Icons.attach_file),
+                  ),
                   border: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(50),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(50),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   hintText: "Tulis pesan ....",
                 ),
               ),
-            ).paddingOnly(left: 16.w),
+            ),
             Spacer(),
-            IconButton(
-              icon: Icon(Icons.send),
-              onPressed: store.sendMessage,
-            ).paddingOnly(right: 2.w),
+            Container(
+              decoration: BoxDecoration(color: AppColor.primaryColor, shape: BoxShape.circle),
+              child: IconButton(
+                icon: Icon(
+                  Icons.send_outlined,
+                  color: Colors.white,
+                ),
+                onPressed: () => store.sendMessage(store.messageController.text),
+              ),
+            ),
           ],
         ),
       ),

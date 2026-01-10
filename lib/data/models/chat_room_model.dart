@@ -2,31 +2,41 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'chat_room_model.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class ChatRoomModel {
   final String id;
-  final List<String> participantIds;
-  final String lastMessage;
-  @JsonKey(fromJson: _fromJson, toJson: _toJson)
-  final DateTime updatedAt;
+  final List<String> participants;
+
+  final String? lastMessage;
+  final String? lastSenderId;
+
+  @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
+  final DateTime? lastMessageAt;
+
+  final Map<String, int>? unreadCount;
 
   ChatRoomModel({
-    this.id = '',
-    required this.participantIds,
-    required this.lastMessage,
-    required this.updatedAt,
+    required this.id,
+    required this.participants,
+    this.lastMessage,
+    this.lastSenderId,
+    this.lastMessageAt,
+    this.unreadCount,
   });
 
-  factory ChatRoomModel.fromJson(Map<String, dynamic> json) => _$ChatRoomModelFromJson(json);
+  factory ChatRoomModel.fromJson(Map<String, dynamic> json) =>
+      _$ChatRoomModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatRoomModelToJson(this);
 
-  static DateTime _fromJson(dynamic value) {
-    if (value is String) {
-      return DateTime.parse(value);
-    }
+  /// Firestore Timestamp → DateTime
+  static DateTime? _fromTimestamp(dynamic value) {
+    if (value == null) return null;
     return value.toDate();
   }
 
-  static dynamic _toJson(DateTime date) => date.toIso8601String();
+  /// DateTime → Firestore Timestamp
+  static dynamic _toTimestamp(DateTime? date) {
+    return date;
+  }
 }

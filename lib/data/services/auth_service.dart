@@ -149,4 +149,7 @@ class AuthService implements AuthRepository {
   Future<void> logout() {
     return auth.signOut();
   }
+
+  @override
+  String? get currentUid => auth.currentUser?.uid;
 }
