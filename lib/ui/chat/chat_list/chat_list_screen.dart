@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';

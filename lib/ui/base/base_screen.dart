@@ -1,7 +1,7 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/stores/base/base_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
-import 'package:chatkuy/ui/friends/friend_list_sceeen.dart';
+import 'package:chatkuy/ui/friends_list/friend_list_sceeen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 

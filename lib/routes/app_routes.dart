@@ -1,6 +1,8 @@
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/middleware/session_guard.dart';
 import 'package:chatkuy/ui/_ui.dart';
+import 'package:chatkuy/ui/add_friend/add_friend_screem.dart';
+import 'package:chatkuy/ui/friend_request_list/friend_request_list_screen.dart';
 import 'package:get/get_navigation/get_navigation.dart';
 
 class AppRoute {
@@ -26,5 +28,13 @@ class AppRoute {
       name: AppRouteName.CHAT_ROOM_SCREEN,
       page: () => ChatRoomScreen(),
     ),
+    GetPage(
+      name: AppRouteName.ADD_FRIEND_SCREEN,
+      page: () => AddFriendScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.FRIEND_REQUEST_LIST_SCREEN,
+      page: () => FriendRequestScreen(),
+    )
   ];
 }

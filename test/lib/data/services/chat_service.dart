@@ -1,6 +1,4 @@
-import 'package:chatkuy/core/config/env_config.dart';
 import 'package:chatkuy/core/constants/firestore.dart';
-import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,7 +47,7 @@ void chatServiceTest() {
   });
 
   test('watchMessages emits list of ChatMessageModel', () async {
-    when(mockFirestore.collection(FirestoreCollection.chatRooms)).thenReturn(mockRoomsCollection);
+    when(mockFirestore.collection(FirebaseCollections.chatRooms)).thenReturn(mockRoomsCollection);
 
     when(mockRoomsCollection.doc('room-1')).thenReturn(mockRoomDoc);
 
@@ -82,7 +80,7 @@ void chatServiceTest() {
     when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
-    when(mockFirestore.collection(FirestoreCollection.chatRooms)).thenReturn(mockRoomsCollection);
+    when(mockFirestore.collection(FirebaseCollections.chatRooms)).thenReturn(mockRoomsCollection);
 
     when(mockRoomsCollection.doc('room-1')).thenReturn(mockRoomDoc);
 
@@ -117,7 +115,7 @@ void chatServiceTest() {
   });
 
   test('markAsRead updates unread count', () async {
-    when(mockFirestore.collection(FirestoreCollection.chatRooms)).thenReturn(mockRoomsCollection);
+    when(mockFirestore.collection(FirebaseCollections.chatRooms)).thenReturn(mockRoomsCollection);
 
     when(mockRoomsCollection.doc('room-1')).thenReturn(mockRoomDoc);
 

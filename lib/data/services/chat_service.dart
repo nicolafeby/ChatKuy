@@ -11,7 +11,7 @@ class ChatService implements ChatRepository {
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
 
-  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirestoreCollection.chatRooms);
+  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
 
   // -------------------------------
   // CHAT LIST
