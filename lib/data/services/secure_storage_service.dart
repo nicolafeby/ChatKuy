@@ -5,7 +5,7 @@ class SecureStorageService implements SecureStorageRepository {
   static const _storage = FlutterSecureStorage();
 
   static const _keyIsLogin = 'is_login';
-  static const _keyAccessToken = 'access_token';
+  static const _keyUserID = 'user_id';
 
   @override
   Future<void> setIsLogin(bool value) async {
@@ -22,16 +22,16 @@ class SecureStorageService implements SecureStorageRepository {
   }
 
   @override
-  Future<void> setAccessToken(String token) async {
+  Future<void> setUserId(String token) async {
     await _storage.write(
-      key: _keyAccessToken,
+      key: _keyUserID,
       value: token,
     );
   }
 
   @override
-  Future<String?> getAccessToken() async {
-    return _storage.read(key: _keyAccessToken);
+  Future<String?> getUserId() async {
+    return _storage.read(key: _keyUserID);
   }
 
   @override

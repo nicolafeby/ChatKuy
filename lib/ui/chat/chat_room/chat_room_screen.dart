@@ -1,21 +1,27 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/data/models/chat_message_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
+import 'package:chatkuy/data/repositories/chat_repository.dart';
+import 'package:chatkuy/di/injection.dart';
 
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
+import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_keyboard_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 class ChatRoomArgument {
-  final ChatRoomStore store;
   final String roomId;
   final String currentUid;
+  final UserModel targetUser;
 
   const ChatRoomArgument({
-    required this.store,
     required this.roomId,
     required this.currentUid,
+    required this.targetUser,
   });
 }
 
@@ -27,6 +33,9 @@ class ChatRoomScreen extends StatefulWidget {
 }
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
+  ChatRoomStore store = ChatRoomStore(
+    chatRepository: getIt<ChatRepository>(),
+  );
   ChatRoomArgument? argument;
 
   @override
@@ -40,7 +49,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     /// currentUid SUDAH DI-INJECT SAAT NAVIGATE
     /// (diambil dari AuthRepository sebelumnya)
-    argument!.store.init(
+    store.init(
       roomId: argument!.roomId,
       currentUid: argument!.currentUid,
     );
@@ -98,19 +107,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              reverse: true,
-              itemCount: argument!.store.messages?.value?.length ?? 0,
-              itemBuilder: (context, index) {
-                final messages = argument!.store.messages?.value;
-                if (messages == null) return const SizedBox.shrink();
+            child: Observer(
+              builder: (_) {
+                final messages = store.messages;
 
-                return Text(messages[index].text);
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16).r,
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[messages.length - 1 - index];
+                    final isMe = message.senderId == argument!.currentUid;
+
+                    return ChatBubbleWidget(
+                      message: message,
+                      isMe: isMe,
+                      onRetry: message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
+                    );
+                  },
+                );
               },
             ),
           ),
-          ChatKeyboardWidget(store: argument!.store),
+          ChatKeyboardWidget(store: store),
         ],
       ),
     );

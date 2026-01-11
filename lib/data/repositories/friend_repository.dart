@@ -1,4 +1,5 @@
 import 'package:chatkuy/data/models/friend_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 
 abstract class FriendRepository {
   /// realtime stream daftar teman

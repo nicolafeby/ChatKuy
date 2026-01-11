@@ -45,15 +45,21 @@ class ChatService implements ChatRepository {
         .doc(roomId)
         .collection(FirestoreCollection.messages)
         .orderBy(MessageField.createdAt)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map((doc) {
-            return ChatMessageModel.fromJson({
-              'id': doc.id,
-              ...doc.data(),
-            });
-          }).toList(),
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+
+        return ChatMessageModel(
+          id: doc.id,
+          senderId: data[MessageField.senderId],
+          text: data[MessageField.text],
+          createdAt: data[MessageField.createdAt].toDate(),
+          clientMessageId: data['clientMessageId'],
+          status: doc.metadata.hasPendingWrites ? MessageStatus.pending : MessageStatus.sent,
         );
+      }).toList();
+    });
   }
 
   // -------------------------------
@@ -84,30 +90,34 @@ class ChatService implements ChatRepository {
       '${ChatRoomField.unreadCount}.$uid': 0,
     });
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   // -------------------------------
   // CREATE / GET ROOM
   // -------------------------------
+
+  String buildRoomId(String uid1, String uid2) {
+    final ids = [uid1, uid2]..sort();
+    return ids.join('_');
+  }
+
   @override
   Future<String> createOrGetRoom({
     required String currentUid,
     required String targetUid,
   }) async {
-    final snapshot = await _chatRoomsRef
-        .where(ChatRoomField.participants, arrayContains: currentUid)
-        .orderBy(ChatRoomField.lastMessageAt, descending: true)
-        .get();
+    final roomId = buildRoomId(currentUid, targetUid);
+    final roomRef = _chatRoomsRef.doc(roomId);
 
-    for (final doc in snapshot.docs) {
-      final participants = List<String>.from(doc[ChatRoomField.participants]);
-      if (participants.contains(targetUid)) {
-        return doc.id;
-      }
+    final snapshot = await roomRef.get();
+    if (snapshot.exists) {
+      return roomId;
     }
-
-    final roomRef = _chatRoomsRef.doc();
 
     await roomRef.set({
       ChatRoomField.participants: [currentUid, targetUid],
@@ -120,7 +130,7 @@ class ChatService implements ChatRepository {
       },
     });
 
-    return roomRef.id;
+    return roomId;
   }
 
   // -------------------------------

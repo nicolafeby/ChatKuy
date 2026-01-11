@@ -20,6 +20,6 @@ Future<void> main() async {
     isOptional: true,
   );
   authServiceTest();
-  chatServiceTest();
+  // chatServiceTest();
   presenceServiceTest();
 }

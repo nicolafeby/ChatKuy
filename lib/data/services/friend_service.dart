@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/data/models/friend_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,21 +37,16 @@ class FriendService implements FriendRepository {
     return _friendRef.orderBy(FriendField.createdAt, descending: true).snapshots().asyncMap(_mapToFriendModels);
   }
 
-  // ==============================
-  // JOIN FRIENDS -> USERS
-  // ==============================
   Future<List<FriendModel>> _mapToFriendModels(
     QuerySnapshot<Map<String, dynamic>> snapshot,
   ) async {
-    // Ambil uid teman
-    final friendUids = snapshot.docs.map((e) => e.data()[FriendField.uid]).whereType<String>().toList();
+    if (snapshot.docs.isEmpty) return [];
 
-    if (friendUids.isEmpty) {
-      return [];
-    }
+    // 1. Ambil uid teman
+    final friendUids = snapshot.docs.map((e) => e.data()[FriendField.uid]).whereType<String>().toSet().toList();
 
-    // Firestore whereIn max 10 → chunk
-    final List<Map<String, dynamic>> userDocs = [];
+    // 2. Ambil user data (chunked whereIn)
+    final Map<String, UserModel> usersById = {};
     const chunkSize = 10;
 
     for (var i = 0; i < friendUids.length; i += chunkSize) {
@@ -61,27 +57,27 @@ class FriendService implements FriendRepository {
 
       final snap = await _userRef.where(FieldPath.documentId, whereIn: chunk).get();
 
-      userDocs.addAll(snap.docs.map((d) => {
-            'id': d.id,
-            ...d.data(),
-          }));
+      for (final doc in snap.docs) {
+        usersById[doc.id] = UserModel.fromJson({
+          'id': doc.id,
+          ...doc.data(),
+        });
+      }
     }
 
-    final usersById = {
-      for (final u in userDocs) u['id'] as String: u,
-    };
-
-    // Build FriendModel sesuai urutan friends.createdAt
+    // 3. Build FriendModel (preserve order)
     return snapshot.docs.map((doc) {
       final data = doc.data();
       final uid = data[FriendField.uid] as String;
       final user = usersById[uid];
 
+      if (user == null) {
+        throw StateError('User $uid not found in users collection');
+      }
+
       return FriendModel(
         uid: uid,
-        username: user?[FriendField.username] as String? ?? '',
-        displayName: user?[FriendField.name] as String?,
-        photoUrl: user?[FriendField.photoUrl] as String?,
+        user: user,
         createdAt: (data[FriendField.createdAt] as Timestamp).toDate(),
       );
     }).toList();

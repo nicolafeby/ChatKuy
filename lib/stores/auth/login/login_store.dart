@@ -76,6 +76,7 @@ abstract class _LoginStore with Store {
       loginResponse = resp;
 
       await AppContext.sessionStore.setLoggedIn(true);
+      await storageService.setUserId(resp.id);
 
       await Future.delayed(const Duration(milliseconds: 200));
 

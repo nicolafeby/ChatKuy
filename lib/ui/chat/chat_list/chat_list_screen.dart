@@ -1,11 +1,11 @@
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
-import 'package:chatkuy/data/repositories/auth_repository.dart';
-import 'package:chatkuy/data/repositories/chat_repository.dart';
+import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/di/injection.dart';
-import 'package:chatkuy/stores/chat/chat_list/chat_list_store.dart';
-import 'package:chatkuy/ui/chat/chat_list/widget/chat_item_widget.dart';
+import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
+import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/chat/chat_list/widget/chat_list_search.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,21 +19,20 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  ChatListStore store = ChatListStore(
-    chatRepository: getIt<ChatRepository>(),
-    authRepository: getIt<AuthRepository>(),
+  ChatUserListStore store = ChatUserListStore(
+    repository: getIt<ChatUserListRepository>(),
   );
 
   @override
   void initState() {
     super.initState();
-    final currentUid = store.uid;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
     /// ambil uid dari auth / session kamu
     /// contoh (sesuaikan dengan project kamu):
 
     if (currentUid == null) return;
-    store.init(currentUid);
+    store.watchChatUsers(currentUid);
   }
 
   @override
@@ -67,45 +66,69 @@ class _ChatListScreenState extends State<ChatListScreen> {
         Expanded(
           child: Observer(
             builder: (_) {
-              final stream = store.chatRooms;
-
-              if (stream == null) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+              if (store.isLoading) {
+                return const Center(child: CircularProgressIndicator());
               }
 
-              if (stream.error != null) {
+              if (store.errorMessage != null) {
                 return Center(
-                  child: Text(stream.error.toString()),
+                  child: Text(store.errorMessage!),
                 );
               }
 
-              final rooms = stream.value ?? [];
-
-              if (rooms.isEmpty) {
+              if (store.chatUsers.isEmpty) {
                 return const Center(
                   child: Text('Belum ada percakapan'),
                 );
               }
 
               return ListView.separated(
-                padding: EdgeInsets.all(20.r),
-                itemBuilder: (context, index) {
-                  final room = rooms[index];
+                itemCount: store.chatUsers.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final item = store.chatUsers[index];
+                  final user = item.user;
 
-                  return ChatItemWidget(
-                    room: room, // asumsi ChatItemWidget terima model
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+                      child: user.photoUrl == null ? Text(user.name[0].toUpperCase()) : null,
+                    ),
+                    title: Text(user.name),
+                    subtitle: Text(
+                      item.lastMessage ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: item.unreadCount > 0
+                        ? CircleAvatar(
+                            radius: 10,
+                            backgroundColor: Colors.red,
+                            child: Text(
+                              item.unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          )
+                        : null,
                     onTap: () {
+                      final id = store.currentUid;
+
+                      if (id == null) return;
+
                       Get.toNamed(
                         AppRouteName.CHAT_ROOM_SCREEN,
-                        arguments: room.id,
+                        arguments: ChatRoomArgument(
+                          roomId: item.roomId,
+                          currentUid: id,
+                          targetUser: item.user,
+                        ),
                       );
                     },
                   );
                 },
-                separatorBuilder: (_, __) => 16.verticalSpace,
-                itemCount: rooms.length,
               );
             },
           ),

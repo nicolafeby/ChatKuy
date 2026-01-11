@@ -25,7 +25,11 @@ class _BaseScreenState extends State<BaseScreen> {
   Widget build(BuildContext context) {
     return Observer(
       builder: (context) => Scaffold(
-        body: _widgetOptions.elementAt(store.selectedIndex),
+        body: IndexedStack(
+          index: store.selectedIndex,
+          children: _widgetOptions,
+          //  _widgetOptions.elementAt(store.selectedIndex),
+        ),
         bottomNavigationBar: BottomNavigationBar(
           enableFeedback: false,
           selectedItemColor: AppColor.primaryColor,

@@ -11,9 +11,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
-  await AppContext.init();
-
   setupDI();
+  await AppContext.init();
 
   getIt<PresenceService>().init();
 

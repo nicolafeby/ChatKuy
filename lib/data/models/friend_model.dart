@@ -1,25 +1,21 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 
 part 'friend_model.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class FriendModel {
   final String uid;
-  final String username;
-  final String? displayName;
-  final String? photoUrl;
+  final UserModel user;
   final DateTime createdAt;
 
   FriendModel({
     required this.uid,
-    required this.username,
-    this.displayName,
-    this.photoUrl,
+    required this.user,
     required this.createdAt,
   });
 
-  factory FriendModel.fromJson(Map<String, dynamic> json) =>
-      _$FriendModelFromJson(json);
+  factory FriendModel.fromJson(Map<String, dynamic> json) => _$FriendModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$FriendModelToJson(this);
 }

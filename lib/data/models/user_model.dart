@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/utils/converter/timestamp_converter.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'user_model.g.dart';
@@ -12,6 +13,7 @@ class UserModel {
   final String? photoUrl;
   final bool? isEmailVerified;
   final bool? isOnline;
+  // @TimestampConverter()
   final DateTime? lastOnlineAt;
 
   UserModel({

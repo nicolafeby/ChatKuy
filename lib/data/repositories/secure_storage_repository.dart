@@ -2,8 +2,8 @@ abstract class SecureStorageRepository {
   Future<void> setIsLogin(bool value);
   Future<bool> getIsLogin();
 
-  Future<void> setAccessToken(String token);
-  Future<String?> getAccessToken();
+  Future<void> setUserId(String token);
+  Future<String?> getUserId();
 
   Future<void> clear();
 }
