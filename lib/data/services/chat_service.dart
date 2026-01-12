@@ -92,6 +92,9 @@ class ChatService implements ChatRepository {
 
     final batch = firestore.batch();
 
+    final userDoc = await firestore.collection('users').doc(uid).get();
+    final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
+
     batch.set(messageRef, {
       MessageField.senderId: uid,
       MessageField.text: text,
@@ -101,6 +104,7 @@ class ChatService implements ChatRepository {
       // 🔥 WAJIB untuk status ala WhatsApp
       MessageField.deliveredTo: <String, bool>{},
       MessageField.readBy: <String, bool>{},
+      MessageField.senderName: senderName,
     });
 
     batch.update(roomRef, {

@@ -78,7 +78,7 @@ exports.onNewMessage = onDocumentCreated(
 
       // 🔔 Dipakai OS (background / terminated)
       notification: {
-        title: 'Pesan baru',
+        title: message.senderName || 'Pesan =====',
         body: message.text || 'Ada pesan baru',
       },
 
@@ -87,6 +87,7 @@ exports.onNewMessage = onDocumentCreated(
         type: 'chat',
         roomId: event.params.roomId,
         senderId: message.senderId ?? '',
+        senderName: message.senderName ?? '',
         text: message.text ?? '',
       },
 

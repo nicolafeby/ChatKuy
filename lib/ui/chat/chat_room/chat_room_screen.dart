@@ -61,6 +61,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   @override
+  void dispose() {
+    store.dispose();
+    super.dispose();
+  }
+  @override
   Widget build(BuildContext context) {
     if (argument == null) return const SizedBox.shrink();
 

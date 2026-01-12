@@ -66,6 +66,7 @@ abstract class MessageField {
   static const clientMessageId = 'clientMessageId';
   static const deliveredTo = 'deliveredTo';
   static const readBy = 'readBy';
+  static const senderName = 'senderName';
 }
 
 /// ==============================
