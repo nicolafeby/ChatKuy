@@ -22,6 +22,9 @@ class ChatMessageModel {
 
   final String? clientMessageId;
 
+  final Map<String, bool> deliveredTo;
+  final Map<String, bool> readBy;
+
   @JsonKey(ignore: true)
   final MessageStatus status;
 
@@ -32,6 +35,8 @@ class ChatMessageModel {
     required this.createdAt,
     required this.createdAtClient,
     this.clientMessageId,
+    required this.deliveredTo,
+    required this.readBy,
     this.status = MessageStatus.sent,
   });
 
@@ -50,6 +55,8 @@ class ChatMessageModel {
       createdAtClient: createdAtClient,
       clientMessageId: clientMessageId,
       status: status ?? this.status,
+      deliveredTo: deliveredTo,
+      readBy: readBy,
     );
   }
 

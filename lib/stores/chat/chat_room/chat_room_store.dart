@@ -12,7 +12,10 @@ part 'chat_room_store.g.dart';
 class ChatRoomStore = _ChatRoomStore with _$ChatRoomStore;
 
 abstract class _ChatRoomStore with Store {
-  _ChatRoomStore({required this.chatRepository, required this.userRepository});
+  _ChatRoomStore({
+    required this.chatRepository,
+    required this.userRepository,
+  });
 
   final ChatRepository chatRepository;
   final UserRepository userRepository;
@@ -31,9 +34,17 @@ abstract class _ChatRoomStore with Store {
 
   @computed
   List<ChatMessageModel> get messages {
-    return _serverMessages?.value ?? [];
+    final list = _serverMessages?.value ?? [];
+
+    // 🔥 AUTO DELIVERED + READ SYNC
+    _syncMessageStatus(list);
+
+    return list;
   }
 
+  // -----------------------
+  // INIT
+  // -----------------------
   @action
   void init({
     required String roomId,
@@ -49,13 +60,11 @@ abstract class _ChatRoomStore with Store {
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
-
-    chatRepository.markAsRead(
-      roomId: roomId,
-      uid: currentUid,
-    );
   }
 
+  // -----------------------
+  // SEND MESSAGE
+  // -----------------------
   @action
   Future<void> sendMessage(String text) async {
     if (roomId == null || text.trim().isEmpty) return;
@@ -68,6 +77,39 @@ abstract class _ChatRoomStore with Store {
     );
   }
 
+  // -----------------------
+  // SYNC DELIVERED / READ
+  // -----------------------
+  void _syncMessageStatus(List<ChatMessageModel> messages) {
+    if (roomId == null || currentUid == null) return;
+
+    for (final message in messages) {
+      // ❌ jangan proses pesan milik sendiri
+      if (message.senderId == currentUid) continue;
+
+      // ✓✓ delivered
+      if (!message.deliveredTo.containsKey(currentUid)) {
+        chatRepository.markDelivered(
+          roomId: roomId!,
+          messageId: message.id,
+          uid: currentUid!,
+        );
+      }
+
+      // ✓✓ read
+      if (!message.readBy.containsKey(currentUid)) {
+        chatRepository.markRead(
+          roomId: roomId!,
+          messageId: message.id,
+          uid: currentUid!,
+        );
+      }
+    }
+  }
+
+  // -----------------------
+  // TYPING
+  // -----------------------
   Timer? _typingTimer;
 
   @action
@@ -90,6 +132,9 @@ abstract class _ChatRoomStore with Store {
     });
   }
 
+  // -----------------------
+  // DISPOSE
+  // -----------------------
   @action
   void dispose() {
     if (roomId != null && currentUid != null) {

@@ -37,6 +37,9 @@ class ChatService implements ChatRepository {
   // -------------------------------
   // ROOM MESSAGES
   // -------------------------------
+  // -------------------------------
+  // WATCH MESSAGES
+  // -------------------------------
   @override
   Stream<List<ChatMessageModel>> watchMessages({
     required String roomId,
@@ -59,10 +62,15 @@ class ChatService implements ChatRepository {
         return ChatMessageModel(
           id: doc.id,
           senderId: (data[MessageField.senderId] as String).trim(),
-          text: data[MessageField.text],
+          text: data[MessageField.text] as String,
           createdAt: createdAtServer ?? createdAtClient,
           createdAtClient: createdAtClient,
-          clientMessageId: data[MessageField.clientMessageId],
+          deliveredTo: Map<String, bool>.from(
+            data[MessageField.deliveredTo] ?? {},
+          ),
+          readBy: Map<String, bool>.from(
+            data[MessageField.readBy] ?? {},
+          ),
           status: doc.metadata.hasPendingWrites ? MessageStatus.pending : MessageStatus.sent,
         );
       }).toList();
@@ -89,6 +97,10 @@ class ChatService implements ChatRepository {
       MessageField.text: text,
       MessageField.createdAt: FieldValue.serverTimestamp(),
       MessageField.createdAtClient: DateTime.now(),
+
+      // 🔥 WAJIB untuk status ala WhatsApp
+      MessageField.deliveredTo: <String, bool>{},
+      MessageField.readBy: <String, bool>{},
     });
 
     batch.update(roomRef, {
@@ -141,19 +153,6 @@ class ChatService implements ChatRepository {
     return roomId;
   }
 
-  // -------------------------------
-  // MARK AS READ
-  // -------------------------------
-  @override
-  Future<void> markAsRead({
-    required String roomId,
-    required String uid,
-  }) async {
-    await _chatRoomsRef.doc(roomId).update({
-      '${ChatRoomField.unreadCount}.$uid': 0,
-    });
-  }
-
   @override
   Stream<Map<String, bool>> watchTyping({
     required String roomId,
@@ -178,6 +177,34 @@ class ChatService implements ChatRepository {
   }) {
     return _chatRoomsRef.doc(roomId).update({
       'typing.$uid': isTyping,
+    });
+  }
+
+  // -------------------------------
+  // MARK DELIVERED (✓✓ abu)
+  // -------------------------------
+  @override
+  Future<void> markDelivered({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  }) {
+    return _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
+      '${MessageField.deliveredTo}.$uid': true,
+    });
+  }
+
+  // -------------------------------
+  // MARK READ (✓✓ warna)
+  // -------------------------------
+  @override
+  Future<void> markRead({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  }) {
+    return _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
+      '${MessageField.readBy}.$uid': true,
     });
   }
 }

@@ -121,9 +121,10 @@ void chatServiceTest() {
 
     when(mockRoomDoc.update(any)).thenAnswer((_) async {});
 
-    await service.markAsRead(
+    await service.markRead(
       roomId: 'room-1',
       uid: 'user-1',
+      messageId: '123123',
     );
 
     verify(mockRoomDoc.update({

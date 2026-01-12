@@ -24,16 +24,21 @@ abstract class ChatRepository {
     required String targetUid,
   });
 
-  /// Reset unread count when open room
-  Future<void> markAsRead({
-    required String roomId,
-    required String uid,
-  });
-
   Stream<Map<String, bool>> watchTyping({required String roomId});
   Future<void> setTyping({
     required String roomId,
     required String uid,
     required bool isTyping,
+  });
+  Future<void> markDelivered({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  });
+
+  Future<void> markRead({
+    required String roomId,
+    required String messageId,
+    required String uid,
   });
 }

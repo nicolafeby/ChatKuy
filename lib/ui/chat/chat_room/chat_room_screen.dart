@@ -62,7 +62,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       titleSpacing: 0,
       title: Observer(
         builder: (_) {
-          bool _isTargetTyping() {
+          bool isTargetTyping() {
             final typingMap = store.typing?.value ?? {};
             return typingMap[argument!.targetUser.id] == true;
           }
@@ -75,7 +75,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             children: [
               _buildAvatarSection(user),
               12.horizontalSpace,
-              _buildDisplayNameSections(user, isTyping: _isTargetTyping()),
+              _buildDisplayNameSections(user, isTyping: isTargetTyping()),
             ],
           );
         },
