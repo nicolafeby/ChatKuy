@@ -4,6 +4,7 @@ import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
+import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
@@ -36,6 +37,7 @@ class ChatRoomScreen extends StatefulWidget {
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   ChatRoomStore store = ChatRoomStore(
     chatRepository: getIt<ChatRepository>(),
+    userRepository: getIt<UserRepository>(),
   );
   ChatRoomArgument? argument;
 
@@ -44,56 +46,66 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.initState();
 
     argument = Get.arguments as ChatRoomArgument?;
+    final id = argument?.targetUser.id;
 
-    /// SAFETY CHECK
-    if (argument == null) return;
+    if (argument == null || id == null) return;
 
-    /// currentUid SUDAH DI-INJECT SAAT NAVIGATE
-    /// (diambil dari AuthRepository sebelumnya)
     store.init(
       roomId: argument!.roomId,
       currentUid: argument!.currentUid,
+      targetUid: id,
     );
   }
 
   PreferredSizeWidget _buildAppbar() {
     return AppBar(
       titleSpacing: 0,
-      title: Row(
-        children: [
-          _buildAvatarSection(),
-          12.horizontalSpace,
-          _buildDisplayNameSections(),
-        ],
+      title: Observer(
+        builder: (_) {
+          final targerUserCallback = argument?.targetUser;
+          if (targerUserCallback == null) return SizedBox.shrink();
+          final user = store.targetUser?.value ?? targerUserCallback;
+
+          return Row(
+            children: [
+              _buildAvatarSection(user),
+              12.horizontalSpace,
+              _buildDisplayNameSections(user),
+            ],
+          );
+        },
       ),
       elevation: 2,
     );
   }
 
-  Widget _buildAvatarSection() {
+  Widget _buildAvatarSection(UserModel user) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(50.r),
       child: CachedNetworkImage(
         height: 36.r,
         width: 36.r,
-        imageUrl: argument?.targetUser.photoUrl ?? AppStrings.dummyNetworkImage,
+        imageUrl: user.photoUrl ?? AppStrings.dummyNetworkImage,
       ),
     );
   }
 
-  Widget _buildDisplayNameSections() {
+  Widget _buildDisplayNameSections(UserModel user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          argument?.targetUser.name ?? '',
+          user.name,
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
         Text(
-          argument?.targetUser.lastOnlineAt?.hhmm ?? '',
-          style: TextStyle(fontSize: 11.sp, color: Colors.grey),
-        )
+          user.isOnline == true ? 'Online' : (user.lastOnlineAt?.hhmm ?? ''),
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: Colors.grey,
+          ),
+        ),
       ],
     );
   }

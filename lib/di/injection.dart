@@ -77,6 +77,7 @@ void registerStore() {
   getIt.registerFactory<ChatRoomStore>(
     () => ChatRoomStore(
       chatRepository: getIt<ChatRepository>(),
+      userRepository: getIt<UserRepository>(),
     ),
   );
 }
