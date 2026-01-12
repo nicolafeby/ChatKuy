@@ -4,7 +4,6 @@ const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
-
 setGlobalOptions({ maxInstances: 10 });
 
 exports.onNewMessage = onDocumentCreated(
@@ -18,16 +17,42 @@ exports.onNewMessage = onDocumentCreated(
     }
 
     const message = event.data.data();
-    logger.info('📩 Message data:', message);
+    logger.info('📩 Message:', message);
 
-    const receiverId = message.receiverId;
-    logger.info('👤 Receiver ID:', receiverId);
-
-    if (!receiverId) {
-      logger.error('❌ receiverId is missing');
+    const senderId = message.senderId;
+    if (!senderId) {
+      logger.error('❌ senderId missing');
       return;
     }
 
+    // 🔥 Ambil chat room
+    const roomSnap = await admin
+      .firestore()
+      .collection('chat_rooms')
+      .doc(event.params.roomId)
+      .get();
+
+    if (!roomSnap.exists) {
+      logger.error('❌ chat_room not found');
+      return;
+    }
+
+    const participants = roomSnap.data().participants || [];
+    logger.info('👥 Participants:', participants);
+
+    // 🔥 Tentukan receiver (selain sender)
+    const receiverId = participants.find(
+      (uid) => uid !== senderId
+    );
+
+    if (!receiverId) {
+      logger.error('❌ receiverId not resolved');
+      return;
+    }
+
+    logger.info('👤 Receiver ID:', receiverId);
+
+    // 🔥 Ambil FCM token
     const userSnap = await admin
       .firestore()
       .collection('users')
@@ -35,13 +60,11 @@ exports.onNewMessage = onDocumentCreated(
       .get();
 
     if (!userSnap.exists) {
-      logger.error('❌ user not found:', receiverId);
+      logger.error('❌ receiver user not found');
       return;
     }
 
-    const userData = userSnap.data();
-    const fcmToken = userData.fcmToken;
-
+    const fcmToken = userSnap.data().fcmToken;
     logger.info('📱 FCM Token:', fcmToken);
 
     if (!fcmToken) {
@@ -49,19 +72,44 @@ exports.onNewMessage = onDocumentCreated(
       return;
     }
 
+    // 🔔 Kirim notif
     const response = await admin.messaging().send({
       token: fcmToken,
+
+      // 🔔 Dipakai OS (background / terminated)
       notification: {
         title: 'Pesan baru',
-        body: message.text || '',
+        body: message.text || 'Ada pesan baru',
       },
+
+      // 📦 Dipakai Flutter (navigasi)
       data: {
         type: 'chat',
         roomId: event.params.roomId,
-        senderId: message.senderId,
+        senderId: message.senderId ?? '',
+        text: message.text ?? '',
+      },
+
+      // 🤖 Android config
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'chat_notification', // HARUS sama dengan Flutter
+        },
+      },
+
+      // 🍎 iOS config
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+          },
+        },
       },
     });
 
     logger.info('✅ FCM sent:', response);
   }
 );
+
+
