@@ -31,14 +31,14 @@ class ChatBubbleWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        top: isSameGroup ? 1.h : 8.h,
+        top: isSameGroup ? 1.5.h : 8.h,
       ),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.72,
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
             ),
             child: GestureDetector(
               onTap: message.status == MessageStatus.failed ? onRetry : null,
@@ -79,6 +79,7 @@ class ChatBubbleWidget extends StatelessWidget {
         Text(
           message.text,
           softWrap: true,
+          textAlign: TextAlign.left,
           style: TextStyle(
             color: isMe ? Colors.white : Colors.black87,
             fontSize: 14.sp,
