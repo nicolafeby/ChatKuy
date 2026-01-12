@@ -1,5 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -20,12 +18,12 @@ import 'package:get/get.dart';
 class ChatRoomArgument {
   final String roomId;
   final String currentUid;
-  final UserModel targetUser;
+  final UserModel? targetUser;
 
   const ChatRoomArgument({
     required this.roomId,
     required this.currentUid,
-    required this.targetUser,
+    this.targetUser,
   });
 }
 
@@ -48,7 +46,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.initState();
 
     argument = Get.arguments as ChatRoomArgument?;
-    final id = argument?.targetUser.id;
+    final id = argument?.targetUser?.id;
 
     if (argument == null || id == null) return;
 
@@ -67,7 +65,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       builder: (context) {
         bool isTargetTyping() {
           final typingMap = store.typing?.value ?? {};
-          return typingMap[argument!.targetUser.id] == true;
+          return typingMap[argument!.targetUser?.id] == true;
         }
 
         final targerUserCallback = argument?.targetUser;

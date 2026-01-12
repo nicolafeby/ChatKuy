@@ -6,6 +6,7 @@ class SecureStorageService implements SecureStorageRepository {
 
   static const _keyIsLogin = 'is_login';
   static const _keyUserID = 'user_id';
+  static const _keyFcmToken = 'fcmToken';
 
   @override
   Future<void> setIsLogin(bool value) async {
@@ -18,7 +19,7 @@ class SecureStorageService implements SecureStorageRepository {
   @override
   Future<bool> getIsLogin() async {
     final value = await _storage.read(key: _keyIsLogin);
-    return value == 'true';
+    return value == true.toString();
   }
 
   @override
@@ -37,5 +38,18 @@ class SecureStorageService implements SecureStorageRepository {
   @override
   Future<void> clear() async {
     await _storage.deleteAll();
+  }
+
+  @override
+  Future<String?> getFcmToken() async {
+    return _storage.read(key: _keyFcmToken);
+  }
+
+  @override
+  Future<void> setFcmToken(String token) async {
+    await _storage.write(
+      key: _keyFcmToken,
+      value: token,
+    );
   }
 }

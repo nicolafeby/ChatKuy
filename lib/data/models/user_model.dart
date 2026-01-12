@@ -14,6 +14,7 @@ class UserModel {
   final bool? isOnline;
   // @TimestampConverter()
   final DateTime? lastOnlineAt;
+  final String fcmToken;
 
   UserModel({
     this.id = '',
@@ -24,13 +25,14 @@ class UserModel {
     this.isOnline,
     this.username,
     this.lastOnlineAt,
+    required this.fcmToken,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
-  UserModel copyWith({String? id, bool? isEmailVerified, bool? isOnline, DateTime? lastOnlineAt}) {
+  UserModel copyWith({String? id, bool? isEmailVerified, bool? isOnline, DateTime? lastOnlineAt, String? fcmToken}) {
     return UserModel(
       id: id ?? this.id,
       name: name,
@@ -40,6 +42,7 @@ class UserModel {
       isOnline: isOnline ?? this.isOnline,
       username: username,
       lastOnlineAt: lastOnlineAt ?? this.lastOnlineAt,
+      fcmToken: fcmToken ?? this.fcmToken,
     );
   }
 }

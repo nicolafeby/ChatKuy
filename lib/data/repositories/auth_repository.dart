@@ -20,5 +20,7 @@ abstract class AuthRepository {
 
   Future<void> logout();
 
+  Future<void> updateFcmToken({required String token, required String currentUid});
+
   String? get currentUid;
 }

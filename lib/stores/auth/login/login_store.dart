@@ -5,7 +5,10 @@ import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
+import 'package:chatkuy/data/services/presence_service.dart';
+import 'package:chatkuy/di/injection.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 
@@ -78,6 +81,13 @@ abstract class _LoginStore with Store {
       await AppContext.sessionStore.setLoggedIn(true);
       await storageService.setUserId(resp.id);
 
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+
+      await storageService.setFcmToken(token);
+
+      service.updateFcmToken(token: token, currentUid: resp.id);
+
       await Future.delayed(const Duration(milliseconds: 200));
 
       onSuccess.call();
@@ -121,6 +131,7 @@ abstract class _LoginStore with Store {
       log('⚠️ Logout failed, continuing anyway');
       log('$e');
     } finally {
+      await getIt<PresenceService>().setOffline();
       await storageService.clear();
       await Future.delayed(Duration(milliseconds: 200));
       onSuccess.call();

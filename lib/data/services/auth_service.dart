@@ -92,6 +92,7 @@ class AuthService implements AuthRepository {
       username: username,
       isEmailVerified: false,
       isOnline: false,
+      fcmToken: '',
     );
 
     await firestore.collection(EnvConfig.usersCollection).doc(user.id).set(user.toJson());
@@ -148,6 +149,13 @@ class AuthService implements AuthRepository {
   @override
   Future<void> logout() {
     return auth.signOut();
+  }
+
+  @override
+  Future<void> updateFcmToken({required String token, required String currentUid}) async {
+    await FirebaseFirestore.instance.collection(EnvConfig.usersCollection).doc(currentUid).update(
+      {'fcmToken': token},
+    );
   }
 
   @override
