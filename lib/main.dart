@@ -25,5 +25,15 @@ Future<void> main() async {
     getIt<LocalNotificationRepository>().show(message);
   });
 
+  FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    getIt<NotificationRepository>().handleMessage(message);
+  });
+
+  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+
+  if (initialMessage != null) {
+    getIt<NotificationRepository>().handleMessage(initialMessage);
+  }
+
   runApp(const MyApp());
 }
