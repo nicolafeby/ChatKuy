@@ -8,7 +8,9 @@ import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
+import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
+import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -57,83 +59,34 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppbar() {
-    return AppBar(
-      titleSpacing: 0,
-      title: Observer(
-        builder: (_) {
-          bool isTargetTyping() {
-            final typingMap = store.typing?.value ?? {};
-            return typingMap[argument!.targetUser.id] == true;
-          }
-
-          final targerUserCallback = argument?.targetUser;
-          if (targerUserCallback == null) return SizedBox.shrink();
-          final user = store.targetUser?.value ?? targerUserCallback;
-
-          return Row(
-            children: [
-              _buildAvatarSection(user),
-              12.horizontalSpace,
-              _buildDisplayNameSections(user, isTyping: isTargetTyping()),
-            ],
-          );
-        },
-      ),
-      elevation: 2,
-    );
-  }
-
-  Widget _buildAvatarSection(UserModel user) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(50.r),
-      child: CachedNetworkImage(
-        height: 36.r,
-        width: 36.r,
-        imageUrl: user.photoUrl ?? AppStrings.dummyNetworkImage,
-      ),
-    );
-  }
-
-  Widget _buildDisplayNameSections(UserModel user, {required bool isTyping}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          user.name,
-          style: TextStyle(fontSize: 16.sp),
-        ),
-        4.verticalSpace,
-        Text(
-          isTyping
-              ? 'Sedang mengetik ...'
-              : user.isOnline == true
-                  ? 'Online'
-                  : (user.lastOnlineAt?.hhmm ?? ''),
-          style: TextStyle(
-            fontSize: 11.sp,
-            color: Colors.grey,
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (argument == null) return const SizedBox.shrink();
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: _buildAppbar(),
-      body: Column(
-        children: [
-          Expanded(
-            child: Observer(
-              builder: (_) {
-                final messages = store.messages;
+    return Observer(
+      builder: (context) {
+        bool isTargetTyping() {
+          final typingMap = store.typing?.value ?? {};
+          return typingMap[argument!.targetUser.id] == true;
+        }
 
-                return ListView.builder(
+        final targerUserCallback = argument?.targetUser;
+        if (targerUserCallback == null) return SizedBox.shrink();
+        final user = store.targetUser?.value ?? targerUserCallback;
+
+        final messages = store.messages;
+
+        return Scaffold(
+          resizeToAvoidBottomInset: true,
+          appBar: ChatAppbarWidget(
+            store: store,
+            userData: user,
+            isTyping: isTargetTyping(),
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
                   padding: const EdgeInsets.all(16).r,
                   reverse: true,
                   itemCount: messages.length,
@@ -142,10 +95,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
                     final message = messages[realIndex];
                     final isMe = message.senderId == argument!.currentUid;
-
                     final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
-
                     final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+                    final showDateSeparator =
+                        prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
+
+                    if (showDateSeparator) return ChatDateSeparator(label: message.createdAt.chatDayLabel);
 
                     return ChatBubbleWidget(
                       message: message,
@@ -155,13 +110,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       onRetry: message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+              ChatKeyboardWidget(store: store),
+            ],
           ),
-          ChatKeyboardWidget(store: store),
-        ],
-      ),
+        );
+      },
     );
   }
 }
