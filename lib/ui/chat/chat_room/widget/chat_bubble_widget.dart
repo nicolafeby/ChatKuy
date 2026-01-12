@@ -1,7 +1,9 @@
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/utils.dart';
 
 enum UiMessageStatus {
   sent,
@@ -49,10 +51,19 @@ class ChatBubbleWidget extends StatelessWidget {
                       fontSize: 14.sp,
                     ),
                   ),
-                  if (isMe) ...[
-                    4.verticalSpace,
-                    _buildStatusIcon(),
-                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        message.createdAt.hhmm,
+                        style: TextStyle(color: isMe ? Colors.white70 : Colors.black45, fontSize: 10.sp),
+                      ),
+                      Visibility(
+                        visible: isMe ? true : false,
+                        child: _buildStatusIcon().paddingOnly(left: 8.w),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -87,7 +98,7 @@ class ChatBubbleWidget extends StatelessWidget {
         return Icon(Icons.done_all, size: 12.sp, color: Colors.white70);
 
       case UiMessageStatus.read:
-        return Icon(Icons.done_all, size: 12.sp, color: Colors.yellowAccent);
+        return Icon(Icons.done_all, size: 12.sp, color: Colors.greenAccent);
     }
   }
 
