@@ -17,10 +17,11 @@ class ChatMessageModel {
   @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
   final DateTime createdAt;
 
-  /// 🔥 penting untuk reconcile local vs server
+  @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
+  final DateTime createdAtClient;
+
   final String? clientMessageId;
 
-  /// UI only
   @JsonKey(ignore: true)
   final MessageStatus status;
 
@@ -29,6 +30,7 @@ class ChatMessageModel {
     required this.senderId,
     required this.text,
     required this.createdAt,
+    required this.createdAtClient,
     this.clientMessageId,
     this.status = MessageStatus.sent,
   });
@@ -45,6 +47,7 @@ class ChatMessageModel {
       senderId: senderId,
       text: text,
       createdAt: createdAt,
+      createdAtClient: createdAtClient,
       clientMessageId: clientMessageId,
       status: status ?? this.status,
     );

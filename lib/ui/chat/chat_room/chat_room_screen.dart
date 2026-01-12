@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -75,7 +76,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       child: CachedNetworkImage(
         height: 36.r,
         width: 36.r,
-        imageUrl: AppStrings.dummyNetworkImage,
+        imageUrl: argument?.targetUser.photoUrl ?? AppStrings.dummyNetworkImage,
       ),
     );
   }
@@ -85,12 +86,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Nama Pengguna',
+          argument?.targetUser.name ?? '',
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
         Text(
-          'Terakhir online 23:00',
+          argument?.targetUser.lastOnlineAt?.hhmm ?? '',
           style: TextStyle(fontSize: 11.sp, color: Colors.grey),
         )
       ],

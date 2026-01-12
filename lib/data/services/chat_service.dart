@@ -44,18 +44,25 @@ class ChatService implements ChatRepository {
     return _chatRoomsRef
         .doc(roomId)
         .collection(FirestoreCollection.messages)
-        .orderBy(MessageField.createdAt)
+        .orderBy(MessageField.createdAtClient)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
 
+        final createdAtServer = (data[MessageField.createdAt] as Timestamp?)?.toDate();
+
+        final createdAtClient = (data[MessageField.createdAtClient] as Timestamp?)?.toDate() ??
+            createdAtServer ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+
         return ChatMessageModel(
           id: doc.id,
-          senderId: data[MessageField.senderId],
+          senderId: (data[MessageField.senderId] as String).trim(),
           text: data[MessageField.text],
-          createdAt: data[MessageField.createdAt].toDate(),
-          clientMessageId: data['clientMessageId'],
+          createdAt: createdAtServer ?? createdAtClient,
+          createdAtClient: createdAtClient,
+          clientMessageId: data[MessageField.clientMessageId],
           status: doc.metadata.hasPendingWrites ? MessageStatus.pending : MessageStatus.sent,
         );
       }).toList();
@@ -81,6 +88,7 @@ class ChatService implements ChatRepository {
       MessageField.senderId: uid,
       MessageField.text: text,
       MessageField.createdAt: FieldValue.serverTimestamp(),
+      MessageField.createdAtClient: DateTime.now(),
     });
 
     batch.update(roomRef, {

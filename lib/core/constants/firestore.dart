@@ -62,6 +62,8 @@ abstract class MessageField {
   static const senderId = 'senderId';
   static const text = 'text';
   static const createdAt = 'createdAt';
+  static const createdAtClient = 'createdAtClient';
+  static const clientMessageId = 'clientMessageId';
 }
 
 /// ==============================
