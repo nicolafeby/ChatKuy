@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -19,6 +21,7 @@ abstract class _ChatRoomStore with Store {
 
   ObservableStream<List<ChatMessageModel>>? _serverMessages;
   ObservableStream<UserModel>? targetUser;
+  ObservableStream<Map<String, bool>>? typing;
 
   @observable
   String? roomId;
@@ -45,6 +48,7 @@ abstract class _ChatRoomStore with Store {
     _serverMessages = chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
+    typing = chatRepository.watchTyping(roomId: roomId).asObservable();
 
     chatRepository.markAsRead(
       roomId: roomId,
@@ -64,8 +68,39 @@ abstract class _ChatRoomStore with Store {
     );
   }
 
+  Timer? _typingTimer;
+
+  @action
+  void onTypingChanged(String text) {
+    if (roomId == null || currentUid == null) return;
+
+    chatRepository.setTyping(
+      roomId: roomId!,
+      uid: currentUid!,
+      isTyping: text.isNotEmpty,
+    );
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      chatRepository.setTyping(
+        roomId: roomId!,
+        uid: currentUid!,
+        isTyping: false,
+      );
+    });
+  }
+
   @action
   void dispose() {
+    if (roomId != null && currentUid != null) {
+      chatRepository.setTyping(
+        roomId: roomId!,
+        uid: currentUid!,
+        isTyping: false,
+      );
+    }
+
+    _typingTimer?.cancel();
     roomId = null;
     _serverMessages = null;
     targetUser = null;

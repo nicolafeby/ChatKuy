@@ -33,6 +33,7 @@ class ChatKeyboardWidget extends StatelessWidget {
                 controller: store.messageController,
                 textInputAction: TextInputAction.newline,
                 maxLines: 5,
+                onChanged: store.onTypingChanged,
                 decoration: InputDecoration(
                   prefixIcon: InkWell(
                     radius: 10,

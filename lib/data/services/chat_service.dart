@@ -153,4 +153,31 @@ class ChatService implements ChatRepository {
       '${ChatRoomField.unreadCount}.$uid': 0,
     });
   }
+
+  @override
+  Stream<Map<String, bool>> watchTyping({
+    required String roomId,
+  }) {
+    return _chatRoomsRef.doc(roomId).snapshots().map((doc) {
+      final data = doc.data();
+      final typing = data?['typing'];
+      if (typing is Map) {
+        return typing.map(
+          (k, v) => MapEntry(k.toString(), v == true),
+        );
+      }
+      return <String, bool>{};
+    });
+  }
+
+  @override
+  Future<void> setTyping({
+    required String roomId,
+    required String uid,
+    required bool isTyping,
+  }) {
+    return _chatRoomsRef.doc(roomId).update({
+      'typing.$uid': isTyping,
+    });
+  }
 }

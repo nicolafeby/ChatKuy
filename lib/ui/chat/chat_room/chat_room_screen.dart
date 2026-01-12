@@ -62,6 +62,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       titleSpacing: 0,
       title: Observer(
         builder: (_) {
+          bool _isTargetTyping() {
+            final typingMap = store.typing?.value ?? {};
+            return typingMap[argument!.targetUser.id] == true;
+          }
+
           final targerUserCallback = argument?.targetUser;
           if (targerUserCallback == null) return SizedBox.shrink();
           final user = store.targetUser?.value ?? targerUserCallback;
@@ -70,7 +75,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             children: [
               _buildAvatarSection(user),
               12.horizontalSpace,
-              _buildDisplayNameSections(user),
+              _buildDisplayNameSections(user, isTyping: _isTargetTyping()),
             ],
           );
         },
@@ -90,7 +95,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  Widget _buildDisplayNameSections(UserModel user) {
+  Widget _buildDisplayNameSections(UserModel user, {required bool isTyping}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -100,7 +105,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
         4.verticalSpace,
         Text(
-          user.isOnline == true ? 'Online' : (user.lastOnlineAt?.hhmm ?? ''),
+          isTyping
+              ? 'Sedang mengetik ...'
+              : user.isOnline == true
+                  ? 'Online'
+                  : (user.lastOnlineAt?.hhmm ?? ''),
           style: TextStyle(
             fontSize: 11.sp,
             color: Colors.grey,

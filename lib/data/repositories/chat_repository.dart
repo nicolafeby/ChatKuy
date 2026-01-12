@@ -29,4 +29,11 @@ abstract class ChatRepository {
     required String roomId,
     required String uid,
   });
+
+  Stream<Map<String, bool>> watchTyping({required String roomId});
+  Future<void> setTyping({
+    required String roomId,
+    required String uid,
+    required bool isTyping,
+  });
 }
