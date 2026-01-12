@@ -65,6 +65,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     store.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     if (argument == null) return const SizedBox.shrink();
@@ -102,19 +103,48 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     final isMe = message.senderId == argument!.currentUid;
                     final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
                     final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+
                     final showDateSeparator =
                         prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
 
-                    if (showDateSeparator) return ChatDateSeparator(label: message.createdAt.chatDayLabel);
-
-                    return ChatBubbleWidget(
-                      message: message,
-                      isMe: isMe,
-                      isSameGroup: isSameGroup,
-                      isFirstInGroup: !isSameGroup,
-                      onRetry: message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (showDateSeparator)
+                          ChatDateSeparator(
+                            label: message.createdAt.chatDayLabel,
+                          ),
+                        ChatBubbleWidget(
+                          message: message,
+                          isMe: isMe,
+                          isSameGroup: isSameGroup,
+                          isFirstInGroup: !isSameGroup,
+                          onRetry:
+                              message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
+                        ),
+                      ],
                     );
                   },
+                  // itemBuilder: (context, index) {
+                  //   final realIndex = messages.length - 1 - index;
+
+                  //   final message = messages[realIndex];
+                  //   final isMe = message.senderId == argument!.currentUid;
+                  //   final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+                  //   final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+                  //   final showDateSeparator =
+                  //       prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
+
+                  //   if (showDateSeparator) return ChatDateSeparator(label: message.createdAt.chatDayLabel);
+
+                  //   return ChatBubbleWidget(
+                  //     message: message,
+                  //     isMe: isMe,
+                  //     isSameGroup: isSameGroup,
+                  //     isFirstInGroup: !isSameGroup,
+                  //     onRetry: message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
+                  //   );
+                  // },
                 ),
               ),
               ChatKeyboardWidget(store: store),
