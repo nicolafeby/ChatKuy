@@ -21,5 +21,5 @@ Future<void> main() async {
   );
   // authServiceTest();
   // chatServiceTest();
-  // presenceServiceTest();
+  presenceServiceTest();
 }
