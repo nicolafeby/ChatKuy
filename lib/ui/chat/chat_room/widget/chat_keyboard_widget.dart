@@ -61,7 +61,7 @@ class ChatKeyboardWidget extends StatelessWidget {
                   Icons.send_outlined,
                   color: Colors.white,
                 ),
-                onPressed: () => store.sendMessage(store.messageController.text),
+                onPressed: () => store.sendMessage(store.messageController.text.trim()),
               ),
             ),
           ],
