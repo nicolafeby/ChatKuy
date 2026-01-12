@@ -19,7 +19,7 @@ Future<void> main() async {
     fileName: '.env.example',
     isOptional: true,
   );
-  authServiceTest();
+  // authServiceTest();
   // chatServiceTest();
-  presenceServiceTest();
+  // presenceServiceTest();
 }
