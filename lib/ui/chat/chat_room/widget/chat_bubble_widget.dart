@@ -16,16 +16,23 @@ class ChatBubbleWidget extends StatelessWidget {
     required this.message,
     required this.isMe,
     this.onRetry,
+    this.isFirstInGroup = true,
+    this.isSameGroup = false,
   });
 
   final ChatMessageModel message;
   final bool isMe;
   final VoidCallback? onRetry;
 
+  final bool isFirstInGroup;
+  final bool isSameGroup;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4.h),
+      padding: EdgeInsets.only(
+        top: isSameGroup ? 1.h : 8.h,
+      ),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
@@ -42,7 +49,7 @@ class ChatBubbleWidget extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isMe ? AppColor.primaryColor.withOpacity(0.8) : Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: _bubbleRadius(),
                 ),
                 child: _buildContent(),
               ),
@@ -50,6 +57,17 @@ class ChatBubbleWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  BorderRadius _bubbleRadius() {
+    final r = Radius.circular(8.r);
+
+    return BorderRadius.only(
+      topLeft: isMe ? r : (isSameGroup ? r : Radius.zero),
+      topRight: isMe ? (isSameGroup ? r : Radius.zero) : r,
+      bottomLeft: r,
+      bottomRight: r,
     );
   }
 
@@ -66,7 +84,6 @@ class ChatBubbleWidget extends StatelessWidget {
             fontSize: 14.sp,
           ),
         ),
-        4.verticalSpace,
         Wrap(
           alignment: WrapAlignment.end,
           crossAxisAlignment: WrapCrossAlignment.center,

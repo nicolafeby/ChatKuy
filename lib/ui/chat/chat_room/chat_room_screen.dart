@@ -138,12 +138,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   reverse: true,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[messages.length - 1 - index];
+                    final realIndex = messages.length - 1 - index;
+
+                    final message = messages[realIndex];
                     final isMe = message.senderId == argument!.currentUid;
+
+                    final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+
+                    final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
 
                     return ChatBubbleWidget(
                       message: message,
                       isMe: isMe,
+                      isSameGroup: isSameGroup,
+                      isFirstInGroup: !isSameGroup,
                       onRetry: message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
                     );
                   },
