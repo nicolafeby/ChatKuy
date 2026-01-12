@@ -16,6 +16,7 @@ class MyApp extends StatelessWidget {
     return ScreenUtilInit(
       builder: (_, __) {
         return GetMaterialApp(
+          navigatorKey: Get.key,
           theme: ThemeData(
             inputDecorationTheme: InputDecorationTheme(
               errorBorder: OutlineInputBorder(

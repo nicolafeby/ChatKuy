@@ -20,10 +20,14 @@ class ChatRoomArgument {
   final String currentUid;
   final UserModel? targetUser;
 
+  // explisit for notification
+  final String? senderId;
+
   const ChatRoomArgument({
     required this.roomId,
     required this.currentUid,
     this.targetUser,
+    this.senderId,
   });
 }
 
@@ -44,9 +48,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   void initState() {
     super.initState();
-
     argument = Get.arguments as ChatRoomArgument?;
-    final id = argument?.targetUser?.id;
+    final id = argument?.targetUser?.id ?? argument?.senderId;
 
     if (argument == null || id == null) return;
 
@@ -69,16 +72,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         }
 
         final targerUserCallback = argument?.targetUser;
-        if (targerUserCallback == null) return SizedBox.shrink();
         final user = store.targetUser?.value ?? targerUserCallback;
-
         final messages = store.messages;
+        final dummy = UserModel(name: 'name', email: 'email', isEmailVerified: false, fcmToken: 'fcmToken');
 
         return Scaffold(
           resizeToAvoidBottomInset: true,
           appBar: ChatAppbarWidget(
             store: store,
-            userData: user,
+            userData: user ?? dummy,
             isTyping: isTargetTyping(),
           ),
           body: Column(

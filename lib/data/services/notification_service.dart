@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -44,14 +45,20 @@ class NotificationService implements NotificationRepository {
 
     if (data['type'] == 'chat') {
       final roomId = data['roomId'];
+      final senderId = data['senderId'];
 
-      Get.toNamed(
-        AppRouteName.CHAT_ROOM_SCREEN,
-        arguments: ChatRoomArgument(
-          roomId: roomId,
-          currentUid: id,
-        ),
-      );
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (Get.key.currentState != null) {
+          Get.toNamed(
+            AppRouteName.CHAT_ROOM_SCREEN,
+            arguments: ChatRoomArgument(
+              roomId: roomId,
+              currentUid: id,
+              senderId: senderId,
+            ),
+          );
+        }
+      });
     }
   }
 }
