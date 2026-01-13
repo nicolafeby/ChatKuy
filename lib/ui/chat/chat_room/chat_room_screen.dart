@@ -113,7 +113,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         if (showDateSeparator)
                           ChatDateSeparator(
                             label: message.createdAt.chatDayLabel,
-                          ),
+                          ).paddingOnly(top: 8.h),
                         ChatBubbleWidget(
                           message: message,
                           isMe: isMe,

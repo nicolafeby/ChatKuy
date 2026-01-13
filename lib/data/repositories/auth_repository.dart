@@ -22,5 +22,7 @@ abstract class AuthRepository {
 
   Future<void> updateFcmToken({required String token, required String currentUid});
 
+  Future<UserModel> getUserProfile(String uid);
+
   String? get currentUid;
 }

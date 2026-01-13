@@ -159,5 +159,17 @@ class AuthService implements AuthRepository {
   }
 
   @override
+  Future<UserModel> getUserProfile(String uid) async {
+    final doc = await FirebaseFirestore.instance.collection(EnvConfig.usersCollection).doc(uid).get();
+
+    if (!doc.exists) {
+      throw Exception('User profile not found');
+    }
+
+    final userData = UserModel.fromJson(doc.data()!);
+    return userData;
+  }
+
+  @override
   String? get currentUid => auth.currentUser?.uid;
 }

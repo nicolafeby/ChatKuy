@@ -120,24 +120,6 @@ abstract class _LoginStore with Store {
     }
   }
 
-  @action
-  Future<void> logout({required VoidCallback onSuccess}) async {
-    error.general = null;
-
-    try {
-      await presenceService.setOffline();
-      await service.logout();
-    } catch (e) {
-      log('⚠️ Logout failed, continuing anyway');
-      log('$e');
-    } finally {
-      await getIt<PresenceService>().setOffline();
-      await storageService.clear();
-      await Future.delayed(Duration(milliseconds: 200));
-      onSuccess.call();
-    }
-  }
-
   bool get isValid => error.username == null && password != null && username != null;
 }
 

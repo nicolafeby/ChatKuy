@@ -23,6 +23,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
+          titleSpacing: 0,
           title: Text(
             'Tambah Teman',
             style: TextStyle(fontSize: 18.sp),

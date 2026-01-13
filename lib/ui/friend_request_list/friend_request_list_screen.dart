@@ -36,6 +36,7 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: Text(
           'Permintaan Pertemanan',
           style: TextStyle(fontSize: 18.sp),

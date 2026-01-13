@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/utils.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 ThemeData getAppTheme() {
@@ -18,7 +19,13 @@ ThemeData getAppTheme() {
         borderRadius: BorderRadius.circular(10.r),
       ),
     ),
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (context) => Icon(
+        Icons.arrow_back_ios,
+      ).paddingOnly(left: 4.w),
+    ),
     appBarTheme: AppBarTheme(
+      // titleSpacing: 0,
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
     ),
