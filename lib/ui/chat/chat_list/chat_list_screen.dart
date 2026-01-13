@@ -1,9 +1,11 @@
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
+import 'package:chatkuy/ui/chat/chat_list/widget/chat_item_widget.dart';
 import 'package:chatkuy/ui/chat/chat_list/widget/chat_list_search.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -89,12 +91,43 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final item = store.chatUsers[index];
                   final user = item.user;
 
+                  // return ChatItemWidget(
+                  //   onTap: () {
+                  //     final id = store.currentUid;
+
+                  //     if (id == null) return;
+
+                  //     Get.toNamed(
+                  //       AppRouteName.CHAT_ROOM_SCREEN,
+                  //       arguments: ChatRoomArgument(
+                  //         roomId: item.roomId,
+                  //         currentUid: id,
+                  //         targetUser: item.user,
+                  //       ),
+                  //     );
+                  //   },
+                  //   user: item,
+                  // );
+
                   return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
-                      child: user.photoUrl == null ? Text(user.name[0].toUpperCase()) : null,
+                    leading: SizedBox(
+                      height: 48.r,
+                      width: 48.r,
+                      child: CircleAvatar(
+                        backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+                        child: user.photoUrl == null ? Text(user.name[0].toUpperCase()) : null,
+                      ),
                     ),
-                    title: Text(user.name),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(user.name),
+                        Text(
+                          item.lastMessageAt?.hhmm ?? '',
+                          style: TextStyle(fontSize: 11.sp, color: Colors.black54),
+                        ),
+                      ],
+                    ),
                     subtitle: Text(
                       item.lastMessage ?? '',
                       maxLines: 1,

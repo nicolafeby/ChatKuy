@@ -1,7 +1,6 @@
 import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
-import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';

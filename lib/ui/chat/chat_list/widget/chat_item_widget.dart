@@ -1,16 +1,17 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
-import 'package:chatkuy/data/models/chat_room_model.dart';
+import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ChatItemWidget extends StatelessWidget {
   final VoidCallback onTap;
-  final ChatRoomModel room;
+  final ChatUserItemModel user;
   const ChatItemWidget({
     super.key,
     required this.onTap,
-    required this.room,
+    required this.user,
   });
 
   @override
@@ -18,6 +19,7 @@ class ChatItemWidget extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 16.r),
         color: Colors.white,
         child: Row(
           children: [
@@ -38,11 +40,11 @@ class ChatItemWidget extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Smith Mathew',
+                        user.user.name,
                         style: TextStyle(fontSize: 16.sp),
                       ),
                       Text(
-                        '12:00',
+                        user.lastMessageAt?.hhmm ?? '-',
                         style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                       ),
                     ],
@@ -50,7 +52,7 @@ class ChatItemWidget extends StatelessWidget {
                   Text(
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    'Hope you’re doing well today Hope you’re doing well today..',
+                    user.lastMessage ?? '-',
                     style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                   ),
                 ],

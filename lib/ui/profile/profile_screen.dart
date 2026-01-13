@@ -46,10 +46,17 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     );
   }
 
+  Widget _buildBody() {
+    return Column(
+      children: [],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppbar(),
+      body: _buildBody(),
     );
   }
 }

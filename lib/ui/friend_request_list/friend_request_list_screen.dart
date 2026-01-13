@@ -3,6 +3,7 @@ import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/friend_request/friend_request_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class FriendRequestScreen extends StatefulWidget {
   const FriendRequestScreen({super.key});
@@ -35,7 +36,10 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Permintaan Pertemanan'),
+        title: Text(
+          'Permintaan Pertemanan',
+          style: TextStyle(fontSize: 18.sp),
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
