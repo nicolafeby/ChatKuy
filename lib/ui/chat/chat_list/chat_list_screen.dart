@@ -5,7 +5,6 @@ import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
-import 'package:chatkuy/ui/chat/chat_list/widget/chat_item_widget.dart';
 import 'package:chatkuy/ui/chat/chat_list/widget/chat_list_search.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

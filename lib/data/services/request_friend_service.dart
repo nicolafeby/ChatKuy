@@ -130,7 +130,7 @@ class FriendRequestService implements FriendRequestRepository {
       toUid: targetUid,
       username: targetSnap[FriendField.username],
       displayName: targetSnap[FriendField.name],
-      photoUrl: targetSnap.data()?[FriendField.photoUrl],
+      photoUrl: targetSnap.data()[FriendField.photoUrl],
       status: FriendRequestStatus.pending,
       createdAt: DateTime.now(),
     );

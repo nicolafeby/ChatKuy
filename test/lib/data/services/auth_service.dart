@@ -91,6 +91,7 @@ Future<void> authServiceTest() async {
       'isEmailVerified': true,
       'isOnline': false,
       'lastOnlineAt': null,
+      'fcmToken': 'FCM Token',
     });
 
     final result = await service.login(
@@ -101,6 +102,7 @@ Future<void> authServiceTest() async {
     expect(result, isA<UserModel>());
     expect(result.id, 'uid-1');
     expect(result.name, 'Test User');
+    expect(result.fcmToken, 'FCM Token');
   });
 
   test('REGISTER SUCCESS', () async {

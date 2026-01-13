@@ -1,5 +1,4 @@
 import 'package:chatkuy/core/constants/routes.dart';
-import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

@@ -10,6 +10,7 @@ class ChatListSearchWidget extends StatelessWidget {
       height: 42.h,
       child: TextField(
         cursorHeight: 16.h,
+        textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           prefixIcon: Icon(Icons.search),
           prefixIconColor: Colors.grey,
