@@ -44,6 +44,9 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
   void dispose() {
     store.dispose();
     _tabController.dispose();
+    for (var d in _reaction) {
+      d();
+    }
     super.dispose();
   }
 
@@ -68,10 +71,7 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
         controller: _tabController,
         children: [
           _IncomingRequestTab(store: store),
-          _OutgoingRequestTab(
-            store: store,
-            onTapCancel: (id) => store.cancelFriendRequest(targetUid: id),
-          ),
+          _OutgoingRequestTab(store: store),
         ],
       ),
     );
@@ -125,8 +125,8 @@ class _IncomingRequestTab extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () {
-                            // TODO: reject request
+                          onPressed: () async {
+                            await store.rejectFriendRequest(senderUid: request.fromUid);
                           },
                         ),
                         IconButton(
@@ -155,9 +155,7 @@ class _IncomingRequestTab extends StatelessWidget {
 }
 
 class _OutgoingRequestTab extends StatelessWidget {
-  final Function(String id) onTapCancel;
   const _OutgoingRequestTab({
-    required this.onTapCancel,
     required this.store,
   });
 
@@ -219,7 +217,7 @@ class _OutgoingRequestTab extends StatelessWidget {
                       ],
                     ),
                     GestureDetector(
-                      onTap: () => onTapCancel.call(request.id),
+                      onTap: () async => await store.cancelFriendRequest(targetUid: request.toUid),
                       child: Text(
                         'Batalkan',
                         style: TextStyle(color: Colors.red),

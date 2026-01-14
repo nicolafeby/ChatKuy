@@ -101,7 +101,8 @@ jobs:
 
       - name: Generate release notes
         run: |
-          git log -6 --pretty=format:"- %s by %an <%ae>" > release_notes.txt
+          # git log -6 --pretty=format:"- %s by %an <%ae>" > release_notes.txt
+          git log -6 --pretty=format:"- %s by %an" > release_notes.txt
 
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
