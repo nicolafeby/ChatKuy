@@ -151,7 +151,7 @@ class FriendRequestService implements FriendRequestRepository {
       toUid: targetUid,
       username: targetSnap[FriendField.username],
       displayName: targetSnap[FriendField.name],
-      photoUrl: targetSnap.data()?[FriendField.photoUrl],
+      photoUrl: targetSnap.data()[FriendField.photoUrl],
       status: FriendRequestStatus.pending,
       createdAt: DateTime.now(),
     );
@@ -267,6 +267,50 @@ class FriendRequestService implements FriendRequestRepository {
         FriendField.createdAt: FieldValue.serverTimestamp(),
       },
     );
+
+    await batch.commit();
+  }
+
+  @override
+  Future<void> rejectFriendRequest({
+    required String senderUid,
+  }) async {
+    // ============================
+    // CARI REQUEST PENDING (INCOMING)
+    // ============================
+    final incomingQuery = await firestore
+        .collection(FirestorePaths.userFriendRequests(_uid))
+        .where(FriendRequestField.fromUid, isEqualTo: senderUid)
+        .where(
+          FriendRequestField.status,
+          isEqualTo: FriendRequestStatus.pending,
+        )
+        .limit(1)
+        .get();
+
+    if (incomingQuery.docs.isEmpty) {
+      throw Exception('Permintaan pertemanan tidak ditemukan');
+    }
+
+    final incomingDoc = incomingQuery.docs.first;
+    final requestId = incomingDoc.id;
+
+    // ============================
+    // DUAL DELETE (ATOMIC)
+    // ============================
+    final batch = firestore.batch();
+
+    // Hapus incoming request (punya saya)
+    final incomingRef = firestore.collection(FirestorePaths.userFriendRequests(_uid)).doc(requestId);
+
+    // Hapus outgoing request (punya pengirim)
+    final outgoingRef = firestore
+        .doc(FirestorePaths.user(senderUid))
+        .collection(FirestoreCollection.outgoingFriendRequests)
+        .doc(requestId);
+
+    batch.delete(incomingRef);
+    batch.delete(outgoingRef);
 
     await batch.commit();
   }

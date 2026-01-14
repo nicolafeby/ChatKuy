@@ -10,9 +10,11 @@ abstract class FriendRequestRepository {
   Future<void> sendFriendRequestByUsername(String username);
 
   Future<void> cancelFriendRequest({required String targetUid});
-  
+
   Future<void> acceptFriendRequest({
     required String fromUid,
     required String requestId,
   });
+
+  Future<void> rejectFriendRequest({required String senderUid});
 }

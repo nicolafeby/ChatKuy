@@ -107,6 +107,23 @@ abstract class _FriendRequestStore with Store {
     }
   }
 
+  @action
+  Future<void> rejectFriendRequest({
+    required String senderUid,
+  }) async {
+    isLoading = true;
+    errorMessage = null;
+
+    try {
+      await repository.rejectFriendRequest(senderUid: senderUid);
+    } catch (e) {
+      errorMessage = e.toString();
+      rethrow;
+    } finally {
+      isLoading = false;
+    }
+  }
+
   /// ==============================
   /// HELPERS
   /// ==============================
