@@ -11,27 +11,71 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
 
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
+
     steps:
       - uses: actions/checkout@v4
 
+      # Cache Flutter SDK
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: /opt/hostedtoolcache/flutter
+          key: flutter-sdk-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+
+      # Setup Flutter
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.29.3"
 
+      # Cache Pub Dependencies
+      - name: Cache Pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+
+      # Cache Gradle
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*') }}
+
+      # Install dependencies (offline if possible)
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --offline || flutter pub get
+
+      # Cache build_runner output
+      - name: Cache build_runner
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-runner-${{ hashFiles('**/*.g.dart', '**/*.freezed.dart', 'pubspec.lock') }}
 
       - name: Generate with Build Runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
+      # Optional Analyzer
       # - name: Analyze
       #   run: flutter analyze
 
       - name: Run flutter test
-        run: flutter test
+        run: flutter test --no-pub
 
       - name: Build APK
-        run: flutter build apk --release --obfuscate --split-debug-info=build/flutter_mapping --no-shrink --no-tree-shake-icons --build-number=${{ github.run_number }}
+        run: |
+          flutter build apk \
+            --release \
+            --obfuscate \
+            --split-debug-info=build/flutter_mapping \
+            --no-shrink \
+            --no-tree-shake-icons \
+            --build-number=${{ github.run_number }}
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
