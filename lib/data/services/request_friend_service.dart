@@ -68,6 +68,9 @@ class FriendRequestService implements FriendRequestRepository {
   // ==============================
   @override
   Future<void> sendFriendRequestByUsername(String username) async {
+    // ============================
+    // CARI USER BERDASARKAN USERNAME
+    // ============================
     final query = await firestore
         .collection(FirebaseCollections.users)
         .where(FriendField.username, isEqualTo: username)
@@ -81,6 +84,9 @@ class FriendRequestService implements FriendRequestRepository {
     final targetSnap = query.docs.first;
     final targetUid = targetSnap.id;
 
+    // ============================
+    // VALIDASI DASAR
+    // ============================
     if (targetUid == _uid) {
       throw Exception('Tidak bisa menambahkan diri sendiri');
     }
@@ -89,25 +95,40 @@ class FriendRequestService implements FriendRequestRepository {
       throw Exception('User belum memverifikasi email');
     }
 
-    final existing = await firestore
+    // ============================
+    // CEK SUDAH BERTEMAN
+    // ============================
+    final friendSnap = await firestore.collection(FirestorePaths.userFriends(_uid)).doc(targetUid).get();
+
+    if (friendSnap.exists) {
+      throw Exception('Anda sudah berteman');
+    }
+
+    // ============================
+    // CEK REQUEST PENDING (DARI SAYA KE DIA)
+    // ============================
+    final existingRequest = await firestore
         .collection(FirestorePaths.userFriendRequests(targetUid))
         .where(FriendRequestField.fromUid, isEqualTo: _uid)
-        .where(FriendRequestField.status, isEqualTo: FriendRequestStatus.pending)
+        .where(
+          FriendRequestField.status,
+          isEqualTo: FriendRequestStatus.pending,
+        )
         .limit(1)
         .get();
 
-    if (existing.docs.isNotEmpty) {
+    if (existingRequest.docs.isNotEmpty) {
       throw Exception('Permintaan pertemanan sudah dikirim');
     }
 
     // ============================
-    // SNAPSHOT USER
+    // SNAPSHOT USER SAYA
     // ============================
     final mySnap = await firestore.doc(FirestorePaths.user(_uid)).get();
 
     // ============================
-    // MODEL UNTUK INCOMING (TARGET)
-    // -> tampilkan PENGIRIM
+    // MODEL INCOMING (TARGET)
+    // -> tampilkan data PENGIRIM
     // ============================
     final incomingRequest = FriendRequestModel(
       id: '',
@@ -121,8 +142,8 @@ class FriendRequestService implements FriendRequestRepository {
     );
 
     // ============================
-    // MODEL UNTUK OUTGOING (SAYA)
-    // -> tampilkan TARGET
+    // MODEL OUTGOING (SAYA)
+    // -> tampilkan data TARGET
     // ============================
     final outgoingRequest = FriendRequestModel(
       id: '',
@@ -130,7 +151,7 @@ class FriendRequestService implements FriendRequestRepository {
       toUid: targetUid,
       username: targetSnap[FriendField.username],
       displayName: targetSnap[FriendField.name],
-      photoUrl: targetSnap.data()[FriendField.photoUrl],
+      photoUrl: targetSnap.data()?[FriendField.photoUrl],
       status: FriendRequestStatus.pending,
       createdAt: DateTime.now(),
     );
@@ -149,6 +170,44 @@ class FriendRequestService implements FriendRequestRepository {
 
     batch.set(incomingRef, incomingRequest.toCreateJson());
     batch.set(outgoingRef, outgoingRequest.toCreateJson());
+
+    await batch.commit();
+  }
+
+  @override
+  Future<void> cancelFriendRequest({required String targetUid}) async {
+    // ============================
+    // CARI REQUEST PENDING
+    // ============================
+    final incomingQuery = await firestore
+        .collection(FirestorePaths.userFriendRequests(targetUid))
+        .where(FriendRequestField.fromUid, isEqualTo: _uid)
+        .where(
+          FriendRequestField.status,
+          isEqualTo: FriendRequestStatus.pending,
+        )
+        .limit(1)
+        .get();
+
+    if (incomingQuery.docs.isEmpty) {
+      throw Exception('Permintaan pertemanan tidak ditemukan');
+    }
+
+    final incomingDoc = incomingQuery.docs.first;
+    final requestId = incomingDoc.id;
+
+    // ============================
+    // DUAL DELETE (ATOMIC)
+    // ============================
+    final batch = firestore.batch();
+
+    final incomingRef = firestore.collection(FirestorePaths.userFriendRequests(targetUid)).doc(requestId);
+
+    final outgoingRef =
+        firestore.doc(FirestorePaths.user(_uid)).collection(FirestoreCollection.outgoingFriendRequests).doc(requestId);
+
+    batch.delete(incomingRef);
+    batch.delete(outgoingRef);
 
     await batch.commit();
   }

@@ -57,7 +57,7 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
               ? 'Sedang mengetik ...'
               : user.isOnline == true
                   ? 'Online'
-                  : (user.lastOnlineAt?.hhmm ?? ''),
+                  : (user.lastOnlineAt?.daysAndTime ?? ''),
           style: TextStyle(
             fontSize: 11.sp,
             color: Colors.grey,

@@ -1,9 +1,11 @@
+import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/friend_request/friend_request_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:mobx/mobx.dart';
 
 class FriendRequestScreen extends StatefulWidget {
   const FriendRequestScreen({super.key});
@@ -12,17 +14,30 @@ class FriendRequestScreen extends StatefulWidget {
   State<FriendRequestScreen> createState() => _FriendRequestPageState();
 }
 
-class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTickerProviderStateMixin {
+class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTickerProviderStateMixin, BaseLayout {
   FriendRequestStore store = FriendRequestStore(
     repository: getIt<FriendRequestRepository>(),
   );
   late final TabController _tabController;
+
+  List<ReactionDisposer> _reaction = [];
 
   @override
   void initState() {
     super.initState();
     store.init();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reaction = [
+        reaction((p0) => store.isLoading, (p0) {
+          if (p0 == true) {
+            showLoading();
+          } else {
+            dismissLoading();
+          }
+        }),
+      ];
+    });
   }
 
   @override
@@ -53,7 +68,10 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
         controller: _tabController,
         children: [
           _IncomingRequestTab(store: store),
-          _OutgoingRequestTab(store: store),
+          _OutgoingRequestTab(
+            store: store,
+            onTapCancel: (id) => store.cancelFriendRequest(targetUid: id),
+          ),
         ],
       ),
     );
@@ -137,7 +155,9 @@ class _IncomingRequestTab extends StatelessWidget {
 }
 
 class _OutgoingRequestTab extends StatelessWidget {
+  final Function(String id) onTapCancel;
   const _OutgoingRequestTab({
+    required this.onTapCancel,
     required this.store,
   });
 
@@ -173,24 +193,38 @@ class _OutgoingRequestTab extends StatelessWidget {
                   child: request.photoUrl == null ? const Icon(Icons.person) : null,
                 ),
                 title: Text(request.displayName),
-                subtitle: Column(
+                subtitle: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('@${request.username}'),
-                    Row(
-                      children: const [
-                        Icon(
-                          Icons.hourglass_top,
-                          size: 14,
-                          color: Colors.orange,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          'Menunggu persetujuan',
-                          style: TextStyle(color: Colors.orange),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('@${request.username}'),
+                        8.verticalSpace,
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.hourglass_top,
+                              size: 14,
+                              color: Colors.orange,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Menunggu persetujuan',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    GestureDetector(
+                      onTap: () => onTapCancel.call(request.id),
+                      child: Text(
+                        'Batalkan',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    )
                   ],
                 ),
               ),

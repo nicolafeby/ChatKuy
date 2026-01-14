@@ -2,6 +2,8 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'user_model.g.dart';
 
+enum Gender { male, female }
+
 @JsonSerializable()
 class UserModel {
   final String id;
@@ -15,6 +17,7 @@ class UserModel {
   // @TimestampConverter()
   final DateTime? lastOnlineAt;
   final String fcmToken;
+  final Gender? gender;
 
   UserModel({
     this.id = '',
@@ -26,13 +29,21 @@ class UserModel {
     this.username,
     this.lastOnlineAt,
     required this.fcmToken,
+    this.gender,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
-  UserModel copyWith({String? id, bool? isEmailVerified, bool? isOnline, DateTime? lastOnlineAt, String? fcmToken}) {
+  UserModel copyWith({
+    String? id,
+    bool? isEmailVerified,
+    bool? isOnline,
+    DateTime? lastOnlineAt,
+    String? fcmToken,
+    Gender? gender,
+  }) {
     return UserModel(
       id: id ?? this.id,
       name: name,
@@ -43,6 +54,7 @@ class UserModel {
       username: username,
       lastOnlineAt: lastOnlineAt ?? this.lastOnlineAt,
       fcmToken: fcmToken ?? this.fcmToken,
+      gender: gender ?? this.gender,
     );
   }
 }

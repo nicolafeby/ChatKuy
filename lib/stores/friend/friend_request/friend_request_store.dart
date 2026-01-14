@@ -92,6 +92,21 @@ abstract class _FriendRequestStore with Store {
     }
   }
 
+  @action
+  Future<void> cancelFriendRequest({required String targetUid}) async {
+    isLoading = true;
+    errorMessage = null;
+
+    try {
+      await repository.cancelFriendRequest(targetUid: targetUid);
+    } catch (e) {
+      errorMessage = e.toString();
+      rethrow;
+    } finally {
+      isLoading = false;
+    }
+  }
+
   /// ==============================
   /// HELPERS
   /// ==============================
