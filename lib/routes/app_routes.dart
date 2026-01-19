@@ -35,6 +35,10 @@ class AppRoute {
     GetPage(
       name: AppRouteName.FRIEND_REQUEST_LIST_SCREEN,
       page: () => FriendRequestScreen(),
-    )
+    ),
+    GetPage(
+      name: AppRouteName.EDIT_PROFILE_SCREEN,
+      page: () => EditProfileScreen(),
+    ),
   ];
 }

@@ -8,4 +8,5 @@ class AppStrings {
   static const oopsTerjadiKesalahan = 'Ooops!! Terjadi Kesalahan';
   static const userNotFound = 'Akun tidak ditemukan';
   static const dummyNetworkImage = 'https://dummyimage.com/300';
+  static const fcmToken = 'fcmToken';
 }

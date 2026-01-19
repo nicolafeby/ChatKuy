@@ -1,3 +1,5 @@
+import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
@@ -23,7 +25,10 @@ class NotificationService implements NotificationRepository {
     if (user != null) {
       final token = await messaging.getToken();
       if (token != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'fcmToken': token});
+        await FirebaseFirestore.instance
+            .collection(FirebaseCollections.users)
+            .doc(user.uid)
+            .update({AppStrings.fcmToken: token});
       }
     }
 

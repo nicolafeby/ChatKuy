@@ -8,4 +8,5 @@ abstract class AppRouteName {
   static const VERIFY_SCREEN = '/verify';
   static const ADD_FRIEND_SCREEN = '/add-friend';
   static const FRIEND_REQUEST_LIST_SCREEN = '/friend-request-list';
+  static const EDIT_PROFILE_SCREEN = '/edit_profile_screen';
 }

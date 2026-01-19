@@ -92,7 +92,7 @@ class ChatService implements ChatRepository {
 
     final batch = firestore.batch();
 
-    final userDoc = await firestore.collection('users').doc(uid).get();
+    final userDoc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
     final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
 
     batch.set(messageRef, {

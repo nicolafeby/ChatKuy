@@ -154,7 +154,7 @@ class AuthService implements AuthRepository {
   @override
   Future<void> updateFcmToken({required String token, required String currentUid}) async {
     await FirebaseFirestore.instance.collection(EnvConfig.usersCollection).doc(currentUid).update(
-      {'fcmToken': token},
+      {AppStrings.fcmToken: token},
     );
   }
 

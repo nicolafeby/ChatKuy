@@ -6,6 +6,7 @@ import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
 import 'package:chatkuy/ui/profile/widget/profile_information_box_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_preferences_widget.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           if (store.userFuture?.status == FutureStatus.pending) {
             return Center(child: CircularProgressIndicator());
           }
-          
+
           return CustomScrollView(
             slivers: [
               SliverAppBar(
@@ -144,22 +145,33 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                           onTap: () {
                             // TODO: edit personal information
                           },
-                          child: Row(
-                            children: [
-                              Text(
-                                'Ubah',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
+                          child: GestureDetector(
+                            onTap: () {
+                              final userData = store.user;
+                              
+                              if (userData == null) return;
+                              Get.toNamed(
+                                AppRouteName.EDIT_PROFILE_SCREEN,
+                                arguments: EditProfileArgument(userData: userData),
+                              );
+                            },
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Ubah',
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: AppColor.primaryColor,
+                                  ),
+                                ),
+                                4.horizontalSpace,
+                                Icon(
+                                  Icons.edit_outlined,
+                                  size: 16.r,
                                   color: AppColor.primaryColor,
                                 ),
-                              ),
-                              4.horizontalSpace,
-                              Icon(
-                                Icons.edit_outlined,
-                                size: 16.r,
-                                color: AppColor.primaryColor,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         )
                       ],
