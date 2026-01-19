@@ -1,6 +1,8 @@
 import 'package:chatkuy/core/config/env_config.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
+import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -153,14 +155,14 @@ class AuthService implements AuthRepository {
 
   @override
   Future<void> updateFcmToken({required String token, required String currentUid}) async {
-    await FirebaseFirestore.instance.collection(EnvConfig.usersCollection).doc(currentUid).update(
+    await firestore.collection(EnvConfig.usersCollection).doc(currentUid).update(
       {AppStrings.fcmToken: token},
     );
   }
 
   @override
   Future<UserModel> getUserProfile(String uid) async {
-    final doc = await FirebaseFirestore.instance.collection(EnvConfig.usersCollection).doc(uid).get();
+    final doc = await firestore.collection(EnvConfig.usersCollection).doc(uid).get();
 
     if (!doc.exists) {
       throw Exception('User profile not found');
@@ -168,6 +170,11 @@ class AuthService implements AuthRepository {
 
     final userData = UserModel.fromJson(doc.data()!);
     return userData;
+  }
+
+  @override
+  Future<void> editUserprofile({required String uid, required EditProfileModel data}) async {
+    await firestore.collection(FirebaseCollections.users).doc(uid).update(data.toJson());
   }
 
   @override

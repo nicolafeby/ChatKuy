@@ -1,9 +1,9 @@
+import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/add_friend_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
@@ -22,13 +22,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        appBar: AppBar(
-          titleSpacing: 0,
-          title: Text(
-            'Tambah Teman',
-            style: TextStyle(fontSize: 18.sp),
-          ),
-        ),
+        appBar: AppbarWidget(title: 'Tambah Teman'),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

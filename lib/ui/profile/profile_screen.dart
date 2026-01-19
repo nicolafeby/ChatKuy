@@ -1,6 +1,9 @@
+import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
+import 'package:chatkuy/data/models/edit_profile_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
@@ -134,7 +137,6 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 child: Column(
                   children: [
                     Row(
-                      // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Informasi Personal',
@@ -142,36 +144,48 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         ),
                         Spacer(),
                         GestureDetector(
-                          onTap: () {
-                            // TODO: edit personal information
-                          },
-                          child: GestureDetector(
-                            onTap: () {
-                              final userData = store.user;
-                              
-                              if (userData == null) return;
-                              Get.toNamed(
-                                AppRouteName.EDIT_PROFILE_SCREEN,
-                                arguments: EditProfileArgument(userData: userData),
-                              );
-                            },
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Ubah',
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: AppColor.primaryColor,
-                                  ),
+                          onTap: () async {
+                            final userData = store.user;
+
+                            if (userData == null) return;
+                            Get.toNamed(
+                              AppRouteName.EDIT_PROFILE_SCREEN,
+                              arguments: EditProfileArgument(
+                                userData: EditProfileModel(
+                                  email: userData.email,
+                                  gender: userData.gender ?? Gender.male,
+                                  name: userData.name,
+                                  phoneNumber: '081-811871',
+                                  photoUrl: userData.photoUrl ?? AppStrings.dummyNetworkImage,
+                                  username: userData.username ?? '',
                                 ),
-                                4.horizontalSpace,
-                                Icon(
-                                  Icons.edit_outlined,
-                                  size: 16.r,
+                              ),
+                            )?.then(
+                              (value) async {
+                                final id = await getIt<SecureStorageRepository>().getUserId();
+
+                                if (id == null) return;
+                                store.getUserProfile(id);
+                                showSnackbar(title: 'Sukses', message: 'Berhasil Mengubah Profile');
+                              },
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                'Ubah',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
                                   color: AppColor.primaryColor,
                                 ),
-                              ],
-                            ),
+                              ),
+                              4.horizontalSpace,
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 16.r,
+                                color: AppColor.primaryColor,
+                              ),
+                            ],
                           ),
                         )
                       ],

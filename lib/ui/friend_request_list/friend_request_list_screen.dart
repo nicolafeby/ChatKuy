@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:chatkuy/di/injection.dart';
@@ -53,12 +54,8 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: Text(
-          'Permintaan Pertemanan',
-          style: TextStyle(fontSize: 18.sp),
-        ),
+      appBar: AppbarWidget(
+        title: 'Permintaan Pertemanan',
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

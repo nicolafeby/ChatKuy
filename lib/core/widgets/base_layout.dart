@@ -15,6 +15,21 @@ mixin BaseLayout {
   void dismissBottomsheet() {
     Get.until((route) => Get.isBottomSheetOpen == null || Get.isBottomSheetOpen == false);
   }
+
+  void showSnackbar({
+    String? title,
+    String? message,
+  }) {
+    final safeMessage = (message != null && message.isNotEmpty) ? message : 'Terjadi kesalahan';
+
+    Get.showSnackbar(
+      GetSnackBar(
+        title: title ?? '',
+        message: safeMessage,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 }
 
 class LoadingDialog extends StatelessWidget {

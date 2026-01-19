@@ -10,6 +10,7 @@ class TextfieldWidget extends StatelessWidget {
   final Function(String value)? onChanged;
   final String? errorText;
   final List<TextInputFormatter>? inputFormatters;
+  final FloatingLabelBehavior? floatingLabelBehavior;
   const TextfieldWidget({
     super.key,
     this.hintText,
@@ -19,6 +20,7 @@ class TextfieldWidget extends StatelessWidget {
     this.onChanged,
     this.errorText,
     this.inputFormatters,
+    this.floatingLabelBehavior,
   });
 
   @override
@@ -35,7 +37,7 @@ class TextfieldWidget extends StatelessWidget {
         floatingLabelStyle: TextStyle(
           color: errorText != null ? Colors.red : AppColor.primaryColor,
         ),
-        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        floatingLabelBehavior: floatingLabelBehavior ?? FloatingLabelBehavior.auto,
         hintText: hintText,
       ),
     );

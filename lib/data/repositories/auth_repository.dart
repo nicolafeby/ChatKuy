@@ -1,3 +1,4 @@
+import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 
 abstract class AuthRepository {
@@ -23,6 +24,8 @@ abstract class AuthRepository {
   Future<void> updateFcmToken({required String token, required String currentUid});
 
   Future<UserModel> getUserProfile(String uid);
+
+  Future<void> editUserprofile({required String uid, required EditProfileModel data});
 
   String? get currentUid;
 }

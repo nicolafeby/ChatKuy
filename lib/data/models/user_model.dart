@@ -42,7 +42,6 @@ class UserModel {
     bool? isOnline,
     DateTime? lastOnlineAt,
     String? fcmToken,
-    Gender? gender,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -54,7 +53,7 @@ class UserModel {
       username: username,
       lastOnlineAt: lastOnlineAt ?? this.lastOnlineAt,
       fcmToken: fcmToken ?? this.fcmToken,
-      gender: gender ?? this.gender,
+      gender: gender,
     );
   }
 }
