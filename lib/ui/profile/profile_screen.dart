@@ -72,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
         ProfileButtonWidget(
           title: Text('Ubah Password', style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.password_outlined, size: 20.r),
-          onTap: () => showComingSoonSnackbar(),
+          onTap: () => Get.toNamed(AppRouteName.CHANGE_PASSWORD_SCREEN),
         ),
       ],
     );

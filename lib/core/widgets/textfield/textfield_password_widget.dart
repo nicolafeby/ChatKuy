@@ -9,7 +9,15 @@ enum PasswordType { create, verify }
 class TextfieldPasswordWidget extends StatefulWidget {
   final PasswordType passwordType;
   final Function(String? password) onValidPassword;
-  const TextfieldPasswordWidget._({super.key, required this.passwordType, required this.onValidPassword});
+  final String? label;
+  final String? hintText;
+  const TextfieldPasswordWidget._({
+    super.key,
+    required this.passwordType,
+    required this.onValidPassword,
+    this.hintText,
+    this.label,
+  });
 
   factory TextfieldPasswordWidget.create({Key? key, required Function(String? password) onValidPassword}) {
     return TextfieldPasswordWidget._(
@@ -19,11 +27,18 @@ class TextfieldPasswordWidget extends StatefulWidget {
     );
   }
 
-  factory TextfieldPasswordWidget.verify({Key? key, required Function(String? password) onValidPassword}) {
+  factory TextfieldPasswordWidget.verify({
+    Key? key,
+    required Function(String? password) onValidPassword,
+    String? label,
+    String? hintText,
+  }) {
     return TextfieldPasswordWidget._(
       key: key,
       passwordType: PasswordType.verify,
       onValidPassword: onValidPassword,
+      hintText: hintText,
+      label: label,
     );
   }
 
@@ -54,8 +69,8 @@ class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
             floatingLabelStyle: TextStyle(
               color: store.passwordError != null ? Colors.red : AppColor.primaryColor,
             ),
-            labelText: 'Password',
-            hintText: 'Masukan password',
+            labelText: widget.label ?? 'Password',
+            hintText: widget.hintText ?? 'Masukan password',
             errorText: store.passwordError,
             prefixIcon: Icon(Icons.lock),
             suffixIcon: IconButton(

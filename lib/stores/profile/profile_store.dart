@@ -237,11 +237,115 @@ abstract class _ProfileStore with Store {
     }
   }
 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  @observable
+  ObservableFuture<void>? changePasswordFuture;
+
+  @observable
+  String? currentPassword;
+
+  @observable
+  String? newPassword;
+
+  @action
+  Future<void> changePassword({required VoidCallback onSuccess}) async {
+    error.general = null;
+
+    final user = _auth.currentUser;
+
+    final email = user?.email;
+
+    if (email == null) return;
+
+    try {
+      if (currentPassword == null || newPassword == null) return;
+      final future = _changePasswordProcess(
+        email: email,
+        oldPassword: currentPassword!,
+        newPassword: newPassword!,
+      );
+
+      changePasswordFuture = ObservableFuture(future);
+      await changePasswordFuture;
+
+      await Future.delayed(Duration(milliseconds: 200));
+      onSuccess();
+    } on FirebaseAuthException catch (e) {
+      _handleFirebaseAuthError(e);
+    } catch (e) {
+      error.general = FirebaseException(plugin: e.toString(), message: 'Terjadi kesalahan, silakan coba lagi');
+    }
+  }
+
+  // =====================
+  // Internal process
+  // =====================
+  Future<void> _changePasswordProcess({
+    required String email,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser!;
+
+    // 1️⃣ Re-authentication
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: oldPassword,
+    );
+
+    await user.reauthenticateWithCredential(credential);
+
+    // 2️⃣ Update password
+    await user.updatePassword(newPassword);
+  }
+
+  void _handleFirebaseAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-credential':
+        error.general = FirebaseException(
+          plugin: e.toString(),
+          code: e.code,
+          message: 'Password lama salah',
+        );
+
+        break;
+
+      case 'requires-recent-login':
+        error.general = FirebaseException(
+          plugin: e.toString(),
+          code: e.code,
+          message: 'Silakan login ulang demi keamanan',
+        );
+        break;
+
+      case 'user-mismatch':
+      case 'user-not-found':
+        error.general = FirebaseException(
+          plugin: e.toString(),
+          code: e.code,
+          message: 'User tidak valid',
+        );
+
+        break;
+
+      default:
+        error.general = FirebaseException(
+          plugin: e.toString(),
+          code: e.code,
+          message: e.message ?? 'Gagal mengganti password',
+        );
+    }
+  }
+
   @computed
   bool get canChangeEmail => error.email == null && password != null;
 
   @computed
   bool get canSaveProfileChanged => !error.hasErrorForm && argument?.userData != editProfileData;
+
+  @computed
+  bool get canChangePassword => newPassword != currentPassword && currentPassword != null && newPassword != null;
 }
 
 class ProfileErrorStore = _ProfileErrorStore with _$ProfileErrorStore;

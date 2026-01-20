@@ -44,5 +44,9 @@ class AppRoute {
       name: AppRouteName.EDIT_EMAIL_SCREEN,
       page: () => ChangeEmailScreen(),
     ),
+    GetPage(
+      name: AppRouteName.CHANGE_PASSWORD_SCREEN,
+      page: () => ChangePasswordScreen(),
+    )
   ];
 }

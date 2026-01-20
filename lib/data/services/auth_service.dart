@@ -230,17 +230,49 @@ class AuthService implements AuthRepository {
   Exception _mapFirebaseError(FirebaseAuthException e) {
     switch (e.code) {
       case 'requires-recent-login':
-        return Exception(
-          'Silakan login ulang untuk melanjutkan perubahan email',
-        );
+        return Exception('Silakan login ulang untuk  keamanan');
       case 'email-already-in-use':
         return Exception('Email sudah digunakan akun lain');
       case 'invalid-email':
         return Exception('Format email tidak valid');
       case 'user-disabled':
         return Exception('Akun telah dinonaktifkan');
+      case 'wrong-password':
+      case 'invalid-credential':
+        return Exception('Password lama salah');
+
       default:
         return Exception(e.message ?? 'Terjadi kesalahan');
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = auth.currentUser;
+
+    if (user == null) {
+      throw Exception('User belum login');
+    }
+
+    final email = user.email;
+    if (email == null) {
+      throw Exception('Email user tidak ditemukan');
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword,
+      );
+
+      await user.reauthenticateWithCredential(credential);
+
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseError(e);
     }
   }
 
