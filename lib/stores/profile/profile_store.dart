@@ -219,8 +219,26 @@ abstract class _ProfileStore with Store {
     }
   }
 
+  @observable
+  String? password;
+
+  @observable
+  String? currentEmail;
+
+  @action
+  void validateEmail(String value) {
+    email = value;
+    if (!GetUtils.isEmail(email!)) {
+      error.email = 'Format email tidak valid';
+    } else if (email == currentEmail) {
+      error.email = 'Email tidak boleh sama';
+    } else {
+      error.email = null;
+    }
+  }
+
   @computed
-  bool get hasEmailChanged => editProfileData?.email != argument?.userData.email;
+  bool get canChangeEmail => error.email == null && password != null;
 
   @computed
   bool get canSaveProfileChanged => !error.hasErrorForm && argument?.userData != editProfileData;

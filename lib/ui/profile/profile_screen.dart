@@ -9,6 +9,7 @@ import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
 import 'package:chatkuy/ui/profile/widget/profile_bbutton_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_information_box_widget.dart';
@@ -55,15 +56,23 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           style: TextStyle(fontSize: 18.sp),
         ),
         8.verticalSpace,
-        ProfileBbuttonWidget(
+        ProfileButtonWidget(
           title: Text('Ubah Email', style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.email_outlined, size: 20.r),
-          onTap: () {},
+          onTap: () {
+            final email = store.user?.email;
+
+            if (email == null) return;
+            Get.toNamed(
+              AppRouteName.EDIT_EMAIL_SCREEN,
+              arguments: ChangeEmailArgument(currentEmail: email),
+            );
+          },
         ),
-        ProfileBbuttonWidget(
+        ProfileButtonWidget(
           title: Text('Ubah Password', style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.password_outlined, size: 20.r),
-          onTap: () {},
+          onTap: () => showComingSoonSnackbar(),
         ),
       ],
     );
@@ -225,7 +234,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             Icons.online_prediction_outlined,
                             color: Colors.white,
                           ),
-                          onTap: () {},
+                          onTap: () {
+                            showComingSoonSnackbar();
+                          },
                           title: 'Online',
                         ),
                         ProfilePreferencesWidget(
@@ -233,7 +244,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             Icons.notifications_active_rounded,
                             color: Colors.white,
                           ),
-                          onTap: () {},
+                          onTap: () {
+                            showComingSoonSnackbar();
+                          },
                           title: 'Notifikasi',
                         ),
                         ProfilePreferencesWidget(
@@ -241,7 +254,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             Icons.sunny,
                             color: Colors.white,
                           ),
-                          onTap: () {},
+                          onTap: () {
+                            showComingSoonSnackbar();
+                          },
                           title: 'Terang',
                         ),
                       ],

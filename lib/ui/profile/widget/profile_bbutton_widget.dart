@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class ProfileBbuttonWidget extends StatelessWidget {
+class ProfileButtonWidget extends StatelessWidget {
   final Widget title;
   final Widget leading;
   final VoidCallback onTap;
-  const ProfileBbuttonWidget({super.key, required this.title, required this.leading, required this.onTap});
+  const ProfileButtonWidget({super.key, required this.title, required this.leading, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,7 @@ class ProfileBbuttonWidget extends StatelessWidget {
       visualDensity: VisualDensity(horizontal: 0, vertical: -4),
       leading: leading,
       title: title,
-      onTap: onTap,
+      onTap: onTap.call,
       // trailing: Icon(
       //   Icons.arrow_forward_ios_rounded,
       //   size: 20.r,

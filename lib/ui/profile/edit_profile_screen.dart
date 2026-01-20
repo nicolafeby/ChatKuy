@@ -1,9 +1,6 @@
-import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/formatter.dart';
-import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
-import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
@@ -12,9 +9,7 @@ import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
-import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
-import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -141,27 +136,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
             store.validateEditUsername(value);
           },
           inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmailSections() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Alamat Email',
-          style: TextStyle(fontSize: 16.sp),
-        ),
-        4.verticalSpace,
-        TextfieldWidget(
-          label: store.argument?.userData.email ?? '',
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          textInputType: TextInputType.emailAddress,
-          hintText: store.argument?.userData.email,
-          errorText: store.error.email,
-          onChanged: store.validateEditEmail,
         ),
       ],
     );

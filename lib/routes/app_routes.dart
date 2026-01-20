@@ -1,7 +1,7 @@
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/middleware/session_guard.dart';
 import 'package:chatkuy/ui/_ui.dart';
-import 'package:chatkuy/ui/add_friend/add_friend_screem.dart';
+import 'package:chatkuy/ui/add_friend/add_friend_screen.dart';
 import 'package:chatkuy/ui/friend_request_list/friend_request_list_screen.dart';
 import 'package:get/get_navigation/get_navigation.dart';
 
@@ -39,6 +39,10 @@ class AppRoute {
     GetPage(
       name: AppRouteName.EDIT_PROFILE_SCREEN,
       page: () => EditProfileScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.EDIT_EMAIL_SCREEN,
+      page: () => ChangeEmailScreen(),
     ),
   ];
 }

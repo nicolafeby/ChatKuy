@@ -56,9 +56,10 @@ class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTick
     return Scaffold(
       appBar: AppbarWidget(
         title: 'Permintaan Pertemanan',
+        appbarHeight: 86.h,
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
+          tabs: [
             Tab(text: 'Masuk'),
             Tab(text: 'Terkirim'),
           ],

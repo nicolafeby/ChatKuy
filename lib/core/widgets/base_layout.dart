@@ -20,14 +20,23 @@ mixin BaseLayout {
     String? title,
     String? message,
   }) {
+    if (Get.isSnackbarOpen) return;
+
     final safeMessage = (message != null && message.isNotEmpty) ? message : 'Terjadi kesalahan';
 
     Get.showSnackbar(
       GetSnackBar(
         title: title ?? '',
         message: safeMessage,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(milliseconds: 2500),
       ),
+    );
+  }
+
+  void showComingSoonSnackbar() {
+    showSnackbar(
+      title: 'Tunggu, yaa...',
+      message: 'Futur ini akan segera kami luncurkan',
     );
   }
 }

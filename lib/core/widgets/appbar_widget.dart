@@ -9,6 +9,7 @@ class AppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     this.leading,
     this.titleStyle,
     this.bottom,
+    this.appbarHeight,
   });
 
   final List<Widget>? action;
@@ -16,9 +17,10 @@ class AppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final TextStyle? titleStyle;
   final PreferredSizeWidget? bottom;
+  final double? appbarHeight;
 
   @override
-  Size get preferredSize => Size.fromHeight(56);
+  Size get preferredSize => Size.fromHeight(appbarHeight ?? 56);
 
   @override
   Widget build(BuildContext context) {
