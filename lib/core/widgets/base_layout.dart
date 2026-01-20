@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 mixin BaseLayout {
   void showLoading({String? text}) {
     dismissLoading();
-    Get.dialog(const LoadingDialog(), barrierDismissible: false);
+    Get.dialog(LoadingDialog(text: text), barrierDismissible: false);
   }
 
   void dismissLoading() {

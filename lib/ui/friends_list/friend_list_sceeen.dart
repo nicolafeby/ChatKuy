@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/di/injection.dart';
@@ -94,11 +95,7 @@ class _FriendListScreenState extends State<FriendListScreen> with AutomaticKeepA
                   final user = friend.user;
 
                   return ListTile(
-                    leading: CircleAvatar(
-                      radius: 24.r,
-                      backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
-                      child: user.photoUrl == null ? const Icon(Icons.person) : null,
-                    ),
+                    leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 46),
                     title: Text(
                       user.name,
                       style: TextStyle(

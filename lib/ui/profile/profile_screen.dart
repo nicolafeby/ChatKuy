@@ -1,7 +1,16 @@
+import 'dart:developer';
+
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
+import 'package:chatkuy/core/helpers/imahe_picker_helper.dart';
+import 'package:chatkuy/core/helpers/permission_handeler_helper.dart';
+import 'package:chatkuy/core/utils/converter/xfile_to_string_converter.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
+import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
+import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
@@ -10,7 +19,6 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
-import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
 import 'package:chatkuy/ui/profile/widget/profile_bbutton_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_information_box_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_preferences_widget.dart';
@@ -19,6 +27,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:mobx/mobx.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -34,10 +43,31 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     storageRepository: getIt<SecureStorageRepository>(),
   );
 
+  List<ReactionDisposer> _reaction = [];
+
   @override
   void initState() {
     super.initState();
     init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reaction = [
+        reaction((p0) => store.changeProfilePictureFuture?.status, (p0) {
+          if (p0 == FutureStatus.pending) {
+            showLoading(text: 'Mengunggah gambar...');
+          } else {
+            dismissLoading();
+          }
+        })
+      ];
+    });
+  }
+
+  @override
+  void dispose() {
+    for (var d in _reaction) {
+      d();
+    }
+    super.dispose();
   }
 
   void init() async {
@@ -78,6 +108,143 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     );
   }
 
+  void _showDialog() {
+    Get.dialog(
+      Dialog(
+        insetPadding: EdgeInsets.symmetric(horizontal: 60.w),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Pilih Opsi',
+              style: TextStyle(fontSize: 18.sp),
+            ),
+            10.verticalSpace,
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 6.r),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () async {
+                handlePermission(
+                  permission: Permission.mediaLibrary,
+                  onSuccess: () async {
+                    dismissLoading();
+                    final image = await ImagePickerHelper.pickImage(
+                      source: PickImageSource.gallery,
+                    );
+
+                    if (image == null) return;
+                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+
+                    if (croppedImage == null) return;
+                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+
+                    store.changeProfilePicture(imageUrl: base64).then(
+                      (value) async {
+                        final id = await getIt<SecureStorageRepository>().getUserId();
+
+                        if (id == null) return;
+                        return store.getUserProfile(id);
+                      },
+                    );
+                  },
+                  onDenied: (p0) {
+                    Get.bottomSheet(BottomsheetWidget(
+                      asset: AppAsset.imgFaceSad,
+                      title: AppStrings.oopsTerjadiKesalahan,
+                      message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+                    ));
+                  },
+                );
+              },
+              label: Text(
+                'Pilih dari galeri',
+                style: TextStyle(fontSize: 16.sp),
+              ),
+              icon: Icon(Icons.photo_album_outlined),
+            ),
+            2.verticalSpace,
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 6.r),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () {
+                handlePermission(
+                  permission: Permission.camera,
+                  onSuccess: () async {
+                    dismissLoading();
+                    final image = await ImagePickerHelper.pickImage(
+                      source: PickImageSource.camera,
+                    );
+
+                    if (image == null) return;
+                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+
+                    if (croppedImage == null) return;
+                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+
+                    store.changeProfilePicture(imageUrl: base64).then(
+                      (value) async {
+                        final id = await getIt<SecureStorageRepository>().getUserId();
+
+                        if (id == null) return;
+                        return store.getUserProfile(id);
+                      },
+                    );
+                  },
+                  onDenied: (p0) {
+                    Get.bottomSheet(BottomsheetWidget(
+                      asset: AppAsset.imgFaceSad,
+                      title: AppStrings.oopsTerjadiKesalahan,
+                      message: 'Kami tidak mendapatkan akses kamera untuk action ini',
+                    ));
+                  },
+                );
+              },
+              label: Text(
+                'Ambil dari kamera',
+                style: TextStyle(fontSize: 16.sp),
+              ),
+              icon: Icon(Icons.camera_alt_outlined),
+            ),
+            Visibility(
+              visible: store.user?.photoUrl == null ? false : true,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  store.changeProfilePicture(imageUrl: null).then(
+                    (value) async {
+                      final id = await getIt<SecureStorageRepository>().getUserId();
+
+                      if (id == null) return;
+                      return store.getUserProfile(id);
+                    },
+                  );
+                },
+                label: Text(
+                  'Hapus foto profil',
+                  style: TextStyle(fontSize: 16.sp),
+                ),
+                icon: Icon(Icons.delete_outline),
+              ).paddingOnly(top: 2.h),
+            )
+          ],
+        ).paddingOnly(top: 12.h, bottom: 8.h),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,6 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
                     final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
+                    final gender = store.user?.gender;
 
                     return FlexibleSpaceBar(
                       title: Opacity(
@@ -125,23 +293,35 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             24.verticalSpace,
-                            Container(
-                              padding: EdgeInsets.all(4.r),
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                              child: SizedBox(
-                                height: 80.r,
-                                width: 80.r,
-                                child: CircleAvatar(
-                                  backgroundImage:
-                                      store.user?.photoUrl != null ? NetworkImage(store.user!.photoUrl!) : null,
-                                  child: store.user?.photoUrl == null
-                                      ? Text(
-                                          store.user?.name[0].toUpperCase() ?? '',
-                                          style: TextStyle(fontSize: 32.sp),
-                                        )
-                                      : null,
+                            Stack(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(4.r),
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                                  child: ProfileAvatarWidget(
+                                    base64Image: store.user?.photoUrl,
+                                    size: 80,
+                                  ),
                                 ),
-                              ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: _showDialog,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                      ),
+                                      child: Icon(
+                                        Icons.edit,
+                                        size: 16.r,
+                                        color: AppColor.primaryColor,
+                                      ).paddingAll(4.r),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             8.verticalSpace,
                             Text(
@@ -152,8 +332,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               ),
                             ),
                             4.verticalSpace,
-                            const Text(
-                              "Male 25 .y",
+                            Text(
+                              "${gender?.value} 25 .y",
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black54,

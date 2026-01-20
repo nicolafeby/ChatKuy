@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
@@ -85,7 +86,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
               return ListView.separated(
                 itemCount: store.chatUsers.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, __) => SizedBox(height: 2.h),
                 itemBuilder: (_, index) {
                   final item = store.chatUsers[index];
                   final user = item.user;
@@ -109,14 +110,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   // );
 
                   return ListTile(
-                    leading: SizedBox(
-                      height: 48.r,
-                      width: 48.r,
-                      child: CircleAvatar(
-                        backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
-                        child: user.photoUrl == null ? Text(user.name[0].toUpperCase()) : null,
-                      ),
-                    ),
+                    leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 48),
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

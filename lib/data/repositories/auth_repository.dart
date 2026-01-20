@@ -46,5 +46,7 @@ abstract class AuthRepository {
     required String newPassword,
   });
 
+  Future<void> changeProfilePicture({String? imageUrl});
+
   String? get currentUid;
 }

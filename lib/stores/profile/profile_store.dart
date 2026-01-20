@@ -10,7 +10,6 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -335,6 +334,27 @@ abstract class _ProfileStore with Store {
           code: e.code,
           message: e.message ?? 'Gagal mengganti password',
         );
+    }
+  }
+
+  @observable
+  ObservableFuture<void>? changeProfilePictureFuture;
+
+  @action
+  Future<void> changeProfilePicture({String? imageUrl}) async {
+    error.general = null;
+
+    try {
+      final future = authRepository.changeProfilePicture(imageUrl: imageUrl);
+
+      changeProfilePictureFuture = ObservableFuture(future);
+
+      await changeProfilePictureFuture;
+    } on FirebaseException catch (e) {
+      error.general = e;
+    } catch (e) {
+      error.general = FirebaseException(plugin: e.toString());
+      rethrow;
     }
   }
 

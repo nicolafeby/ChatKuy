@@ -1,6 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:flutter/material.dart';
@@ -32,16 +31,7 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  Widget _buildAvatarSection(UserModel user) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(50.r),
-      child: CachedNetworkImage(
-        height: 36.r,
-        width: 36.r,
-        imageUrl: user.photoUrl ?? AppStrings.dummyNetworkImage,
-      ),
-    );
-  }
+  Widget _buildAvatarSection(UserModel user) => ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
 
   Widget _buildDisplayNameSections(UserModel user, {required bool isTyping}) {
     return Column(

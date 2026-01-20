@@ -187,11 +187,7 @@ class AuthService implements AuthRepository {
       throw Exception('User belum login');
     }
 
-    try {
-      await user.verifyBeforeUpdateEmail(newEmail);
-    } on FirebaseAuthException catch (e) {
-      throw _mapFirebaseError(e);
-    }
+    await user.verifyBeforeUpdateEmail(newEmail);
   }
 
   @override
@@ -215,35 +211,12 @@ class AuthService implements AuthRepository {
       throw Exception('User belum login');
     }
 
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: email,
-        password: password,
-      );
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
 
-      await user.reauthenticateWithCredential(credential);
-    } on FirebaseAuthException catch (e) {
-      throw _mapFirebaseError(e);
-    }
-  }
-
-  Exception _mapFirebaseError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'requires-recent-login':
-        return Exception('Silakan login ulang untuk  keamanan');
-      case 'email-already-in-use':
-        return Exception('Email sudah digunakan akun lain');
-      case 'invalid-email':
-        return Exception('Format email tidak valid');
-      case 'user-disabled':
-        return Exception('Akun telah dinonaktifkan');
-      case 'wrong-password':
-      case 'invalid-credential':
-        return Exception('Password lama salah');
-
-      default:
-        return Exception(e.message ?? 'Terjadi kesalahan');
-    }
+    await user.reauthenticateWithCredential(credential);
   }
 
   @override
@@ -262,18 +235,19 @@ class AuthService implements AuthRepository {
       throw Exception('Email user tidak ditemukan');
     }
 
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: email,
-        password: currentPassword,
-      );
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
 
-      await user.reauthenticateWithCredential(credential);
+    await user.reauthenticateWithCredential(credential);
 
-      await user.updatePassword(newPassword);
-    } on FirebaseAuthException catch (e) {
-      throw _mapFirebaseError(e);
-    }
+    await user.updatePassword(newPassword);
+  }
+
+  @override
+  Future<void> changeProfilePicture({String? imageUrl}) async {
+    await firestore.collection(EnvConfig.usersCollection).doc(currentUid).update({FriendField.photoUrl: imageUrl});
   }
 
   @override
