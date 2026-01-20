@@ -173,8 +173,75 @@ class AuthService implements AuthRepository {
   }
 
   @override
-  Future<void> editUserprofile({required String uid, required EditProfileModel data}) async {
+  Future<void> editUserProfile({required String uid, required EditProfileModel data}) async {
     await firestore.collection(FirebaseCollections.users).doc(uid).update(data.toJson());
+  }
+
+  @override
+  Future<void> sendVerificationForChange({
+    required String newEmail,
+  }) async {
+    final user = auth.currentUser;
+
+    if (user == null) {
+      throw Exception('User belum login');
+    }
+
+    try {
+      await user.verifyBeforeUpdateEmail(newEmail);
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseError(e);
+    }
+  }
+
+  @override
+  Future<User?> reloadUser() async {
+    final user = auth.currentUser;
+
+    if (user == null) return null;
+
+    await user.reload();
+    return auth.currentUser;
+  }
+
+  @override
+  Future<void> reauthenticate({
+    required String email,
+    required String password,
+  }) async {
+    final user = auth.currentUser;
+
+    if (user == null) {
+      throw Exception('User belum login');
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+
+      await user.reauthenticateWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseError(e);
+    }
+  }
+
+  Exception _mapFirebaseError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'requires-recent-login':
+        return Exception(
+          'Silakan login ulang untuk melanjutkan perubahan email',
+        );
+      case 'email-already-in-use':
+        return Exception('Email sudah digunakan akun lain');
+      case 'invalid-email':
+        return Exception('Format email tidak valid');
+      case 'user-disabled':
+        return Exception('Akun telah dinonaktifkan');
+      default:
+        return Exception(e.message ?? 'Terjadi kesalahan');
+    }
   }
 
   @override

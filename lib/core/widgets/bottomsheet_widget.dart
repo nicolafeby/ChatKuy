@@ -37,7 +37,7 @@ class BottomsheetWidget extends StatelessWidget {
             16.verticalSpace,
             Visibility(
               visible: asset == null ? false : true,
-              child: Image.asset(asset!, height: 100.r).paddingOnly(bottom: 32.h),
+              child: Image.asset(asset ?? '', height: 100.r).paddingOnly(bottom: 32.h),
             ),
             Text(
               title,

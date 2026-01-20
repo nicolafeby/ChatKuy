@@ -2,7 +2,15 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'user_model.g.dart';
 
-enum Gender { male, female }
+enum Gender {
+  male('Laki-laki'),
+  female('Perempuan'),
+  secret('Rahasia');
+
+
+  final String value;
+  const Gender(this.value);
+}
 
 @JsonSerializable()
 class UserModel {

@@ -1,14 +1,22 @@
+import 'package:chatkuy/core/constants/asset.dart';
+import 'package:chatkuy/core/constants/formatter.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
+import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
+import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/ui/_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -76,9 +84,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
                 children: [
                   _buildNameSections(),
                   12.verticalSpace,
-                  // _buildUsernameSections(),
+                  _buildUsernameSections(),
                   12.verticalSpace,
-                  // _buildEmailSections(),
+                  _buildGenderSections(),
                 ],
               ),
             ),
@@ -86,7 +94,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
           Expanded(
             flex: 0,
             child: ButtonWidget(
-              onPressed: store.hasProfileChanged ? () => store.editProfile() : null,
+              onPressed: store.canSaveProfileChanged ? () => store.editProfile() : null,
               title: 'Simpan Perubahan',
             ).paddingAll(20.r),
           ),
@@ -129,7 +137,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
           floatingLabelBehavior: FloatingLabelBehavior.never,
           hintText: store.argument?.userData.username,
           errorText: store.error.username,
-          onChanged: store.validateEditUsername,
+          onChanged: (value) {
+            store.validateEditUsername(value);
+          },
+          inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
         ),
       ],
     );
@@ -147,6 +158,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
         TextfieldWidget(
           label: store.argument?.userData.email ?? '',
           floatingLabelBehavior: FloatingLabelBehavior.never,
+          textInputType: TextInputType.emailAddress,
           hintText: store.argument?.userData.email,
           errorText: store.error.email,
           onChanged: store.validateEditEmail,
@@ -164,10 +176,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
-        TextfieldWidget(
-          label: store.argument?.userData.email ?? '',
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          hintText: store.argument?.userData.email,
+        DropdownButtonFormField<Gender>(
+          decoration: InputDecoration(
+            hintText: store.argument?.userData.gender.value ?? 'Jenis kelamin',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.r),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.r),
+              borderSide: const BorderSide(color: Colors.blue, width: 2),
+            ),
+          ),
+          items: [
+            DropdownMenuItem(
+                value: Gender.male,
+                child: Text(
+                  Gender.male.value,
+                  // style: TextStyle(fontSize: 12.sp),
+                )),
+            DropdownMenuItem(
+                value: Gender.female,
+                child: Text(
+                  Gender.female.value,
+                  // style: TextStyle(fontSize: 12.sp),
+                )),
+            DropdownMenuItem(
+                value: Gender.secret,
+                child: Text(
+                  Gender.secret.value,
+                  // style: TextStyle(fontSize: 12.sp),
+                )),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            store.onChangeGender(gender: value);
+          },
         ),
       ],
     );

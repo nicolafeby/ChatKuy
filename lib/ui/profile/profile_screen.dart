@@ -10,6 +10,7 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
 import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
+import 'package:chatkuy/ui/profile/widget/profile_bbutton_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_information_box_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_preferences_widget.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,29 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
 
     if (id == null) return;
     store.getUserProfile(id);
+  }
+
+  Widget _buildAccoungSettingSections() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pengaturan Akun',
+          style: TextStyle(fontSize: 18.sp),
+        ),
+        8.verticalSpace,
+        ProfileBbuttonWidget(
+          title: Text('Ubah Email', style: TextStyle(fontSize: 12.sp)),
+          leading: Icon(Icons.email_outlined, size: 20.r),
+          onTap: () {},
+        ),
+        ProfileBbuttonWidget(
+          title: Text('Ubah Password', style: TextStyle(fontSize: 12.sp)),
+          leading: Icon(Icons.password_outlined, size: 20.r),
+          onTap: () {},
+        ),
+      ],
+    );
   }
 
   @override
@@ -162,6 +186,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               ),
                             )?.then(
                               (value) async {
+                                if (value != true) return;
+
                                 final id = await getIt<SecureStorageRepository>().getUserId();
 
                                 if (id == null) return;
@@ -227,8 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         Icons.male,
                         color: Colors.grey,
                       ),
-                      value: 'Laki-laki',
-                      onTap: () {},
+                      value: store.user?.gender?.value ?? Gender.secret.value,
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
@@ -238,7 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         color: Colors.grey,
                       ),
                       value: store.user?.username ?? '',
-                      onTap: () {},
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
@@ -248,7 +272,6 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         color: Colors.grey,
                       ),
                       value: '0912929222',
-                      onTap: () {},
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
@@ -258,8 +281,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         color: Colors.grey,
                       ),
                       value: store.user?.email ?? '',
-                      onTap: () {},
                     ),
+                    16.verticalSpace,
+                    _buildAccoungSettingSections(),
                     80.verticalSpace,
                     TextButton(
                       onPressed: () {

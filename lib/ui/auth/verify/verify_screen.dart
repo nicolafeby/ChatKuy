@@ -11,9 +11,15 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:mobx/mobx.dart';
 
+enum VerificationType {
+  email,
+  editEmail,
+}
+
 class VerifyArgument {
   final String email;
-  const VerifyArgument({required this.email});
+  final VerificationType type;
+  const VerifyArgument({required this.email, this.type = VerificationType.email});
 }
 
 class VerifyScreen extends StatefulWidget {
@@ -43,7 +49,11 @@ class _VerifyScreenState extends State<VerifyScreen> {
         reaction((p0) => store.registerResponse?.isEmailVerified, (p0) async {
           if (p0 == true) {
             await Future.delayed(Duration(milliseconds: 200));
-            Get.offAllNamed(AppRouteName.BASE_SCREEN);
+            if (argument?.type == VerificationType.editEmail) {
+              Get.back<bool>(result: true);
+            } else {
+              Get.offAllNamed(AppRouteName.BASE_SCREEN);
+            }
           }
         }),
       ];

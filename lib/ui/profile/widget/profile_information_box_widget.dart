@@ -5,13 +5,11 @@ class ProfileInformationBoxWidget extends StatelessWidget {
   final String title;
   final Widget icon;
   final String value;
-  final VoidCallback onTap;
   const ProfileInformationBoxWidget({
     super.key,
     required this.title,
     required this.icon,
     required this.value,
-    required this.onTap,
   });
 
   @override

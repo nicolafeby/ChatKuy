@@ -1,5 +1,6 @@
 import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class AuthRepository {
   Stream<UserModel?> authStateChanges();
@@ -25,7 +26,20 @@ abstract class AuthRepository {
 
   Future<UserModel> getUserProfile(String uid);
 
-  Future<void> editUserprofile({required String uid, required EditProfileModel data});
+  Future<void> editUserProfile({required String uid, required EditProfileModel data});
+
+  Future<void> sendVerificationForChange({
+    required String newEmail,
+  });
+
+  /// Reload user setelah verifikasi berhasil
+  Future<User?> reloadUser();
+
+  /// Re-authentication jika diperlukan
+  Future<void> reauthenticate({
+    required String email,
+    required String password,
+  });
 
   String? get currentUid;
 }
