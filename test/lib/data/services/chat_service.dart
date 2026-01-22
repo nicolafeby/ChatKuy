@@ -45,6 +45,7 @@ Future<void> chatServiceTest() async {
   late MockDocumentReference<Map<String, dynamic>> userDoc;
   late MockDocumentSnapshot<Map<String, dynamic>> userSnapshot;
   late MockSnapshotMetadata mockMetadata;
+  late MockDocumentSnapshot<Map<String, dynamic>> roomSnapshot;
 
   setUp(() {
     firestore = MockFirebaseFirestore();
@@ -67,6 +68,7 @@ Future<void> chatServiceTest() async {
     userDoc = MockDocumentReference();
     userSnapshot = MockDocumentSnapshot();
     mockMetadata = MockSnapshotMetadata();
+    roomSnapshot = MockDocumentSnapshot();
   });
 
   // ==========================================================
@@ -125,13 +127,17 @@ Future<void> chatServiceTest() async {
 
     when(firestore.batch()).thenReturn(mockBatch);
 
-    // 🔥 mock users/{uid}
-    when(firestore.collection('users')).thenReturn(usersCollection);
+    // 🔥 ROOM SNAPSHOT
+    when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
+    when(roomSnapshot.data()).thenReturn({
+      ChatRoomField.participants: ['user-1', 'user-2'],
+    });
+
+    // 🔥 USER SNAPSHOT
+    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
 
     when(usersCollection.doc('user-1')).thenReturn(userDoc);
-
     when(userDoc.get()).thenAnswer((_) async => userSnapshot);
-
     when(userSnapshot.data()).thenReturn({
       FriendField.name: 'Budi',
     });
@@ -154,7 +160,14 @@ Future<void> chatServiceTest() async {
 
     verify(mockBatch.update(
       roomDoc,
-      argThat(containsPair(ChatRoomField.lastMessage, 'Hi')),
+      argThat(
+        predicate<Map<String, dynamic>>((data) {
+          return data[ChatRoomField.lastMessage] == 'Hi' &&
+              data[ChatRoomField.lastSenderId] == 'user-1' &&
+              data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
+              data.containsKey('${ChatRoomField.unreadCount}.user-2');
+        }),
+      ),
     )).called(1);
 
     verify(mockBatch.commit()).called(1);
