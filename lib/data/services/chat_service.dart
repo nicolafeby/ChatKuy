@@ -94,14 +94,18 @@ class ChatService implements ChatRepository {
 
     final userDoc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
     final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
+    final roomSnap = await roomRef.get();
+    final participants = List<String>.from(
+      roomSnap.data()![ChatRoomField.participants],
+    );
+
+    final targetUid = participants.firstWhere((e) => e != uid);
 
     batch.set(messageRef, {
       MessageField.senderId: uid,
       MessageField.text: text,
       MessageField.createdAt: FieldValue.serverTimestamp(),
       MessageField.createdAtClient: DateTime.now(),
-
-      // 🔥 WAJIB untuk status ala WhatsApp
       MessageField.deliveredTo: <String, bool>{},
       MessageField.readBy: <String, bool>{},
       MessageField.senderName: senderName,
@@ -112,6 +116,7 @@ class ChatService implements ChatRepository {
       ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
       ChatRoomField.lastSenderId: uid,
       '${ChatRoomField.unreadCount}.$uid': 0,
+      '${ChatRoomField.unreadCount}.$targetUid': FieldValue.increment(1),
     });
 
     try {
@@ -209,6 +214,16 @@ class ChatService implements ChatRepository {
   }) {
     return _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
       '${MessageField.readBy}.$uid': true,
+    });
+  }
+
+  @override
+  Future<void> resetUnread({
+    required String roomId,
+    required String uid,
+  }) {
+    return _chatRoomsRef.doc(roomId).update({
+      '${ChatRoomField.unreadCount}.$uid': 0,
     });
   }
 }

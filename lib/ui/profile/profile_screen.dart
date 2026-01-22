@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
@@ -333,7 +331,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             ),
                             4.verticalSpace,
                             Text(
-                              "${gender?.value} 25 .y",
+                              "${gender?.value ?? Gender.secret.value}, 25 tahun",
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black54,
@@ -366,10 +364,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               arguments: EditProfileArgument(
                                 userData: EditProfileModel(
                                   email: userData.email,
-                                  gender: userData.gender ?? Gender.male,
+                                  gender: userData.gender ?? Gender.secret,
                                   name: userData.name,
-                                  phoneNumber: '081-811871',
-                                  photoUrl: userData.photoUrl ?? AppStrings.dummyNetworkImage,
                                   username: userData.username ?? '',
                                 ),
                               ),

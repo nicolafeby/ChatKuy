@@ -60,6 +60,8 @@ abstract class _ChatRoomStore with Store {
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
+
+    initReadMessagePeriodically();
   }
 
   // -----------------------
@@ -75,6 +77,12 @@ abstract class _ChatRoomStore with Store {
       roomId: roomId!,
       text: text,
     );
+  }
+
+  void initReadMessagePeriodically() {
+    Timer.periodic(Duration(milliseconds: 500), (_) {
+      _resetUnread();
+    });
   }
 
   // -----------------------
@@ -130,6 +138,15 @@ abstract class _ChatRoomStore with Store {
         isTyping: false,
       );
     });
+  }
+
+  Future<void> _resetUnread() async {
+    if (roomId == null || currentUid == null) return;
+
+    await chatRepository.resetUnread(
+      roomId: roomId!,
+      uid: currentUid!,
+    );
   }
 
   // -----------------------

@@ -78,7 +78,7 @@ exports.onNewMessage = onDocumentCreated(
 
       // 🔔 Dipakai OS (background / terminated)
       notification: {
-        title: message.senderName || 'Pesan =====',
+        title: message.senderName || 'Pesan Baru',
         body: message.text || 'Ada pesan baru',
       },
 

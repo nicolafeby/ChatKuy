@@ -9,15 +9,11 @@ class EditProfileModel {
   final String email;
   final Gender gender;
   final String username;
-  final String phoneNumber;
-  final String photoUrl;
 
   const EditProfileModel({
     required this.email,
     required this.gender,
     required this.name,
-    required this.phoneNumber,
-    required this.photoUrl,
     required this.username,
   });
 
@@ -30,15 +26,11 @@ class EditProfileModel {
     String? email,
     Gender? gender,
     String? username,
-    String? phoneNumber,
-    String? photoUrl,
   }) {
     return EditProfileModel(
       email: email ?? this.email,
       gender: gender ?? this.gender,
       name: name ?? this.name,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      photoUrl: photoUrl ?? this.photoUrl,
       username: username ?? this.username,
     );
   }
