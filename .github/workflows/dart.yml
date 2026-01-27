@@ -1,4 +1,4 @@
-name: ChatKuy
+name: ChatKuy CI/CD
 
 on:
   pull_request:
@@ -8,7 +8,6 @@ on:
 
 jobs:
   ci:
-    if: github.event_name == 'push'
     name: Build & Test
     runs-on: self-hosted
     timeout-minutes: 45
@@ -25,18 +24,15 @@ jobs:
           flutter-version: "3.29.3"
           cache: false
 
-      # Cache Pub Dependencies
+      # Cache Pub (opsional tapi ringan)
       - name: Cache Pub
         uses: actions/cache@v4
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
 
-      # Install dependencies (offline if possible)
       - name: Install dependencies
-        run: |
-          flutter pub get || flutter pub get --offline
-
+        run: flutter pub get
 
       - name: Generate with Build Runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
@@ -45,6 +41,7 @@ jobs:
         run: flutter test --no-pub
 
       - name: Build APK
+        if: github.event_name == 'push'
         run: |
           flutter build apk \
             --release \
@@ -52,9 +49,11 @@ jobs:
             --split-debug-info=build/flutter_mapping \
             --no-shrink \
             --no-tree-shake-icons \
+            --no-daemon \
             --build-number=${{ github.run_number }}
 
       - name: Upload APK Artifact
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: app-release
@@ -63,7 +62,7 @@ jobs:
   cd:
     name: Distribute APK
     needs: ci
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -78,7 +77,6 @@ jobs:
 
       - name: Generate release notes
         run: |
-          # git log -6 --pretty=format:"- %s by %an <%ae>" > release_notes.txt
           git log -6 --pretty=format:"- %s by %an" > release_notes.txt
 
       - name: Upload to Firebase App Distribution
