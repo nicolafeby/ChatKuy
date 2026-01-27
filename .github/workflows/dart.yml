@@ -72,7 +72,6 @@ jobs:
             --split-debug-info=build/flutter_mapping \
             --no-shrink \
             --no-tree-shake-icons \
-            --no-daemon \
             --build-number=${{ github.run_number }}
 
       - name: Upload APK Artifact
