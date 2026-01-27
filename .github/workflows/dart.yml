@@ -9,11 +9,11 @@ on:
 jobs:
   ci:
     name: Build & Test
-    # runs-on: ubuntu-latest
     runs-on: self-hosted
+    timeout-minutes: 45
 
     concurrency:
-      group: ci-${{ github.ref }}
+      group: flutter-ci
       cancel-in-progress: true
 
     steps:
@@ -47,7 +47,7 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*') }}
 
-      # Install dependencies (offline if possible)
+      # Install dependencies
       - name: Install dependencies
         run: flutter pub get --offline || flutter pub get
 
@@ -61,10 +61,6 @@ jobs:
       - name: Generate with Build Runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # Optional Analyzer
-      # - name: Analyze
-      #   run: flutter analyze
-
       - name: Run flutter test
         run: flutter test --no-pub
 
@@ -76,6 +72,7 @@ jobs:
             --split-debug-info=build/flutter_mapping \
             --no-shrink \
             --no-tree-shake-icons \
+            --no-daemon \
             --build-number=${{ github.run_number }}
 
       - name: Upload APK Artifact
