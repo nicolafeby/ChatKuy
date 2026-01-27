@@ -8,6 +8,7 @@ on:
 
 jobs:
   ci:
+    if: github.event_name == 'push'
     name: Build & Test
     runs-on: self-hosted
     timeout-minutes: 45
