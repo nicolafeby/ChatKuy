@@ -24,15 +24,18 @@ jobs:
           flutter-version: "3.29.3"
           cache: false
 
+      # Cache Pub Dependencies
       - name: Cache Pub
         uses: actions/cache@v4
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
 
-      # Install dependencies
+      # Install dependencies (offline if possible)
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get || flutter pub get --offline
+
 
       - name: Generate with Build Runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
