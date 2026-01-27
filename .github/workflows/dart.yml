@@ -24,7 +24,6 @@ jobs:
           flutter-version: "3.29.3"
           cache: false
 
-      # Cache Pub (opsional tapi ringan)
       - name: Cache Pub
         uses: actions/cache@v4
         with:
@@ -49,7 +48,6 @@ jobs:
             --split-debug-info=build/flutter_mapping \
             --no-shrink \
             --no-tree-shake-icons \
-            --no-daemon \
             --build-number=${{ github.run_number }}
 
       - name: Upload APK Artifact
