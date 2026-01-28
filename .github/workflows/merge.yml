@@ -46,7 +46,8 @@ jobs:
             --split-debug-info=build/flutter_mapping \
             --no-shrink \
             --no-tree-shake-icons \
-            --build-number=${{ github.run_number }}
+            --build-number=$(( ${{ vars.ANDROID_BUILD_OFFSET }} + ${{ github.run_number }} ))
+
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
