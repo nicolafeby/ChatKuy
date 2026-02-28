@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/middleware/session_guard.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/add_friend/add_friend_screen.dart';
@@ -47,6 +48,10 @@ class AppRoute {
     GetPage(
       name: AppRouteName.CHANGE_PASSWORD_SCREEN,
       page: () => ChangePasswordScreen(),
+    ),
+     GetPage(
+      name: AppRouteName.IMAGE_VIEWER_SCREEN,
+      page: () => ImageViewerScreen(),
     )
   ];
 }
