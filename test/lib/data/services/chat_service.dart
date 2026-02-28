@@ -4,6 +4,8 @@ import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_test/hive_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mockito/mockito.dart';
@@ -50,6 +52,28 @@ Future<void> chatServiceTest() async {
   late MockDocumentSnapshot<Map<String, dynamic>> userSnapshot;
   late MockSnapshotMetadata mockMetadata;
   late MockDocumentSnapshot<Map<String, dynamic>> roomSnapshot;
+
+  setUpAll(() async {
+    await setUpTestHive();
+
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(ChatMessageModelAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(MessageStatusAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(MessageTypeAdapter());
+    }
+
+    await Hive.openBox<ChatMessageModel>('chat_messages');
+  });
+
+  tearDownAll(() async {
+    await tearDownTestHive();
+  });
 
   setUp(() {
     firestore = MockFirebaseFirestore();
@@ -118,6 +142,8 @@ Future<void> chatServiceTest() async {
   // SEND MESSAGE
   // ==========================================================
   test('sendMessage writes message and updates room using batch', () async {
+    when(messagesCollection.doc()).thenReturn(messageDocRef);
+    when(messageDocRef.id).thenReturn('msg-1');
     when(auth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
