@@ -1,5 +1,7 @@
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -74,24 +76,47 @@ class ChatBubbleWidget extends StatelessWidget {
 
   Widget _buildContent() {
     final type = message.type;
+    final imageUrl = message.imageUrl;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (type == MessageType.image) ...[
+        if (type == MessageType.image && imageUrl != null) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Image.network(message.imageUrl ?? ''),
-              Text(
-                message.text ?? '',
-                softWrap: true,
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
-                  fontSize: 14.sp,
+              InkWell(
+                onTap: () => Get.toNamed(
+                  AppRouteName.IMAGE_VIEWER_SCREEN,
+                  arguments: ImageViewerArgument(imageUrl: imageUrl),
                 ),
-              ).paddingOnly(top: 4.h),
+                child: Hero(
+                  tag: imageUrl,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4.r),
+                    child: Image.network(
+                      height: 200.h,
+                      width: double.infinity,
+                      imageUrl,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+              4.verticalSpace,
+              Visibility(
+                visible: message.text?.isNotEmpty == true,
+                child: Text(
+                  message.text ?? '',
+                  softWrap: true,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : Colors.black87,
+                    fontSize: 14.sp,
+                  ),
+                ),
+              ),
             ],
           )
         ] else ...[
