@@ -6,7 +6,9 @@ import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:mobx/mobx.dart';
+import 'package:uuid/uuid.dart';
 
 part 'chat_room_store.g.dart';
 
@@ -42,7 +44,20 @@ abstract class _ChatRoomStore with Store {
 
   @computed
   List<ChatMessageModel> get messages {
-    final list = _serverMessages?.value ?? [];
+    List<ChatMessageModel> list;
+
+    /// PRIORITAS SERVER DATA
+    if (_serverMessages?.value != null && _serverMessages!.value!.isNotEmpty) {
+      list = _serverMessages!.value!;
+    } else {
+      /// FALLBACK HIVE (OFFLINE MODE)
+      if (roomId == null) return [];
+
+      final box = Hive.box<ChatMessageModel>('chat_messages');
+
+      list = box.values.where((m) => m.id.contains(roomId!)).toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
 
     _syncMessageStatus(list);
 
@@ -89,7 +104,7 @@ abstract class _ChatRoomStore with Store {
   // -----------------------
   @action
   Future<void> sendMessage(String? text, File? image) async {
-    if (roomId == null) return;
+    if (roomId == null || currentUid == null) return;
 
     final messageText = text?.trim();
     final imageFile = image ?? pickedImage;
@@ -98,26 +113,64 @@ abstract class _ChatRoomStore with Store {
       return;
     }
 
-    String? imageUrl;
+    /// TEMP ID
+    final tempId = DateTime.now().microsecondsSinceEpoch.toString();
 
-    if (imageFile != null) {
-      imageUrl = await chatRepository.uploadImage(file: imageFile, roomId: roomId!);
-    }
+    final now = DateTime.now();
 
-    /// Clear input
+    /// INSERT LOCAL PENDING (TANPA IMAGE URL DULU)
+    final box = Hive.box<ChatMessageModel>('chat_messages');
+
+    final localMessage = ChatMessageModel(
+      id: tempId,
+      senderId: currentUid!,
+      text: messageText,
+      imageUrl: null, // belum ada
+      type: imageFile != null ? MessageType.image : MessageType.text,
+      createdAt: now,
+      createdAtClient: now,
+      deliveredTo: {},
+      readBy: {},
+      status: MessageStatus.pending,
+    );
+
+    box.put(tempId, localMessage);
+
+    /// CLEAR INPUT LANGSUNG
     messageController.clear();
     clearPickedImage();
 
-    await chatRepository.sendMessage(
-      roomId: roomId!,
-      text: messageText,
-      imageUrl: imageUrl,
-      type: imageUrl != null ? MessageType.image : MessageType.text,
-    );
+    try {
+      String? imageUrl;
+
+      /// UPLOAD IMAGE (BACKGROUND)
+      if (imageFile != null) {
+        imageUrl = await chatRepository.uploadImage(
+          file: imageFile,
+          roomId: roomId!,
+        );
+      }
+
+      /// KIRIM KE FIRESTORE
+      await chatRepository.sendMessage(
+        roomId: roomId!,
+        text: messageText,
+        imageUrl: imageUrl,
+        type: imageFile != null ? MessageType.image : MessageType.text,
+      );
+
+      /// Tidak perlu update Hive.
+      /// Snapshot Firestore akan override message.
+    } catch (e) {
+      /// UPDATE STATUS JIKA GAGAL
+      final failed = localMessage.copyWith(status: MessageStatus.failed);
+
+      box.put(tempId, failed);
+    }
   }
 
   void initReadMessagePeriodically() {
-    Timer.periodic(Duration(milliseconds: 500), (_) {
+    Timer.periodic(const Duration(milliseconds: 500), (_) {
       _resetUnread();
     });
   }

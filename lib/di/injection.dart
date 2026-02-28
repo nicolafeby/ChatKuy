@@ -1,3 +1,4 @@
+import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
@@ -25,10 +26,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 final getIt = GetIt.I;
 
-void setupDI() {
+Future<void> setupDI() async {
   getIt.registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance);
   getIt.registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance);
   getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
@@ -49,6 +51,7 @@ void setupDI() {
   // );
 
   registerService();
+  await registerHive();
   registerStore();
 }
 
@@ -112,4 +115,22 @@ void registerStore() {
       userRepository: getIt<UserRepository>(),
     ),
   );
+}
+
+Future registerHive() async {
+  await Hive.initFlutter();
+
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(ChatMessageModelAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(1)) {
+    Hive.registerAdapter(MessageStatusAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(2)) {
+    Hive.registerAdapter(MessageTypeAdapter());
+  }
+
+  await Hive.openBox<ChatMessageModel>('chat_messages');
 }

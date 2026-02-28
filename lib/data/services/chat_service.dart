@@ -7,6 +7,7 @@ import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:hive/hive.dart';
 
 class ChatService implements ChatRepository {
   ChatService(
@@ -18,6 +19,9 @@ class ChatService implements ChatRepository {
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
   final FirebaseStorage firebaseStorage;
+
+  /// HIVE BOX
+  final Box<ChatMessageModel> _messageBox = Hive.box<ChatMessageModel>('chat_messages');
 
   CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
 
@@ -58,7 +62,7 @@ class ChatService implements ChatRepository {
         .orderBy(MessageField.createdAtClient)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final messages = snapshot.docs.map((doc) {
         final data = doc.data();
 
         final createdAtServer = (data[MessageField.createdAt] as Timestamp?)?.toDate();
@@ -67,35 +71,33 @@ class ChatService implements ChatRepository {
             createdAtServer ??
             DateTime.fromMillisecondsSinceEpoch(0);
 
-        /// 🔥 TYPE HANDLING
         final typeString = data['type'] as String?;
         final MessageType messageType = typeString == 'image' ? MessageType.image : MessageType.text;
 
-        return ChatMessageModel(
+        final message = ChatMessageModel(
           id: doc.id,
           senderId: (data[MessageField.senderId] as String).trim(),
-
-          /// TEXT bisa null kalau image
           text: data[MessageField.text] as String?,
-
-          /// IMAGE URL bisa null kalau text
-          imageUrl: data['imageUrl'] as String?,
-
+          imageUrl: data[MessageField.imageUrl] as String?,
           type: messageType,
           createdAt: createdAtServer ?? createdAtClient,
           createdAtClient: createdAtClient,
-
           deliveredTo: Map<String, bool>.from(
             data[MessageField.deliveredTo] ?? {},
           ),
-
           readBy: Map<String, bool>.from(
             data[MessageField.readBy] ?? {},
           ),
-
           status: doc.metadata.hasPendingWrites ? MessageStatus.pending : MessageStatus.sent,
         );
+
+        /// SAVE TO HIVE (CACHE UPDATE)
+        _messageBox.put(message.id, message);
+
+        return message;
       }).toList();
+
+      return messages;
     });
   }
 
@@ -113,12 +115,27 @@ class ChatService implements ChatRepository {
 
     final userDoc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
     final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
+
     final roomSnap = await roomRef.get();
-    final participants = List<String>.from(
-      roomSnap.data()![ChatRoomField.participants],
-    );
+    final participants = List<String>.from(roomSnap.data()![ChatRoomField.participants]);
 
     final targetUid = participants.firstWhere((e) => e != uid);
+
+    /// OPTIMISTIC LOCAL MESSAGE
+    final localMessage = ChatMessageModel(
+      id: messageRef.id,
+      senderId: uid,
+      text: text,
+      imageUrl: imageUrl,
+      type: type,
+      createdAt: DateTime.now(),
+      createdAtClient: DateTime.now(),
+      deliveredTo: {},
+      readBy: {},
+      status: MessageStatus.pending,
+    );
+
+    _messageBox.put(localMessage.id, localMessage);
 
     batch.set(messageRef, {
       MessageField.senderId: uid,
@@ -227,7 +244,7 @@ class ChatService implements ChatRepository {
   }
 
   // -------------------------------
-  // MARK READ (✓✓ warna)
+  // MARK READ
   // -------------------------------
   @override
   Future<void> markRead({
@@ -250,8 +267,14 @@ class ChatService implements ChatRepository {
     });
   }
 
+  // -------------------------------
+  // UPLOAD IMAGE
+  // -------------------------------
   @override
-  Future<String> uploadImage({required File file, required String roomId}) async {
+  Future<String> uploadImage({
+    required File file,
+    required String roomId,
+  }) async {
     final ref = firebaseStorage
         .ref()
         .child(StorageCollection.chatImages)

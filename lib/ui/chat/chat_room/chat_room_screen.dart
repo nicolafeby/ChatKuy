@@ -43,12 +43,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     chatRepository: getIt<ChatRepository>(),
     userRepository: getIt<UserRepository>(),
   );
+
   ChatRoomArgument? argument;
 
   @override
   void initState() {
     super.initState();
     argument = Get.arguments as ChatRoomArgument?;
+
     final id = argument?.targetUser?.id ?? argument?.senderId;
 
     if (argument == null || id == null) return;
@@ -72,15 +74,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     return Observer(
       builder: (context) {
+        final targetId = argument!.targetUser?.id ?? argument!.senderId;
+
         bool isTargetTyping() {
           final typingMap = store.typing?.value ?? {};
-          return typingMap[argument!.targetUser?.id] == true;
+          if (targetId == null) return false;
+          return typingMap[targetId] == true;
         }
 
-        final targerUserCallback = argument?.targetUser;
-        final user = store.targetUser?.value ?? targerUserCallback;
+        final targetUserFallback = argument?.targetUser;
+        final user = store.targetUser?.value ?? targetUserFallback;
+
         final messages = store.messages;
-        final dummy = UserModel(name: 'name', email: 'email', isEmailVerified: false, fcmToken: 'fcmToken');
+
+        final dummy = UserModel(
+          name: 'name',
+          email: 'email',
+          isEmailVerified: false,
+          fcmToken: 'fcmToken',
+        );
 
         return Scaffold(
           resizeToAvoidBottomInset: true,
@@ -101,7 +113,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
                     final message = messages[realIndex];
                     final isMe = message.senderId == argument!.currentUid;
+
                     final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+
                     final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
 
                     final showDateSeparator =
@@ -120,7 +134,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           isSameGroup: isSameGroup,
                           isFirstInGroup: !isSameGroup,
                           onRetry: message.status == MessageStatus.failed
-                              ? () => store.sendMessage(message.text, store.pickedImage)
+                              ? () => store.sendMessage(
+                                    message.text,
+                                    null, // jangan kirim pickedImage
+                                  )
                               : null,
                         ),
                       ],

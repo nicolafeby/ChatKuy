@@ -1,34 +1,65 @@
+import 'package:hive/hive.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'chat_message_model.g.dart';
 
+@HiveType(typeId: 1)
 enum MessageStatus {
+  @HiveField(0)
   pending,
+
+  @HiveField(1)
   sent,
+
+  @HiveField(2)
   failed,
 }
 
-enum MessageType { text, image }
+@HiveType(typeId: 2)
+enum MessageType {
+  @HiveField(0)
+  text,
 
+  @HiveField(1)
+  image,
+}
+
+@HiveType(typeId: 0)
 @JsonSerializable()
 class ChatMessageModel {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String senderId;
+
+  @HiveField(2)
   final String? text;
+
+  @HiveField(3)
   final MessageType type;
+
+  @HiveField(4)
   final String? imageUrl;
 
+  @HiveField(5)
   @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
   final DateTime createdAt;
 
+  @HiveField(6)
   @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
   final DateTime createdAtClient;
 
+  @HiveField(7)
   final String? clientMessageId;
 
+  @HiveField(8)
   final Map<String, bool> deliveredTo;
+
+  @HiveField(9)
   final Map<String, bool> readBy;
 
+  @HiveField(10)
   @JsonKey(ignore: true)
   final MessageStatus status;
 
@@ -69,6 +100,8 @@ class ChatMessageModel {
   }
 
   static DateTime _fromTimestamp(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
     return value.toDate();
   }
 
