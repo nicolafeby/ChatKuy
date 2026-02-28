@@ -2,12 +2,10 @@ import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
-import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
 import 'package:chatkuy/core/helpers/imahe_picker_helper.dart';
 import 'package:chatkuy/core/helpers/permission_handeler_helper.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
-import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_attach_image_screen.dart';
 import 'package:flutter/material.dart';
@@ -151,12 +149,9 @@ class ChatKeyboardWidget extends StatelessWidget with BaseLayout {
                   );
 
                   if (image == null) return;
-                  final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
 
-                  store.pickedImage = croppedImage;
-
-                  // if (croppedImage == null) return;
-                  // final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                  Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
+                      arguments: ChatAttachImageArgument(image: image, store: store));
                 },
                 onDenied: (p0) {
                   Get.bottomSheet(BottomsheetWidget(

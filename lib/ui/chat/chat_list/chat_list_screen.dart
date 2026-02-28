@@ -125,10 +125,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           visible: item.type == MessageType.image,
                           child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
-                        Text(
-                          item.lastMessage ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Flexible(
+                          child: Text(
+                            item.lastMessage ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
