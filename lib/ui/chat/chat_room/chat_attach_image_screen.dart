@@ -1,12 +1,8 @@
 import 'dart:io';
 import 'package:chat_bubbles/message_bars/message_bar.dart';
 import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
-import 'package:chatkuy/data/repositories/chat_repository.dart';
-import 'package:chatkuy/data/repositories/user_repository.dart';
-import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
