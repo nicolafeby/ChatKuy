@@ -12,4 +12,5 @@ abstract class AppRouteName {
   static const EDIT_EMAIL_SCREEN = '/edit_email_screen';
   static const CHANGE_PASSWORD_SCREEN = '/change_password_screen';
   static const IMAGE_VIEWER_SCREEN = '/image_viewer_screen';
+  static const CHAT_ATTACH_IMAGE_SCREEN = '/chat_attach_image_screen';
 }
