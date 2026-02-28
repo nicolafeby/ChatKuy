@@ -2,6 +2,7 @@ import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
@@ -29,9 +30,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void initState() {
     super.initState();
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
-
-    /// ambil uid dari auth / session kamu
-    /// contoh (sesuaikan dengan project kamu):
 
     if (currentUid == null) return;
     store.watchChatUsers(currentUid);
@@ -121,10 +119,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         ),
                       ],
                     ),
-                    subtitle: Text(
-                      item.lastMessage ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    subtitle: Row(
+                      children: [
+                        Visibility(
+                          visible: item.type == MessageType.image,
+                          child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
+                        ),
+                        Text(
+                          item.lastMessage ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                     trailing: item.unreadCount > 0
                         ? CircleAvatar(

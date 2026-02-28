@@ -1,15 +1,23 @@
+import 'dart:io';
+
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class ChatService implements ChatRepository {
-  ChatService(this.auth, this.firestore);
+  ChatService(
+    this.auth,
+    this.firestore,
+    this.firebaseStorage,
+  );
 
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
+  final FirebaseStorage firebaseStorage;
 
   CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
 
@@ -59,18 +67,32 @@ class ChatService implements ChatRepository {
             createdAtServer ??
             DateTime.fromMillisecondsSinceEpoch(0);
 
+        /// 🔥 TYPE HANDLING
+        final typeString = data['type'] as String?;
+        final MessageType messageType = typeString == 'image' ? MessageType.image : MessageType.text;
+
         return ChatMessageModel(
           id: doc.id,
           senderId: (data[MessageField.senderId] as String).trim(),
-          text: data[MessageField.text] as String,
+
+          /// TEXT bisa null kalau image
+          text: data[MessageField.text] as String?,
+
+          /// IMAGE URL bisa null kalau text
+          imageUrl: data['imageUrl'] as String?,
+
+          type: messageType,
           createdAt: createdAtServer ?? createdAtClient,
           createdAtClient: createdAtClient,
+
           deliveredTo: Map<String, bool>.from(
             data[MessageField.deliveredTo] ?? {},
           ),
+
           readBy: Map<String, bool>.from(
             data[MessageField.readBy] ?? {},
           ),
+
           status: doc.metadata.hasPendingWrites ? MessageStatus.pending : MessageStatus.sent,
         );
       }).toList();
@@ -81,10 +103,7 @@ class ChatService implements ChatRepository {
   // SEND MESSAGE
   // -------------------------------
   @override
-  Future<void> sendMessage({
-    required String roomId,
-    required String text,
-  }) async {
+  Future<void> sendMessage({required String roomId, String? text, String? imageUrl, required MessageType type}) async {
     final uid = auth.currentUser!.uid;
 
     final roomRef = _chatRoomsRef.doc(roomId);
@@ -104,11 +123,13 @@ class ChatService implements ChatRepository {
     batch.set(messageRef, {
       MessageField.senderId: uid,
       MessageField.text: text,
+      MessageField.imageUrl: imageUrl,
       MessageField.createdAt: FieldValue.serverTimestamp(),
       MessageField.createdAtClient: DateTime.now(),
       MessageField.deliveredTo: <String, bool>{},
       MessageField.readBy: <String, bool>{},
       MessageField.senderName: senderName,
+      MessageField.type: type.name,
     });
 
     batch.update(roomRef, {
@@ -117,6 +138,8 @@ class ChatService implements ChatRepository {
       ChatRoomField.lastSenderId: uid,
       '${ChatRoomField.unreadCount}.$uid': 0,
       '${ChatRoomField.unreadCount}.$targetUid': FieldValue.increment(1),
+      ChatRoomField.imageUrl: imageUrl,
+      ChatRoomField.type: type.name,
     });
 
     try {
@@ -225,5 +248,17 @@ class ChatService implements ChatRepository {
     return _chatRoomsRef.doc(roomId).update({
       '${ChatRoomField.unreadCount}.$uid': 0,
     });
+  }
+
+  @override
+  Future<String> uploadImage({required File file, required String roomId}) async {
+    final ref = firebaseStorage
+        .ref()
+        .child(StorageCollection.chatImages)
+        .child('${roomId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+    await ref.putFile(file);
+
+    return await ref.getDownloadURL();
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -32,11 +33,14 @@ abstract class _ChatRoomStore with Store {
   @observable
   String? currentUid;
 
+  /// 🔥 IMAGE SUPPORT
+  @observable
+  File? pickedImage;
+
   @computed
   List<ChatMessageModel> get messages {
     final list = _serverMessages?.value ?? [];
 
-    // 🔥 AUTO DELIVERED + READ SYNC
     _syncMessageStatus(list);
 
     return list;
@@ -65,17 +69,47 @@ abstract class _ChatRoomStore with Store {
   }
 
   // -----------------------
+  // IMAGE CONTROL
+  // -----------------------
+  @action
+  void setPickedImage(File file) {
+    pickedImage = file;
+  }
+
+  @action
+  void clearPickedImage() {
+    pickedImage = null;
+  }
+
+  // -----------------------
   // SEND MESSAGE
   // -----------------------
   @action
-  Future<void> sendMessage(String text) async {
-    if (roomId == null || text.trim().isEmpty) return;
+  Future<void> sendMessage(String? text, File? image) async {
+    if (roomId == null) return;
 
+    final messageText = text?.trim();
+    final imageFile = image ?? pickedImage;
+
+    if ((messageText == null || messageText.isEmpty) && imageFile == null) {
+      return;
+    }
+
+    String? imageUrl;
+
+    if (imageFile != null) {
+      imageUrl = await chatRepository.uploadImage(file: imageFile, roomId: roomId!);
+    }
+
+    /// Clear input
     messageController.clear();
+    clearPickedImage();
 
     await chatRepository.sendMessage(
       roomId: roomId!,
-      text: text,
+      text: messageText,
+      imageUrl: imageUrl,
+      type: imageUrl != null ? MessageType.image : MessageType.text,
     );
   }
 
@@ -92,10 +126,8 @@ abstract class _ChatRoomStore with Store {
     if (roomId == null || currentUid == null) return;
 
     for (final message in messages) {
-      // ❌ jangan proses pesan milik sendiri
       if (message.senderId == currentUid) continue;
 
-      // ✓✓ delivered
       if (!message.deliveredTo.containsKey(currentUid)) {
         chatRepository.markDelivered(
           roomId: roomId!,
@@ -104,7 +136,6 @@ abstract class _ChatRoomStore with Store {
         );
       }
 
-      // ✓✓ read
       if (!message.readBy.containsKey(currentUid)) {
         chatRepository.markRead(
           roomId: roomId!,

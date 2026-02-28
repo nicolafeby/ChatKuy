@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 
@@ -15,7 +17,9 @@ abstract class ChatRepository {
   /// Send message
   Future<void> sendMessage({
     required String roomId,
-    required String text,
+    String? text,
+    String? imageUrl,
+    required MessageType type,
   });
 
   /// Create room if not exists
@@ -46,4 +50,6 @@ abstract class ChatRepository {
     required String roomId,
     required String uid,
   });
+
+  Future<String> uploadImage({required File file, required String roomId});
 }

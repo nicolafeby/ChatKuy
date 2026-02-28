@@ -53,6 +53,8 @@ abstract class ChatRoomField {
   static const lastMessageAt = 'lastMessageAt';
   static const lastSenderId = 'lastSenderId';
   static const unreadCount = 'unreadCount';
+  static const imageUrl = 'imageUrl';
+  static const type = 'type';
 }
 
 /// ==============================
@@ -67,6 +69,8 @@ abstract class MessageField {
   static const deliveredTo = 'deliveredTo';
   static const readBy = 'readBy';
   static const senderName = 'senderName';
+  static const imageUrl = 'imageUrl';
+  static const type = 'type';
 }
 
 /// ==============================
@@ -95,4 +99,8 @@ abstract class FriendRequestStatus {
   static const pending = 'pending';
   static const accepted = 'accepted';
   static const rejected = 'rejected';
+}
+
+abstract class StorageCollection {
+  static const chatImages = 'chat_images';
 }

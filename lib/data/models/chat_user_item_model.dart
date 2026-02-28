@@ -1,3 +1,4 @@
+import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 
@@ -10,6 +11,8 @@ class ChatUserItemModel {
   final String? lastMessage;
   final DateTime? lastMessageAt;
   final int unreadCount;
+  final String? imageUrl;
+  final MessageType? type;
 
   ChatUserItemModel({
     required this.roomId,
@@ -17,6 +20,8 @@ class ChatUserItemModel {
     this.lastMessage,
     this.lastMessageAt,
     required this.unreadCount,
+    this.imageUrl,
+    this.type,
   });
 
   factory ChatUserItemModel.fromJson(Map<String, dynamic> json) =>

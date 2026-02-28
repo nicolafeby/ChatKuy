@@ -22,6 +22,7 @@ import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -30,6 +31,7 @@ final getIt = GetIt.I;
 void setupDI() {
   getIt.registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance);
   getIt.registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance);
+  getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
 
   // getIt.registerLazySingleton<NotificationRepository>(
   //   () => getIt<NotificationService>(),
@@ -72,6 +74,7 @@ void registerService() {
     () => ChatService(
       FirebaseAuth.instance,
       FirebaseFirestore.instance,
+      FirebaseStorage.instance,
     ),
   );
 

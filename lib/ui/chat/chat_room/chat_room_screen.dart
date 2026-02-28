@@ -119,8 +119,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           isMe: isMe,
                           isSameGroup: isSameGroup,
                           isFirstInGroup: !isSameGroup,
-                          onRetry:
-                              message.status == MessageStatus.failed ? () => store.sendMessage(message.text) : null,
+                          onRetry: message.status == MessageStatus.failed
+                              ? () => store.sendMessage(message.text, store.pickedImage)
+                              : null,
                         ),
                       ],
                     );
