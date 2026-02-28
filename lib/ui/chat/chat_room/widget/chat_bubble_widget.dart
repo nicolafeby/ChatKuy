@@ -3,6 +3,7 @@ import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 enum UiMessageStatus {
   sent,
@@ -72,19 +73,38 @@ class ChatBubbleWidget extends StatelessWidget {
   }
 
   Widget _buildContent() {
+    final type = message.type;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          message.text,
-          softWrap: true,
-          textAlign: TextAlign.left,
-          style: TextStyle(
-            color: isMe ? Colors.white : Colors.black87,
-            fontSize: 14.sp,
+        if (type == MessageType.image) ...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Image.network(message.imageUrl ?? ''),
+              Text(
+                message.text ?? '',
+                softWrap: true,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontSize: 14.sp,
+                ),
+              ).paddingOnly(top: 4.h),
+            ],
+          )
+        ] else ...[
+          Text(
+            message.text ?? '',
+            softWrap: true,
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              color: isMe ? Colors.white : Colors.black87,
+              fontSize: 14.sp,
+            ),
           ),
-        ),
+        ],
         Wrap(
           alignment: WrapAlignment.end,
           crossAxisAlignment: WrapCrossAlignment.center,

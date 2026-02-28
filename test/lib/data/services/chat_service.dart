@@ -1,6 +1,8 @@
 import 'package:chatkuy/core/constants/firestore.dart';
+import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +11,7 @@ import 'package:mockito/mockito.dart';
 @GenerateMocks([
   FirebaseFirestore,
   FirebaseAuth,
+  FirebaseStorage,
   User,
   WriteBatch,
   CollectionReference<Map<String, dynamic>>,
@@ -24,6 +27,7 @@ import 'chat_service.mocks.dart';
 Future<void> chatServiceTest() async {
   late MockFirebaseFirestore firestore;
   late MockFirebaseAuth auth;
+  late MockFirebaseStorage firebaseStorage;
   late ChatService service;
 
   late MockUser mockUser;
@@ -50,8 +54,8 @@ Future<void> chatServiceTest() async {
   setUp(() {
     firestore = MockFirebaseFirestore();
     auth = MockFirebaseAuth();
-    service = ChatService(auth, firestore);
-
+    firebaseStorage = MockFirebaseStorage();
+    service = ChatService(auth, firestore, firebaseStorage);
     mockUser = MockUser();
     mockBatch = MockWriteBatch();
 
@@ -147,6 +151,7 @@ Future<void> chatServiceTest() async {
     await service.sendMessage(
       roomId: 'room-1',
       text: 'Hi',
+      type: MessageType.text,
     );
 
     verify(mockBatch.set(

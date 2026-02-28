@@ -32,11 +32,8 @@ class ChatUserListService implements ChatUserListRepository {
               }))
           .toList();
 
-      final targetUids = rooms
-          .map(
-            (room) => room.participants.firstWhere((uid) => uid != myUid),
-          )
-          .toSet(); // hindari duplicate
+      final targetUids =
+          rooms.map((room) => room.participants.firstWhere((uid) => uid != myUid)).toSet(); // hindari duplicate
 
       final userSnaps = await Future.wait(
         targetUids.map((uid) => _usersRef.doc(uid).get()),
@@ -66,6 +63,8 @@ class ChatUserListService implements ChatUserListRepository {
             lastMessage: room.lastMessage,
             lastMessageAt: room.lastMessageAt,
             unreadCount: room.unreadCount?[myUid] ?? 0,
+            imageUrl: room.imageUrl,
+            type: room.type,
           ),
         );
       }

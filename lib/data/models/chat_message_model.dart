@@ -8,11 +8,15 @@ enum MessageStatus {
   failed,
 }
 
+enum MessageType { text, image }
+
 @JsonSerializable()
 class ChatMessageModel {
   final String id;
   final String senderId;
-  final String text;
+  final String? text;
+  final MessageType type;
+  final String? imageUrl;
 
   @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
   final DateTime createdAt;
@@ -31,13 +35,15 @@ class ChatMessageModel {
   ChatMessageModel({
     required this.id,
     required this.senderId,
-    required this.text,
+    this.text,
     required this.createdAt,
     required this.createdAtClient,
     this.clientMessageId,
     required this.deliveredTo,
     required this.readBy,
     this.status = MessageStatus.sent,
+    required this.type,
+    this.imageUrl,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
@@ -57,6 +63,8 @@ class ChatMessageModel {
       status: status ?? this.status,
       deliveredTo: deliveredTo,
       readBy: readBy,
+      type: type,
+      imageUrl: imageUrl,
     );
   }
 
