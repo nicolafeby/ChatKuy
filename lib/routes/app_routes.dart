@@ -3,6 +3,7 @@ import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/middleware/session_guard.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/add_friend/add_friend_screen.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_attach_image_screen.dart';
 import 'package:chatkuy/ui/friend_request_list/friend_request_list_screen.dart';
 import 'package:get/get_navigation/get_navigation.dart';
 
@@ -49,9 +50,13 @@ class AppRoute {
       name: AppRouteName.CHANGE_PASSWORD_SCREEN,
       page: () => ChangePasswordScreen(),
     ),
-     GetPage(
+    GetPage(
       name: AppRouteName.IMAGE_VIEWER_SCREEN,
       page: () => ImageViewerScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
+      page: () => ChatAttachImageScreen(),
     )
   ];
 }

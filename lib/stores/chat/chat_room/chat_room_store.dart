@@ -37,6 +37,9 @@ abstract class _ChatRoomStore with Store {
   @observable
   File? pickedImage;
 
+  @observable
+  File? croppedImage;
+
   @computed
   List<ChatMessageModel> get messages {
     final list = _serverMessages?.value ?? [];
