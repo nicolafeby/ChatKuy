@@ -72,9 +72,24 @@ class ChatService implements ChatRepository {
         }
 
         if (existing != null) {
-          if (existing.status == MessageStatus.pending) {
-            updates[messageId] = existing.copyWith(status: MessageStatus.sent);
-          }
+          final data = doc.data();
+
+          final newDelivered = Map<String, bool>.from(data[MessageField.deliveredTo] ?? {});
+          final newRead = Map<String, bool>.from(data[MessageField.readBy] ?? {});
+
+          updates[messageId] = ChatMessageModel(
+            id: existing.id,
+            roomId: existing.roomId,
+            senderId: existing.senderId,
+            text: existing.text,
+            imageUrl: existing.imageUrl,
+            type: existing.type,
+            createdAt: existing.createdAt,
+            createdAtClient: existing.createdAtClient,
+            deliveredTo: newDelivered,
+            readBy: newRead,
+            status: existing.status == MessageStatus.pending ? MessageStatus.sent : existing.status,
+          );
 
           continue;
         }
