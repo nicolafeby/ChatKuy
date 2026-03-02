@@ -47,58 +47,71 @@ class ChatService implements ChatRepository {
   }
 
   // -------------------------------
-  // ROOM MESSAGES
-  // -------------------------------
-  // -------------------------------
   // WATCH MESSAGES
   // -------------------------------
   @override
   Stream<List<ChatMessageModel>> watchMessages({
     required String roomId,
-  }) {
-    return _chatRoomsRef
+  }) async* {
+    yield _getLocalMessages(roomId);
+
+    yield* _chatRoomsRef
         .doc(roomId)
         .collection(FirestoreCollection.messages)
         .orderBy(MessageField.createdAtClient)
         .snapshots(includeMetadataChanges: true)
-        .map((snapshot) {
-      final messages = snapshot.docs.map((doc) {
+        .asyncMap((snapshot) async {
+      final updates = <String, ChatMessageModel>{};
+
+      for (final doc in snapshot.docs) {
+        final messageId = doc.id;
+        final existing = _messageBox.get(messageId);
+
+        if (doc.metadata.hasPendingWrites) {
+          continue;
+        }
+
+        if (existing != null) {
+          if (existing.status == MessageStatus.pending) {
+            updates[messageId] = existing.copyWith(status: MessageStatus.sent);
+          }
+
+          continue;
+        }
+
         final data = doc.data();
 
-        final createdAtServer = (data[MessageField.createdAt] as Timestamp?)?.toDate();
-
-        final createdAtClient = (data[MessageField.createdAtClient] as Timestamp?)?.toDate() ??
-            createdAtServer ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-
-        final typeString = data['type'] as String?;
-        final MessageType messageType = typeString == 'image' ? MessageType.image : MessageType.text;
-
-        final message = ChatMessageModel(
-          id: doc.id,
-          senderId: (data[MessageField.senderId] as String).trim(),
-          text: data[MessageField.text] as String?,
-          imageUrl: data[MessageField.imageUrl] as String?,
-          type: messageType,
-          createdAt: createdAtServer ?? createdAtClient,
-          createdAtClient: createdAtClient,
-          deliveredTo: Map<String, bool>.from(
-            data[MessageField.deliveredTo] ?? {},
-          ),
-          readBy: Map<String, bool>.from(
-            data[MessageField.readBy] ?? {},
-          ),
-          status: doc.metadata.hasPendingWrites ? MessageStatus.pending : MessageStatus.sent,
+        updates[messageId] = ChatMessageModel(
+          id: messageId,
+          roomId: roomId,
+          senderId: data[MessageField.senderId] ?? '',
+          text: data[MessageField.text],
+          imageUrl: data[MessageField.imageUrl],
+          type: data[MessageField.type] == 'image' ? MessageType.image : MessageType.text,
+          createdAt: DateTime.now(),
+          createdAtClient: DateTime.now(),
+          deliveredTo: Map<String, bool>.from(data[MessageField.deliveredTo] ?? {}),
+          readBy: Map<String, bool>.from(data[MessageField.readBy] ?? {}),
+          status: MessageStatus.sent,
         );
+      }
 
-        /// SAVE TO HIVE (CACHE UPDATE)
-        _messageBox.put(message.id, message);
+      if (updates.isNotEmpty) {
+        await _messageBox.putAll(updates);
+      }
 
-        return message;
-      }).toList();
-
-      return messages;
+      return _getLocalMessages(roomId);
     });
+  }
+
+  List<ChatMessageModel> _getLocalMessages(String roomId) {
+    final messages = _messageBox.values.where((m) => m.roomId == roomId).toList();
+
+    messages.sort(
+      (a, b) => a.createdAtClient.compareTo(b.createdAtClient),
+    );
+
+    return messages;
   }
 
   // -------------------------------
@@ -124,6 +137,7 @@ class ChatService implements ChatRepository {
     /// OPTIMISTIC LOCAL MESSAGE
     final localMessage = ChatMessageModel(
       id: messageRef.id,
+      roomId: roomId,
       senderId: uid,
       text: text,
       imageUrl: imageUrl,
@@ -135,7 +149,7 @@ class ChatService implements ChatRepository {
       status: MessageStatus.pending,
     );
 
-    _messageBox.put(localMessage.id, localMessage);
+    await _messageBox.put(localMessage.id, localMessage);
 
     batch.set(messageRef, {
       MessageField.senderId: uid,
@@ -169,7 +183,6 @@ class ChatService implements ChatRepository {
   // -------------------------------
   // CREATE / GET ROOM
   // -------------------------------
-
   String buildRoomId(String uid1, String uid2) {
     final ids = [uid1, uid2]..sort();
     return ids.join('_');

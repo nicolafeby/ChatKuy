@@ -30,6 +30,9 @@ class ChatMessageModel {
   @HiveField(0)
   final String id;
 
+  @HiveField(11)
+  final String roomId;
+
   @HiveField(1)
   final String senderId;
 
@@ -65,6 +68,7 @@ class ChatMessageModel {
 
   ChatMessageModel({
     required this.id,
+    required this.roomId,
     required this.senderId,
     this.text,
     required this.createdAt,
@@ -86,6 +90,7 @@ class ChatMessageModel {
   }) {
     return ChatMessageModel(
       id: id,
+      roomId: roomId,
       senderId: senderId,
       text: text,
       createdAt: createdAt,
