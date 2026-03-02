@@ -8,7 +8,6 @@ import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:mobx/mobx.dart';
-import 'package:uuid/uuid.dart';
 
 part 'chat_room_store.g.dart';
 
@@ -104,7 +103,7 @@ abstract class _ChatRoomStore with Store {
   // -----------------------
   @action
   Future<void> sendMessage(String? text, File? image) async {
-    if (roomId == null || currentUid == null) return;
+    if (roomId == null) return;
 
     final messageText = text?.trim();
     final imageFile = image ?? pickedImage;
@@ -113,60 +112,22 @@ abstract class _ChatRoomStore with Store {
       return;
     }
 
-    /// TEMP ID
-    final tempId = DateTime.now().microsecondsSinceEpoch.toString();
+    String? imageUrl;
 
-    final now = DateTime.now();
+    if (imageFile != null) {
+      imageUrl = await chatRepository.uploadImage(file: imageFile, roomId: roomId!);
+    }
 
-    /// INSERT LOCAL PENDING (TANPA IMAGE URL DULU)
-    final box = Hive.box<ChatMessageModel>('chat_messages');
-
-    final localMessage = ChatMessageModel(
-      id: tempId,
-      senderId: currentUid!,
-      text: messageText,
-      imageUrl: null, // belum ada
-      type: imageFile != null ? MessageType.image : MessageType.text,
-      createdAt: now,
-      createdAtClient: now,
-      deliveredTo: {},
-      readBy: {},
-      status: MessageStatus.pending,
-    );
-
-    box.put(tempId, localMessage);
-
-    /// CLEAR INPUT LANGSUNG
+    /// Clear input
     messageController.clear();
     clearPickedImage();
 
-    try {
-      String? imageUrl;
-
-      /// UPLOAD IMAGE (BACKGROUND)
-      if (imageFile != null) {
-        imageUrl = await chatRepository.uploadImage(
-          file: imageFile,
-          roomId: roomId!,
-        );
-      }
-
-      /// KIRIM KE FIRESTORE
-      await chatRepository.sendMessage(
-        roomId: roomId!,
-        text: messageText,
-        imageUrl: imageUrl,
-        type: imageFile != null ? MessageType.image : MessageType.text,
-      );
-
-      /// Tidak perlu update Hive.
-      /// Snapshot Firestore akan override message.
-    } catch (e) {
-      /// UPDATE STATUS JIKA GAGAL
-      final failed = localMessage.copyWith(status: MessageStatus.failed);
-
-      box.put(tempId, failed);
-    }
+    await chatRepository.sendMessage(
+      roomId: roomId!,
+      text: messageText,
+      imageUrl: imageUrl,
+      type: imageUrl != null ? MessageType.image : MessageType.text,
+    );
   }
 
   void initReadMessagePeriodically() {
