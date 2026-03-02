@@ -1,4 +1,7 @@
 import 'package:chatkuy/data/models/chat_message_model.dart';
+import 'package:chatkuy/data/models/chat_room_model.dart';
+import 'package:chatkuy/data/models/chat_user_item_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
@@ -34,21 +37,6 @@ Future<void> setupDI() async {
   getIt.registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance);
   getIt.registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance);
   getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
-
-  // getIt.registerLazySingleton<NotificationRepository>(
-  //   () => getIt<NotificationService>(),
-  // );
-
-  // getIt.registerLazySingleton<PresenceService>(
-  //   () => PresenceService(
-  //     FirebaseAuth.instance,
-  //     FirebaseFirestore.instance,
-  //   ),
-  // );
-
-  // getIt.registerLazySingleton<PresenceRepository>(
-  //   () => getIt<PresenceService>(),
-  // );
 
   registerService();
   await registerHive();
@@ -132,5 +120,23 @@ Future registerHive() async {
     Hive.registerAdapter(MessageTypeAdapter());
   }
 
+  if (!Hive.isAdapterRegistered(3)) {
+    Hive.registerAdapter(ChatRoomModelAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(4)) {
+    Hive.registerAdapter(ChatUserItemModelAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(5)) {
+    Hive.registerAdapter(GenderAdapter());
+  }
+  if (!Hive.isAdapterRegistered(6)) {
+    Hive.registerAdapter(UserModelAdapter());
+  }
+
   await Hive.openBox<ChatMessageModel>('chat_messages');
+  await Hive.openBox<ChatRoomModel>('chat_room');
+  await Hive.openBox<ChatUserItemModel>('chat_list');
+  await Hive.openBox<UserModel>('user_model');
 }

@@ -5,14 +5,12 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'dart:io';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 
 import 'lib/data/services/auth_service.dart';
 import 'lib/data/services/chat_service.dart';
+import 'lib/data/services/hive_services.dart';
 import 'lib/data/services/presence_service.dart';
 
 Future<void> main() async {
@@ -23,6 +21,7 @@ Future<void> main() async {
     isOptional: true,
   );
   authServiceTest();
+  hiveServiceTest();
   chatServiceTest();
   presenceServiceTest();
 }
