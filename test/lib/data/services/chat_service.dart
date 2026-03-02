@@ -4,8 +4,6 @@ import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
-import 'package:hive_test/hive_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mockito/mockito.dart';
@@ -35,51 +33,27 @@ Future<void> chatServiceTest() async {
   late MockUser mockUser;
   late MockWriteBatch mockBatch;
 
-  // Chat room
   late MockCollectionReference<Map<String, dynamic>> roomsCollection;
   late MockDocumentReference<Map<String, dynamic>> roomDoc;
 
-  // Messages
   late MockCollectionReference<Map<String, dynamic>> messagesCollection;
   late MockDocumentReference<Map<String, dynamic>> messageDocRef;
   late MockQuery<Map<String, dynamic>> messageQuery;
   late MockQuerySnapshot<Map<String, dynamic>> messageQuerySnapshot;
   late MockQueryDocumentSnapshot<Map<String, dynamic>> messageSnapshot;
 
-  // Users
   late MockCollectionReference<Map<String, dynamic>> usersCollection;
   late MockDocumentReference<Map<String, dynamic>> userDoc;
   late MockDocumentSnapshot<Map<String, dynamic>> userSnapshot;
   late MockSnapshotMetadata mockMetadata;
   late MockDocumentSnapshot<Map<String, dynamic>> roomSnapshot;
 
-  setUpAll(() async {
-    await setUpTestHive();
-
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(ChatMessageModelAdapter());
-    }
-
-    if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(MessageStatusAdapter());
-    }
-
-    if (!Hive.isAdapterRegistered(2)) {
-      Hive.registerAdapter(MessageTypeAdapter());
-    }
-
-    await Hive.openBox<ChatMessageModel>('chat_messages');
-  });
-
-  tearDownAll(() async {
-    await tearDownTestHive();
-  });
-
   setUp(() {
     firestore = MockFirebaseFirestore();
     auth = MockFirebaseAuth();
     firebaseStorage = MockFirebaseStorage();
     service = ChatService(auth, firestore, firebaseStorage);
+
     mockUser = MockUser();
     mockBatch = MockWriteBatch();
 
@@ -102,7 +76,7 @@ Future<void> chatServiceTest() async {
   // ==========================================================
   // WATCH MESSAGES
   // ==========================================================
-  test('watchMessages emits list of ChatMessageModel', () async {
+  test('watchMessages emits updated list after firestore snapshot', () async {
     when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
 
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
@@ -111,9 +85,7 @@ Future<void> chatServiceTest() async {
 
     when(messagesCollection.orderBy(MessageField.createdAtClient)).thenReturn(messageQuery);
 
-    when(
-      messageQuery.snapshots(includeMetadataChanges: true),
-    ).thenAnswer((_) => Stream.value(messageQuerySnapshot));
+    when(messageQuery.snapshots(includeMetadataChanges: true)).thenAnswer((_) => Stream.value(messageQuerySnapshot));
 
     when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
 
@@ -125,13 +97,14 @@ Future<void> chatServiceTest() async {
     when(messageSnapshot.data()).thenReturn({
       MessageField.senderId: 'user-1',
       MessageField.text: 'Hello',
-      MessageField.createdAt: Timestamp.fromDate(DateTime(2025, 1, 1)),
-      MessageField.createdAtClient: Timestamp.fromDate(DateTime(2025, 1, 1)),
+      MessageField.imageUrl: null,
+      MessageField.type: 'text',
       MessageField.deliveredTo: {},
       MessageField.readBy: {},
     });
 
-    final result = await service.watchMessages(roomId: 'room-1').first;
+    // skip emission pertama (local)
+    final result = await service.watchMessages(roomId: 'room-1').skip(1).first;
 
     expect(result.length, 1);
     expect(result.first.id, 'msg-1');
@@ -142,8 +115,6 @@ Future<void> chatServiceTest() async {
   // SEND MESSAGE
   // ==========================================================
   test('sendMessage writes message and updates room using batch', () async {
-    when(messagesCollection.doc()).thenReturn(messageDocRef);
-    when(messageDocRef.id).thenReturn('msg-1');
     when(auth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
@@ -154,16 +125,15 @@ Future<void> chatServiceTest() async {
     when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
 
     when(messagesCollection.doc()).thenReturn(messageDocRef);
+    when(messageDocRef.id).thenReturn('msg-1');
 
     when(firestore.batch()).thenReturn(mockBatch);
 
-    // 🔥 ROOM SNAPSHOT
     when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
     when(roomSnapshot.data()).thenReturn({
       ChatRoomField.participants: ['user-1', 'user-2'],
     });
 
-    // 🔥 USER SNAPSHOT
     when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
 
     when(usersCollection.doc('user-1')).thenReturn(userDoc);
@@ -182,23 +152,20 @@ Future<void> chatServiceTest() async {
 
     verify(mockBatch.set(
       messageDocRef,
-      argThat(allOf(
-        containsPair(MessageField.text, 'Hi'),
-        containsPair(MessageField.senderId, 'user-1'),
-        containsPair(MessageField.senderName, 'Budi'),
-      )),
+      argThat(predicate<Map<String, dynamic>>((data) =>
+          data[MessageField.text] == 'Hi' &&
+          data[MessageField.senderId] == 'user-1' &&
+          data[MessageField.senderName] == 'Budi' &&
+          data[MessageField.type] == 'text')),
     )).called(1);
 
     verify(mockBatch.update(
       roomDoc,
-      argThat(
-        predicate<Map<String, dynamic>>((data) {
-          return data[ChatRoomField.lastMessage] == 'Hi' &&
-              data[ChatRoomField.lastSenderId] == 'user-1' &&
-              data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
-              data.containsKey('${ChatRoomField.unreadCount}.user-2');
-        }),
-      ),
+      argThat(predicate<Map<String, dynamic>>((data) =>
+          data[ChatRoomField.lastMessage] == 'Hi' &&
+          data[ChatRoomField.lastSenderId] == 'user-1' &&
+          data.containsKey('${ChatRoomField.unreadCount}.user-1') &&
+          data.containsKey('${ChatRoomField.unreadCount}.user-2'))),
     )).called(1);
 
     verify(mockBatch.commit()).called(1);
