@@ -120,6 +120,8 @@ app.*.symbols
 
 # .env
 .vscode
+.fvm
+.fvmrc
 **/*.g.dart
 **/*.freezed.dart
 **/*.mocks.dart
