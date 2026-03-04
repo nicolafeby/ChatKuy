@@ -70,6 +70,7 @@ class _ChatAttachImageScreenState extends State<ChatAttachImageScreen> {
   Widget _buildKeyboardSections() {
     return ChatKeyboardWidget(
       store: argument!.store,
+      disableAttachment: true,
       onSend: (text) {
         final image = (argument?.store.croppedImage ?? argument?.image);
         if (image == null) return;

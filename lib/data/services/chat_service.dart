@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:chatkuy/core/constants/firestore.dart';
+import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -83,6 +84,7 @@ class ChatService implements ChatRepository {
             senderId: existing.senderId,
             text: existing.text,
             imageUrl: existing.imageUrl,
+            localImagePath: existing.localImagePath,
             type: existing.type,
             createdAt: existing.createdAt,
             createdAtClient: existing.createdAtClient,
@@ -102,6 +104,7 @@ class ChatService implements ChatRepository {
           senderId: data[MessageField.senderId] ?? '',
           text: data[MessageField.text],
           imageUrl: data[MessageField.imageUrl],
+          localImagePath: data[MessageField.localImagePath],
           type: data[MessageField.type] == 'image' ? MessageType.image : MessageType.text,
           createdAt: DateTime.now(),
           createdAtClient: DateTime.now(),
@@ -133,7 +136,13 @@ class ChatService implements ChatRepository {
   // SEND MESSAGE
   // -------------------------------
   @override
-  Future<void> sendMessage({required String roomId, String? text, String? imageUrl, required MessageType type}) async {
+  Future<void> sendMessage({
+    required String roomId,
+    String? text,
+    String? imageUrl,
+    required MessageType type,
+    String? localImagePath,
+  }) async {
     final uid = auth.currentUser!.uid;
 
     final roomRef = _chatRoomsRef.doc(roomId);
@@ -162,6 +171,7 @@ class ChatService implements ChatRepository {
       deliveredTo: {},
       readBy: {},
       status: MessageStatus.pending,
+      localImagePath: localImagePath,
     );
 
     await _messageBox.put(localMessage.id, localMessage);
@@ -170,6 +180,7 @@ class ChatService implements ChatRepository {
       MessageField.senderId: uid,
       MessageField.text: text,
       MessageField.imageUrl: imageUrl,
+      MessageField.localImagePath: localImagePath,
       MessageField.createdAt: FieldValue.serverTimestamp(),
       MessageField.createdAtClient: DateTime.now(),
       MessageField.deliveredTo: <String, bool>{},
@@ -299,10 +310,12 @@ class ChatService implements ChatRepository {
   // UPLOAD IMAGE
   // -------------------------------
   @override
-  Future<String> uploadImage({
+  Future<LocalImageModel> uploadImage({
     required File file,
     required String roomId,
   }) async {
+    final localImagePath = await saveImageToLocal(imageFile: file, roomId: roomId);
+
     final ref = firebaseStorage
         .ref()
         .child(StorageCollection.chatImages)
@@ -310,6 +323,10 @@ class ChatService implements ChatRepository {
 
     await ref.putFile(file);
 
-    return await ref.getDownloadURL();
+    final downloadUrl = await ref.getDownloadURL();
+
+    final data = LocalImageModel(localImagePath: localImagePath, downloadUrl: downloadUrl);
+
+    return data;
   }
 }

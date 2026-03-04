@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
@@ -77,6 +79,7 @@ class ChatBubbleWidget extends StatelessWidget {
   Widget _buildContent() {
     final type = message.type;
     final imageUrl = message.imageUrl;
+    final localImagePath = message.localImagePath;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -95,35 +98,55 @@ class ChatBubbleWidget extends StatelessWidget {
                   tag: imageUrl,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4.r),
-                    child: Image.network(
-                      height: 200.h,
-                      width: double.infinity,
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          height: 200.h,
-                          width: double.infinity,
-                          color: Colors.grey.shade300,
-                          alignment: Alignment.center,
-                          child: const CircularProgressIndicator(),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 200.h,
-                          width: double.infinity,
-                          color: Colors.grey.shade300,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.broken_image,
-                            size: 48,
-                            color: Colors.grey,
+                    child: localImagePath != null
+                        ? Image.file(
+                            height: 200.h,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            File(localImagePath),
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 200.h,
+                                width: double.infinity,
+                                color: Colors.grey.shade300,
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
+                          )
+                        : Image.network(
+                            height: 200.h,
+                            width: double.infinity,
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                height: 200.h,
+                                width: double.infinity,
+                                color: Colors.grey.shade300,
+                                alignment: Alignment.center,
+                                child: const CircularProgressIndicator(),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 200.h,
+                                width: double.infinity,
+                                color: Colors.grey.shade300,
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ),
               ),

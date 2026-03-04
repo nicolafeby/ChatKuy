@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -112,10 +113,10 @@ abstract class _ChatRoomStore with Store {
       return;
     }
 
-    String? imageUrl;
+    LocalImageModel? imageData;
 
     if (imageFile != null) {
-      imageUrl = await chatRepository.uploadImage(file: imageFile, roomId: roomId!);
+      imageData = await chatRepository.uploadImage(file: imageFile, roomId: roomId!);
     }
 
     /// Clear input
@@ -125,8 +126,9 @@ abstract class _ChatRoomStore with Store {
     await chatRepository.sendMessage(
       roomId: roomId!,
       text: messageText,
-      imageUrl: imageUrl,
-      type: imageUrl != null ? MessageType.image : MessageType.text,
+      imageUrl: imageData?.downloadUrl,
+      localImagePath: imageData?.localImagePath,
+      type: imageData != null ? MessageType.image : MessageType.text,
     );
   }
 
