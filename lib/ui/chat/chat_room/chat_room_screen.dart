@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -134,10 +135,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           isSameGroup: isSameGroup,
                           isFirstInGroup: !isSameGroup,
                           onRetry: message.status == MessageStatus.failed
-                              ? () => store.sendMessage(
-                                    message.text,
-                                    null, // jangan kirim pickedImage
-                                  )
+                              ? () => store.sendMessage(message.text, null)
                               : null,
                         ),
                       ],
@@ -145,13 +143,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   },
                 ),
               ),
-              ChatKeyboardWidget(
-                store: store,
-                onSend: (text) {
+              ChatKeyboardWidgetV2(
+                controller: store.messageController,
+                sendButtonColor: AppColor.primaryColor,
+                onSendTap: () {
+                  final text = store.messageController.text.trim();
                   if (text.isEmpty) return;
                   store.sendMessage(text, null);
                 },
-              )
+                store: store,
+              ),
             ],
           ),
         );
