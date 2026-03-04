@@ -145,7 +145,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   },
                 ),
               ),
-              ChatKeyboardWidget(store: store),
+              ChatKeyboardWidget(
+                store: store,
+                onSend: (text) {
+                  if (text.isEmpty) return;
+                  store.sendMessage(text, null);
+                },
+              )
             ],
           ),
         );

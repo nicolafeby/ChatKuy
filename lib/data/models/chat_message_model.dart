@@ -66,6 +66,9 @@ class ChatMessageModel {
   @JsonKey(ignore: true)
   final MessageStatus status;
 
+  @HiveField(12)
+  final String? localImagePath;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -79,6 +82,7 @@ class ChatMessageModel {
     this.status = MessageStatus.sent,
     required this.type,
     this.imageUrl,
+    this.localImagePath,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
@@ -87,6 +91,7 @@ class ChatMessageModel {
 
   ChatMessageModel copyWith({
     MessageStatus? status,
+    String? localImagePath,
   }) {
     return ChatMessageModel(
       id: id,
@@ -101,6 +106,7 @@ class ChatMessageModel {
       readBy: readBy,
       type: type,
       imageUrl: imageUrl,
+      localImagePath: localImagePath ?? this.localImagePath,
     );
   }
 

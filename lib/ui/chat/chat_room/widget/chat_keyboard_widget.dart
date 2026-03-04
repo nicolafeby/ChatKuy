@@ -1,6 +1,5 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
-import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/helpers/imahe_picker_helper.dart';
 import 'package:chatkuy/core/helpers/permission_handeler_helper.dart';
@@ -16,7 +15,14 @@ import 'package:permission_handler/permission_handler.dart';
 class ChatKeyboardWidget extends StatelessWidget with BaseLayout {
   final ChatRoomStore store;
   final bool disableAttachment;
-  const ChatKeyboardWidget({super.key, required this.store, this.disableAttachment = false});
+  final Function(String text) onSend;
+
+  const ChatKeyboardWidget({
+    super.key,
+    required this.store,
+    this.disableAttachment = false,
+    required this.onSend,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,152 +30,108 @@ class ChatKeyboardWidget extends StatelessWidget with BaseLayout {
       top: false,
       bottom: true,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8.r, horizontal: 16.r),
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: Colors.grey,
-              width: 0.5,
-            ),
-          ),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6).r,
+        color: Colors.white,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: 0.75.sw,
-              child: TextField(
-                minLines: 1,
-                cursorHeight: 18.r,
-                controller: store.messageController,
-                textInputAction: TextInputAction.newline,
-                maxLines: 5,
-                onChanged: store.onTypingChanged,
-                decoration: InputDecoration(
-                  prefixIcon: disableAttachment == false
-                      ? InkWell(
-                          radius: 10,
-                          borderRadius: BorderRadius.circular(50.r),
-                          onTap: _pickImage,
-                          child: Icon(Icons.attach_file),
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  hintText: "Tulis pesan ....",
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.h),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.emoji_emotions_outlined, size: 22.r),
+                    8.horizontalSpace,
+                    Expanded(
+                      child: TextField(
+                        controller: store.messageController,
+                        onChanged: store.onTypingChanged,
+                        minLines: 1,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                          hintText: "Message",
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    Visibility(
+                      visible: !disableAttachment,
+                      child: GestureDetector(
+                        onTap: () {
+                          handlePermission(
+                            permission: Permission.mediaLibrary,
+                            onSuccess: () async {
+                              dismissLoading();
+                              final image = await ImagePickerHelper.pickImage(
+                                source: PickImageSource.gallery,
+                              );
+
+                              if (image == null) return;
+
+                              Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
+                                  arguments: ChatAttachImageArgument(image: image, store: store));
+                            },
+                            onDenied: (p0) {
+                              Get.bottomSheet(BottomsheetWidget(
+                                asset: AppAsset.imgFaceSad,
+                                title: AppStrings.oopsTerjadiKesalahan,
+                                message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+                              ));
+                            },
+                          );
+                        },
+                        child: Icon(Icons.attach_file, size: 22.r),
+                      ),
+                    ),
+                    Visibility(
+                      visible: !disableAttachment,
+                      child: GestureDetector(
+                        onTap: () {
+                          handlePermission(
+                            permission: Permission.camera,
+                            onSuccess: () async {
+                              dismissLoading();
+                              final image = await ImagePickerHelper.pickImage(
+                                source: PickImageSource.camera,
+                              );
+
+                              if (image == null) return;
+
+                              Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
+                                  arguments: ChatAttachImageArgument(image: image, store: store));
+                            },
+                            onDenied: (p0) {
+                              Get.bottomSheet(BottomsheetWidget(
+                                asset: AppAsset.imgFaceSad,
+                                title: AppStrings.oopsTerjadiKesalahan,
+                                message: 'Kami tidak mendapatkan akses kamera untuk action ini',
+                              ));
+                            },
+                          );
+                        },
+                        child: Icon(Icons.camera_alt, size: 22.r).paddingOnly(left: 8.w),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Spacer(),
-            Container(
-              decoration: BoxDecoration(color: AppColor.primaryColor, shape: BoxShape.circle),
+            6.horizontalSpace,
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: Colors.green,
               child: IconButton(
-                icon: Icon(
-                  Icons.send_outlined,
-                  color: Colors.white,
-                ),
-                onPressed: () => store.sendMessage(store.messageController.text.trim(), store.pickedImage),
+                icon: Icon(Icons.send, color: Colors.white, size: 20.r),
+                onPressed: () => onSend.call(store.messageController.text.trim()),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  void _pickImage() {
-    Get.dialog(Dialog(
-      insetPadding: EdgeInsets.symmetric(horizontal: 60.w),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Pilih Opsi',
-            style: TextStyle(fontSize: 18.sp),
-          ),
-          10.verticalSpace,
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              minimumSize: Size.zero,
-              padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 6.r),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () async {
-              handlePermission(
-                permission: Permission.mediaLibrary,
-                onSuccess: () async {
-                  dismissLoading();
-                  final image = await ImagePickerHelper.pickImage(
-                    source: PickImageSource.gallery,
-                  );
-
-                  if (image == null) return;
-
-                  Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                      arguments: ChatAttachImageArgument(image: image, store: store));
-                },
-                onDenied: (p0) {
-                  Get.bottomSheet(BottomsheetWidget(
-                    asset: AppAsset.imgFaceSad,
-                    title: AppStrings.oopsTerjadiKesalahan,
-                    message: 'Kami tidak mendapatkan akses galeri untuk action ini',
-                  ));
-                },
-              );
-            },
-            label: Text(
-              'Pilih dari galeri',
-              style: TextStyle(fontSize: 16.sp),
-            ),
-            icon: Icon(Icons.photo_album_outlined),
-          ),
-          2.verticalSpace,
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              minimumSize: Size.zero,
-              padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 6.r),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () {
-              handlePermission(
-                permission: Permission.camera,
-                onSuccess: () async {
-                  dismissLoading();
-                  final image = await ImagePickerHelper.pickImage(
-                    source: PickImageSource.camera,
-                  );
-
-                  if (image == null) return;
-
-                  Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                      arguments: ChatAttachImageArgument(image: image, store: store));
-                },
-                onDenied: (p0) {
-                  Get.bottomSheet(BottomsheetWidget(
-                    asset: AppAsset.imgFaceSad,
-                    title: AppStrings.oopsTerjadiKesalahan,
-                    message: 'Kami tidak mendapatkan akses kamera untuk action ini',
-                  ));
-                },
-              );
-            },
-            label: Text(
-              'Ambil dari kamera',
-              style: TextStyle(fontSize: 16.sp),
-            ),
-            icon: Icon(Icons.camera_alt_outlined),
-          ),
-        ],
-      ).paddingOnly(top: 12.h, bottom: 8.h),
-    ));
   }
 }

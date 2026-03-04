@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:chat_bubbles/message_bars/message_bar.dart';
 import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
+import 'package:chatkuy/ui/chat/chat_room/widget/chat_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -68,17 +68,14 @@ class _ChatAttachImageScreenState extends State<ChatAttachImageScreen> {
   }
 
   Widget _buildKeyboardSections() {
-    return Column(
-      children: [
-        MessageBar(
-          messageBarColor: Colors.transparent,
-          onTextChanged: (p0) => argument?.store.onTypingChanged(p0),
-          onSend: (p0) {
-            argument?.store.sendMessage(p0, (argument?.store.croppedImage ?? argument!.image));
-            Get.back();
-          },
-        ),
-      ],
+    return ChatKeyboardWidget(
+      store: argument!.store,
+      onSend: (text) {
+        final image = (argument?.store.croppedImage ?? argument?.image);
+        if (image == null) return;
+        argument?.store.sendMessage(text, image);
+        Get.back();
+      },
     );
   }
 
