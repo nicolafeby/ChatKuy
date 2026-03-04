@@ -74,6 +74,7 @@ class _ChatAttachImageScreenState extends State<ChatAttachImageScreen> {
         final image = (argument?.store.croppedImage ?? argument?.image);
         if (image == null) return;
         argument?.store.sendMessage(text, image);
+        argument?.store.messageController.clear();
         Get.back();
       },
     );
