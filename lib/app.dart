@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      builder: (_, __) {
+      builder: (_, screenUtilChild) {
         return GetMaterialApp(
           navigatorKey: Get.key,
           theme: getAppTheme(),
@@ -21,6 +21,12 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           initialRoute: AppRouteName.BASE_SCREEN,
           getPages: AppRoute.pages,
+          home: screenUtilChild,
+          builder: (_, getChild) => SafeArea(
+            top: false,
+            bottom: true,
+            child: getChild ?? SizedBox.shrink(),
+          ),
         );
       },
     );

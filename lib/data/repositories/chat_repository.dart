@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 
@@ -20,6 +21,7 @@ abstract class ChatRepository {
     String? text,
     String? imageUrl,
     required MessageType type,
+    String? localImagePath,
   });
 
   /// Create room if not exists
@@ -51,5 +53,5 @@ abstract class ChatRepository {
     required String uid,
   });
 
-  Future<String> uploadImage({required File file, required String roomId});
+  Future<LocalImageModel> uploadImage({required File file, required String roomId});
 }

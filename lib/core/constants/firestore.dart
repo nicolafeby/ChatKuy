@@ -70,6 +70,7 @@ abstract class MessageField {
   static const readBy = 'readBy';
   static const senderName = 'senderName';
   static const imageUrl = 'imageUrl';
+  static const localImagePath = 'localImagePath';
   static const type = 'type';
 }
 
