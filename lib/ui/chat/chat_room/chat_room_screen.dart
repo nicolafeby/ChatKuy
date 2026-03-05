@@ -1,5 +1,7 @@
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/widgets/chat_field/attachment_overlay.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/widgets/chat_field/chat_field.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -7,10 +9,10 @@ import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
+import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
-import 'package:chatkuy/ui/chat/chat_room/widget/chat_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -95,65 +97,83 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           fcmToken: 'fcmToken',
         );
 
-        return Scaffold(
-          resizeToAvoidBottomInset: true,
-          appBar: ChatAppbarWidget(
-            store: store,
-            userData: user ?? dummy,
-            isTyping: isTargetTyping(),
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16).r,
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final realIndex = messages.length - 1 - index;
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (AttachmentOverlay.isShowing) {
+              AttachmentOverlay.hide();
+            } else if(ChatFieldV2.isEmojiShowing){
+              ChatFieldV2.setEmojiShowing(false);
+            }
+            else {
+              Get.back();
+            }
 
-                    final message = messages[realIndex];
-                    final isMe = message.senderId == argument!.currentUid;
+          },
+          child: Scaffold(
+            resizeToAvoidBottomInset: true,
+            appBar: ChatAppbarWidget(
+              store: store,
+              userData: user ?? dummy,
+              isTyping: isTargetTyping(),
+            ),
+            body: Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16).r,
+                    reverse: true,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final realIndex = messages.length - 1 - index;
 
-                    final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+                      final message = messages[realIndex];
+                      final isMe = message.senderId == argument!.currentUid;
 
-                    final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+                      final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
 
-                    final showDateSeparator =
-                        prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
+                      final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (showDateSeparator)
-                          ChatDateSeparator(
-                            label: message.createdAt.chatDayLabel,
-                          ).paddingOnly(top: 8.h),
-                        ChatBubbleWidget(
-                          message: message,
-                          isMe: isMe,
-                          isSameGroup: isSameGroup,
-                          isFirstInGroup: !isSameGroup,
-                          onRetry: message.status == MessageStatus.failed
-                              ? () => store.sendMessage(message.text, null)
-                              : null,
-                        ),
-                      ],
-                    );
-                  },
+                      final showDateSeparator =
+                          prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showDateSeparator)
+                            ChatDateSeparator(
+                              label: message.createdAt.chatDayLabel,
+                            ).paddingOnly(top: 8.h),
+                          ChatBubbleWidget(
+                            message: message,
+                            isMe: isMe,
+                            isSameGroup: isSameGroup,
+                            isFirstInGroup: !isSameGroup,
+                            onRetry: message.status == MessageStatus.failed
+                                ? () => store.sendMessage(message.text, null)
+                                : null,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-              ChatKeyboardWidgetV2(
-                controller: store.messageController,
-                sendButtonColor: AppColor.primaryColor,
-                onSendTap: () {
-                  final text = store.messageController.text.trim();
-                  if (text.isEmpty) return;
-                  store.sendMessage(text, null);
-                },
-                store: store,
-              ),
-            ],
+                ChatFieldV2(
+                  controller: store.messageController,
+                  sendButtonColor: AppColor.primaryColor,
+                  attachmentConfig: AttachmentConfig(
+                    showAudio: false,
+                    backgroundColor: Colors.grey.withOpacity(0.7),
+                  ),
+                  onSendTap: () {
+                    final text = store.messageController.text.trim();
+                    if (text.isEmpty) return;
+                    store.sendMessage(text, null);
+                  },
+                  store: store,
+                ),
+              ],
+            ),
           ),
         );
       },
