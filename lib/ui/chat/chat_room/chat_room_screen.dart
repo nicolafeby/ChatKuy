@@ -41,7 +41,7 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> {
+class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAliveClientMixin{
   ChatRoomStore store = ChatRoomStore(
     chatRepository: getIt<ChatRepository>(),
     userRepository: getIt<UserRepository>(),
@@ -73,6 +73,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (argument == null) return const SizedBox.shrink();
 
     return Observer(
@@ -179,4 +180,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       },
     );
   }
+  
+  @override
+  bool get wantKeepAlive => true;
 }
