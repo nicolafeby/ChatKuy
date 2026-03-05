@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
@@ -99,25 +100,7 @@ class ChatBubbleWidget extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4.r),
                     child: localImagePath != null
-                        ? Image.file(
-                            height: 200.h,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            File(localImagePath),
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 200.h,
-                                width: double.infinity,
-                                color: Colors.grey.shade300,
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  size: 48,
-                                  color: Colors.grey,
-                                ),
-                              );
-                            },
-                          )
+                        ? _buildImage(imageUrl)
                         : Image.network(
                             height: 200.h,
                             width: double.infinity,
@@ -192,6 +175,44 @@ class ChatBubbleWidget extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildImage(String imageUrl) {
+    return FutureBuilder<String>(
+      future: getOrDownloadImage(imageUrl: imageUrl),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Container(
+            height: 200.h,
+            width: double.infinity,
+            alignment: Alignment.center,
+            child: const CircularProgressIndicator(),
+          );
+        }
+
+        final localImagePath = snapshot.data!;
+
+        return Image.file(
+          File(localImagePath),
+          height: 200.h,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 200.h,
+              width: double.infinity,
+              color: Colors.grey.shade300,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.broken_image,
+                size: 48,
+                color: Colors.grey,
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

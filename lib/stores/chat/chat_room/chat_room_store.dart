@@ -35,7 +35,6 @@ abstract class _ChatRoomStore with Store {
   @observable
   String? currentUid;
 
-  /// 🔥 IMAGE SUPPORT
   @observable
   File? pickedImage;
 
