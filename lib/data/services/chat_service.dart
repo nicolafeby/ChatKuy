@@ -316,10 +316,7 @@ class ChatService implements ChatRepository {
   }) async {
     final localImagePath = await saveImageToLocal(imageFile: file, roomId: roomId);
 
-    final ref = firebaseStorage
-        .ref()
-        .child(StorageCollection.chatImages)
-        .child('${roomId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    final ref = firebaseStorage.ref().child(StorageCollection.chatImages).child(imageNameFormat(roomId, file));
 
     await ref.putFile(file);
 

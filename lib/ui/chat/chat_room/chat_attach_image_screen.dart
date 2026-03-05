@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
+import 'package:chatkuy/core/widgets/chat_field/chat_field.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
-import 'package:chatkuy/ui/chat/chat_room/widget/chat_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -68,7 +68,7 @@ class _ChatAttachImageScreenState extends State<ChatAttachImageScreen> {
   }
 
   Widget _buildKeyboardSections() {
-    return ChatKeyboardWidget(
+    return ChatField(
       store: argument!.store,
       disableAttachment: true,
       onSend: (text) {

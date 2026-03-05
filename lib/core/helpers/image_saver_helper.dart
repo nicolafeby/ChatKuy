@@ -20,8 +20,7 @@ Future<String> saveImageToLocal({required File imageFile, required String roomId
     await chatDir.create(recursive: true);
   }
 
-  final fileName =
-      '${AppStrings.appName}_${roomId}_${DateTime.now().millisecondsSinceEpoch}${extension(imageFile.path)}';
+  final fileName = imageNameFormat(roomId, imageFile);
 
   final newPath = '${chatDir.path}/$fileName';
 
@@ -29,3 +28,6 @@ Future<String> saveImageToLocal({required File imageFile, required String roomId
 
   return newFile.path;
 }
+
+String imageNameFormat(String roomId, File file) =>
+    '${AppStrings.appName}_${roomId}_${DateTime.now().millisecondsSinceEpoch}${extension(file.path)}';

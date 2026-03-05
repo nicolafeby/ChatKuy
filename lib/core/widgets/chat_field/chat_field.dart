@@ -1,7 +1,8 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
-import 'package:chatkuy/core/helpers/attachment_sheet.dart';
+import 'package:chatkuy/core/widgets/chat_field/attachment_overlay.dart';
+import 'package:chatkuy/core/widgets/chat_field/attachment_sheet.dart';
 import 'package:chatkuy/core/helpers/emoji_picker_overlay.dart';
 import 'package:chatkuy/core/helpers/imahe_picker_helper.dart';
 import 'package:chatkuy/core/helpers/permission_handeler_helper.dart';
@@ -15,12 +16,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class ChatKeyboardWidget extends StatelessWidget with BaseLayout {
+class ChatField extends StatelessWidget with BaseLayout {
   final ChatRoomStore store;
   final bool disableAttachment;
   final Function(String text) onSend;
 
-  const ChatKeyboardWidget({
+  const ChatField({
     super.key,
     required this.store,
     this.disableAttachment = false,
@@ -139,7 +140,7 @@ class ChatKeyboardWidget extends StatelessWidget with BaseLayout {
   }
 }
 
-class ChatKeyboardWidgetV2 extends StatefulWidget {
+class ChatFieldV2 extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
   final IconData sendIcon;
@@ -166,10 +167,10 @@ class ChatKeyboardWidgetV2 extends StatefulWidget {
   final VoidCallback? onCustomEmojiTap;
   final ChatRoomStore store;
 
-  const ChatKeyboardWidgetV2({
+  const ChatFieldV2({
     super.key,
     required this.controller,
-    this.hintText = "Type a message",
+    this.hintText = 'Tulis pesan...',
     this.sendIcon = Icons.send,
     this.sendButtonColor = Colors.green,
     this.textFieldRadius = 25.0,
@@ -196,10 +197,18 @@ class ChatKeyboardWidgetV2 extends StatefulWidget {
   });
 
   @override
-  State<ChatKeyboardWidgetV2> createState() => _ChatKeyboardWidgetV2State();
+  State<ChatFieldV2> createState() => _ChatFieldV2State();
+
+  static bool _isEmojiShowing = false;
+
+  static bool get isEmojiShowing => _isEmojiShowing;
+
+  static void setEmojiShowing(bool value) {
+    _isEmojiShowing = value;
+  }
 }
 
-class _ChatKeyboardWidgetV2State extends State<ChatKeyboardWidgetV2> with WidgetsBindingObserver {
+class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, BaseLayout {
   bool _showAboveSheet = false;
   bool _showEmojiPicker = false;
   bool isFocused = false;
@@ -222,19 +231,22 @@ class _ChatKeyboardWidgetV2State extends State<ChatKeyboardWidgetV2> with Widget
 
   @override
   void didChangeMetrics() {
-    final bottomInset =
-        WidgetsBinding.instance.window.viewInsets.bottom / WidgetsBinding.instance.window.devicePixelRatio;
+    final bottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
 
     if (bottomInset > 0 && bottomInset > (_keyboardHeight ?? 0)) {
       setState(() {
         _keyboardHeight = bottomInset;
-        if (_showEmojiPicker) _showEmojiPicker = false;
+        if (_showEmojiPicker) {
+          _showEmojiPicker = false;
+          ChatFieldV2.setEmojiShowing(false);
+        }
       });
     }
 
     if (isFocused && _showEmojiPicker == true) {
       setState(() {
         _showEmojiPicker = false;
+        ChatFieldV2.setEmojiShowing(false);
       });
     }
   }
@@ -246,23 +258,107 @@ class _ChatKeyboardWidgetV2State extends State<ChatKeyboardWidgetV2> with Widget
       }
       await Future.delayed(const Duration(milliseconds: 50));
       setState(() => _showEmojiPicker = false);
+      ChatFieldV2.setEmojiShowing(false);
     } else {
       FocusScope.of(context).unfocus();
       await Future.delayed(const Duration(milliseconds: 50));
       if (mounted) {
         setState(() => _showEmojiPicker = true);
+        ChatFieldV2.setEmojiShowing(true);
       }
     }
 
     setState(() => _showAboveSheet = false);
   }
 
-  void _toggleAboveSheet() {
-    setState(() {
-      _showAboveSheet = !_showAboveSheet;
-      _showEmojiPicker = false;
-      _focusNode.unfocus();
-    });
+  void showAttachment(BuildContext context) {
+    final options = [
+      AttachmentOption(
+        icon: Icons.camera_alt,
+        label: "Camera",
+        onTap: () {
+          AttachmentOverlay.hide();
+          handlePermission(
+            permission: Permission.camera,
+            onSuccess: () async {
+              dismissLoading();
+              final image = await ImagePickerHelper.pickImage(
+                source: PickImageSource.camera,
+              );
+
+              if (image == null) return;
+
+              Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
+                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
+            },
+            onDenied: (p0) {
+              Get.bottomSheet(BottomsheetWidget(
+                asset: AppAsset.imgFaceSad,
+                title: AppStrings.oopsTerjadiKesalahan,
+                message: 'Kami tidak mendapatkan akses kamera untuk action ini',
+              ));
+            },
+          );
+        },
+      ),
+      AttachmentOption(
+        icon: Icons.photo,
+        label: "Gallery",
+        onTap: () {
+          AttachmentOverlay.hide();
+          handlePermission(
+            permission: Permission.mediaLibrary,
+            onSuccess: () async {
+              dismissLoading();
+              final image = await ImagePickerHelper.pickImage(
+                source: PickImageSource.gallery,
+              );
+
+              if (image == null) return;
+
+              Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
+                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
+            },
+            onDenied: (p0) {
+              Get.bottomSheet(BottomsheetWidget(
+                asset: AppAsset.imgFaceSad,
+                title: AppStrings.oopsTerjadiKesalahan,
+                message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+              ));
+            },
+          );
+        },
+      ),
+      AttachmentOption(
+        icon: Icons.description,
+        label: "Document",
+        onTap: () {
+          debugPrint("Document clicked");
+          AttachmentOverlay.hide();
+        },
+      ),
+      AttachmentOption(
+        icon: Icons.contacts,
+        label: "Contact",
+        onTap: () {
+          debugPrint("Contact clicked");
+          AttachmentOverlay.hide();
+        },
+      ),
+      // AttachmentOption(
+      //   icon: Icons.audiotrack,
+      //   label: "Audio",
+      //   onTap: () {
+      //     debugPrint("Audio clicked");
+      //     AttachmentOverlay.hide();
+      //   },
+      // ),
+    ];
+
+    AttachmentOverlay.show(
+      context: context,
+      sheet: AttachmentSheet(options: options),
+    );
   }
 
   @override
@@ -283,7 +379,6 @@ class _ChatKeyboardWidgetV2State extends State<ChatKeyboardWidgetV2> with Widget
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_showAboveSheet) const SizedBox(height: 260),
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -344,7 +439,7 @@ class _ChatKeyboardWidgetV2State extends State<ChatKeyboardWidgetV2> with Widget
                                         (widget.attachmentConfig?.showContact ?? true))
                                 ? IconButton(
                                     icon: Icon(widget.attachmentIcon, color: Colors.grey),
-                                    onPressed: _toggleAboveSheet,
+                                    onPressed: () => showAttachment(context),
                                   )
                                 : null,
                           ),
@@ -370,25 +465,6 @@ class _ChatKeyboardWidgetV2State extends State<ChatKeyboardWidgetV2> with Widget
               if (_showEmojiPicker) SizedBox(height: _keyboardHeight ?? 0),
             ],
           ),
-          if (_showAboveSheet)
-            AttachmentSheet(
-              context: context,
-              onCameraTap: widget.attachmentConfig?.onCameraFilesPicked,
-              onGalleryTap: widget.attachmentConfig?.onGalleryFilesPicked,
-              onAudioTap: widget.attachmentConfig?.onAudioFilesPicked,
-              onDocSelect: widget.attachmentConfig?.onDocFilerPicked,
-              onContactSelect: widget.attachmentConfig?.onContactPicked,
-              showCamera: widget.attachmentConfig?.showCamera ?? true,
-              showGallery: widget.attachmentConfig?.showGallery ?? true,
-              showAudio: widget.attachmentConfig?.showAudio ?? true,
-              showDoc: widget.attachmentConfig?.showDoc ?? true,
-              showContact: widget.attachmentConfig?.showContact ?? true,
-              backgroundColor: widget.attachmentConfig?.backgroundColor ?? Colors.white,
-              iconColor: widget.attachmentConfig?.iconColor ?? Colors.black,
-              textColor: widget.attachmentConfig?.textColor ?? Colors.black,
-              iconBackgroundColor: widget.attachmentConfig?.iconBackgroundColor ?? const Color(0xFFE0E0E0),
-              store: widget.store,
-            ),
           if (_showEmojiPicker)
             EmojiPickerOverlay(
               controller: widget.controller,
