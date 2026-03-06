@@ -57,8 +57,7 @@ jobs:
   cd:
     name: Distribute APK
     needs: ci
-    runs-on: self-hosted
-    timeout-minutes: 20
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
