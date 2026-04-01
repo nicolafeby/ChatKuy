@@ -152,20 +152,26 @@ Future<void> chatServiceTest() async {
 
     verify(mockBatch.set(
       messageDocRef,
-      argThat(predicate<Map<String, dynamic>>((data) =>
-          data[MessageField.text] == 'Hi' &&
-          data[MessageField.senderId] == 'user-1' &&
-          data[MessageField.senderName] == 'Budi' &&
-          data[MessageField.type] == 'text')),
+      argThat(predicate<Map<String, dynamic>>((data) {
+        return data[MessageField.text] == 'Hi' &&
+            data[MessageField.senderId] == 'user-1' &&
+            data[MessageField.senderName] == 'Budi' &&
+            data[MessageField.type] == 'text' &&
+            data.containsKey(MessageField.createdAt) &&
+            data.containsKey(MessageField.createdAtClient);
+      })),
+      any,
     )).called(1);
 
     verify(mockBatch.update(
       roomDoc,
-      argThat(predicate<Map<String, dynamic>>((data) =>
-          data[ChatRoomField.lastMessage] == 'Hi' &&
-          data[ChatRoomField.lastSenderId] == 'user-1' &&
-          data.containsKey('${ChatRoomField.unreadCount}.user-1') &&
-          data.containsKey('${ChatRoomField.unreadCount}.user-2'))),
+      argThat(predicate<Map<String, dynamic>>((data) {
+        return data[ChatRoomField.lastMessage] == 'Hi' &&
+            data[ChatRoomField.lastSenderId] == 'user-1' &&
+            data.containsKey(ChatRoomField.lastMessageAt) &&
+            data.containsKey('${ChatRoomField.unreadCount}.user-1') &&
+            data.containsKey('${ChatRoomField.unreadCount}.user-2');
+      })),
     )).called(1);
 
     verify(mockBatch.commit()).called(1);
