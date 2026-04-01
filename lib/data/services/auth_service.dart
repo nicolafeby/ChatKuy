@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/config/env_config.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
@@ -19,7 +18,7 @@ class AuthService implements AuthRepository {
     return auth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
 
-      final doc = await firestore.collection(EnvConfig.usersCollection).doc(user.uid).get();
+      final doc = await firestore.collection(FirebaseCollections.users).doc(user.uid).get();
 
       return UserModel.fromJson(doc.data()!).copyWith(id: doc.id);
     });
@@ -31,7 +30,7 @@ class AuthService implements AuthRepository {
     required String password,
   }) async {
     final query = await firestore
-        .collection(EnvConfig.usersCollection)
+        .collection(FirebaseCollections.users)
         .where(
           UserModelFields.username,
           isEqualTo: username.toLowerCase(),
@@ -57,7 +56,7 @@ class AuthService implements AuthRepository {
       throw FirebaseAuthException(code: AppStrings.emailNotVerified, email: userData.email);
     }
 
-    final userRef = firestore.collection(EnvConfig.usersCollection).doc(userDoc.id);
+    final userRef = firestore.collection(FirebaseCollections.users).doc(userDoc.id);
 
     final updatedUser = userData.copyWith(
       isOnline: true,
@@ -97,7 +96,7 @@ class AuthService implements AuthRepository {
       fcmToken: '',
     );
 
-    await firestore.collection(EnvConfig.usersCollection).doc(user.id).set(user.toJson());
+    await firestore.collection(FirebaseCollections.users).doc(user.id).set(user.toJson());
 
     return user;
   }
@@ -113,7 +112,7 @@ class AuthService implements AuthRepository {
       return false;
     }
 
-    final doc = await firestore.collection(EnvConfig.usersCollection).doc(firebaseUser.uid).get();
+    final doc = await firestore.collection(FirebaseCollections.users).doc(firebaseUser.uid).get();
 
     final currentUser = UserModel.fromJson(doc.data()!);
 
@@ -121,7 +120,7 @@ class AuthService implements AuthRepository {
       isEmailVerified: true,
     );
 
-    await firestore.collection(EnvConfig.usersCollection).doc(firebaseUser.uid).update(updatedUser.toJson());
+    await firestore.collection(FirebaseCollections.users).doc(firebaseUser.uid).update(updatedUser.toJson());
 
     return true;
   }
@@ -137,7 +136,7 @@ class AuthService implements AuthRepository {
   @override
   Future<bool> checkUsernameAvailable(String username) async {
     final query = await firestore
-        .collection(EnvConfig.usersCollection)
+        .collection(FirebaseCollections.users)
         .where(
           UserModelFields.username,
           isEqualTo: username.toLowerCase(),
@@ -155,14 +154,14 @@ class AuthService implements AuthRepository {
 
   @override
   Future<void> updateFcmToken({required String token, required String currentUid}) async {
-    await firestore.collection(EnvConfig.usersCollection).doc(currentUid).update(
+    await firestore.collection(FirebaseCollections.users).doc(currentUid).update(
       {AppStrings.fcmToken: token},
     );
   }
 
   @override
   Future<UserModel> getUserProfile(String uid) async {
-    final doc = await firestore.collection(EnvConfig.usersCollection).doc(uid).get();
+    final doc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
 
     if (!doc.exists) {
       throw Exception('User profile not found');
@@ -247,7 +246,7 @@ class AuthService implements AuthRepository {
 
   @override
   Future<void> changeProfilePicture({String? imageUrl}) async {
-    await firestore.collection(EnvConfig.usersCollection).doc(currentUid).update({FriendField.photoUrl: imageUrl});
+    await firestore.collection(FirebaseCollections.users).doc(currentUid).update({FriendField.photoUrl: imageUrl});
   }
 
   @override

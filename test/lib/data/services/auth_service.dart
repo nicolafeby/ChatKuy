@@ -1,5 +1,6 @@
 // ignore_for_file: unused_import
 
+import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -9,7 +10,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:chatkuy/data/services/auth_service.dart';
 import 'package:chatkuy/data/models/user_model.dart';
-import 'package:chatkuy/core/config/env_config.dart';
 
 import 'auth_service.mocks.dart';
 
@@ -66,7 +66,7 @@ Future<void> authServiceTest() async {
     )).thenAnswer((_) async => mockCredential);
 
     // ---------- Firestore where(username) ----------
-    when(firestore.collection(EnvConfig.usersCollection)).thenReturn(usersCollection);
+    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
 
     when(usersCollection.where(
       UserModelFields.username,
@@ -117,7 +117,7 @@ Future<void> authServiceTest() async {
       password: '123456',
     )).thenAnswer((_) async => mockCredential);
 
-    when(firestore.collection(EnvConfig.usersCollection)).thenReturn(usersCollection);
+    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
 
     when(usersCollection.doc('uid-2')).thenReturn(userDoc);
     when(userDoc.set(any)).thenAnswer((_) async {});
