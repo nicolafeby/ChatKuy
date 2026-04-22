@@ -89,24 +89,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final item = store.chatUsers[index];
                   final user = item.user;
 
-                  // return ChatItemWidget(
-                  //   onTap: () {
-                  //     final id = store.currentUid;
-
-                  //     if (id == null) return;
-
-                  //     Get.toNamed(
-                  //       AppRouteName.CHAT_ROOM_SCREEN,
-                  //       arguments: ChatRoomArgument(
-                  //         roomId: item.roomId,
-                  //         currentUid: id,
-                  //         targetUser: item.user,
-                  //       ),
-                  //     );
-                  //   },
-                  //   user: item,
-                  // );
-
                   return ListTile(
                     leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 48),
                     title: Row(
