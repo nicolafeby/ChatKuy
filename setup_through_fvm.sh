@@ -1,5 +1,5 @@
-fvm use 3.29.3 && \
-fvm global 3.29.3 && \
+fvm use 3.41.6 && \
+fvm global 3.41.6 && \
 fvm flutter clean && \
 echo "🧹 Removing generated files (g.dart, mocks.dart)..." && \
 find lib -name "*.g.dart" -type f -delete && \
