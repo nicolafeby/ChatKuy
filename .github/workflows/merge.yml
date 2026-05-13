@@ -9,19 +9,37 @@ jobs:
   ci:
     name: Test & Build
     runs-on: self-hosted
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     concurrency:
       group: flutter-ci
       cancel-in-progress: true
 
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Dorg.gradle.parallel=false"
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Stop existing Gradle daemons
+        run: |
+          cd android
+          ./gradlew --stop || true
 
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.41.6"
           cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Install dependencies
         run: flutter pub get
@@ -47,6 +65,12 @@ jobs:
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Stop Gradle daemons after build
+        if: always()
+        run: |
+          cd android
+          ./gradlew --stop || true
 
   cd:
     name: Distribute APK
