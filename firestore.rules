@@ -1,11 +1,123 @@
 rules_version = '2';
 
 service cloud.firestore {
-  match /databases/{database}/documents { 
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function room(roomId) {
+      return get(/databases/$(database)/documents/chat_rooms/$(roomId));
+    }
+
+    function isExistingRoomParticipant() {
+      return signedIn()
+        && resource.data.participants is list
+        && request.auth.uid in resource.data.participants;
+    }
+
+    function isParentRoomParticipant(roomId) {
+      return signedIn()
+        && room(roomId).data.participants is list
+        && request.auth.uid in room(roomId).data.participants;
+    }
+
+    function isCreatingRoomAsParticipant() {
+      return signedIn()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants;
+    }
+
+    function keepsParticipantsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants']);
+    }
+
+    match /users/{uid} {
+      // Public read is kept for the current username-login flow.
+      // Move public fields to a separate profile collection before tightening this.
+      allow get, list: if true;
+
+      allow create: if isOwner(uid)
+        && request.resource.data.id == uid
+        && request.resource.data.email == request.auth.token.email;
+
+      allow update: if isOwner(uid)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'email']);
+
+      allow delete: if false;
+
+      match /friends/{friendUid} {
+        allow read: if isOwner(uid);
+
+        allow create: if request.resource.data.uid == friendUid
+          && request.resource.data.createdAt == request.time
+          && (
+            isOwner(uid) ||
+            (signedIn() && request.auth.uid == friendUid)
+          );
+
+        allow delete: if isOwner(uid);
+        allow update: if false;
+      }
+
+      match /friend_requests/{requestId} {
+        allow read: if isOwner(uid);
+
+        allow create: if signedIn()
+          && request.resource.data.toUid == uid
+          && request.resource.data.fromUid == request.auth.uid
+          && request.resource.data.status == 'pending';
+
+        allow delete: if signedIn()
+          && (request.auth.uid == uid || request.auth.uid == resource.data.fromUid);
+
+        allow update: if false;
+      }
+
+      match /outgoing_friend_requests/{requestId} {
+        allow read: if isOwner(uid);
+
+        allow create: if isOwner(uid)
+          && request.resource.data.fromUid == uid
+          && request.resource.data.status == 'pending';
+
+        allow delete: if signedIn()
+          && (request.auth.uid == uid || request.auth.uid == resource.data.toUid);
+
+        allow update: if false;
+      }
+    }
+
+    match /chat_rooms/{roomId} {
+      allow read: if isExistingRoomParticipant();
+
+      allow create: if isCreatingRoomAsParticipant();
+
+      allow update: if isExistingRoomParticipant()
+        && keepsParticipantsUnchanged();
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isParentRoomParticipant(roomId);
+
+        allow create: if isParentRoomParticipant(roomId)
+          && request.resource.data.senderId == request.auth.uid;
+
+        allow update: if isParentRoomParticipant(roomId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveredTo', 'readBy']);
+
+        allow delete: if false;
+      }
+    }
+
     match /{document=**} {
-    	allow read
-      allow write, delete: if request.auth != null;
-      
+      allow read, write: if false;
     }
   }
 }
