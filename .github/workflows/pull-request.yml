@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   pr-check:
     name: Pull Request Check
@@ -15,15 +18,38 @@ jobs:
       group: pr-${{ github.ref }}
       cancel-in-progress: true
 
+    env:
+      FLUTTER_VERSION: "3.41.6"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.41.6"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ env.FLUTTER_VERSION }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-${{ env.FLUTTER_VERSION }}-
+            ${{ runner.os }}-pub-
+
+      - name: Cache build runner
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build-runner-${{ env.FLUTTER_VERSION }}-${{ hashFiles('pubspec.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-runner-${{ env.FLUTTER_VERSION }}-${{ hashFiles('pubspec.yaml') }}-
+            ${{ runner.os }}-build-runner-${{ env.FLUTTER_VERSION }}-
 
       - name: Install dependencies
         run: flutter pub get
