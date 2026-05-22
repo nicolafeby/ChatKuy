@@ -8,6 +8,7 @@ class VoiceCallArgument {
     this.currentUserName,
     this.callId,
     this.autoAccept = false,
+    this.closeAppOnEnd = false,
   });
 
   final String roomId;
@@ -18,4 +19,5 @@ class VoiceCallArgument {
   final String? currentUserName;
   final String? callId;
   final bool autoAccept;
+  final bool closeAppOnEnd;
 }
