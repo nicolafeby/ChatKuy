@@ -42,15 +42,6 @@ jobs:
           echo "$PREINSTALLED_FLUTTER_ROOT/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
           "$PREINSTALLED_FLUTTER_ROOT/bin/flutter" --version
 
-      - name: Cache Pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ env.FLUTTER_VERSION }}-${{ hashFiles('pubspec.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-${{ env.FLUTTER_VERSION }}-
-            ${{ runner.os }}-pub-
-
       - name: Cache build runner
         uses: actions/cache@v4
         with:
@@ -59,16 +50,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-runner-${{ env.FLUTTER_VERSION }}-${{ hashFiles('pubspec.yaml') }}-
             ${{ runner.os }}-build-runner-${{ env.FLUTTER_VERSION }}-
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
 
       - name: Install dependencies
         run: flutter pub get
