@@ -5,6 +5,7 @@ import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/hive_encryption_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
@@ -59,6 +60,7 @@ abstract class _ProfileStore with Store {
     } finally {
       await getIt<PresenceService>().setOffline();
       await storageRepository.clear();
+      await getIt<HiveEncryptionRepository>().clearSensitiveData();
       await Future.delayed(Duration(milliseconds: 200));
       onSuccess.call();
     }
