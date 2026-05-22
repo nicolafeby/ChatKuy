@@ -4,6 +4,7 @@ import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mockito/mockito.dart';
@@ -48,7 +49,9 @@ Future<void> chatServiceTest() async {
   late MockSnapshotMetadata mockMetadata;
   late MockDocumentSnapshot<Map<String, dynamic>> roomSnapshot;
 
-  setUp(() {
+  setUp(() async {
+    await Hive.box<ChatMessageModel>('chat_messages').clear();
+
     firestore = MockFirebaseFirestore();
     auth = MockFirebaseAuth();
     firebaseStorage = MockFirebaseStorage();
@@ -114,69 +117,80 @@ Future<void> chatServiceTest() async {
   // ==========================================================
   // SEND MESSAGE
   // ==========================================================
-  // TEMPORARY DISABLED
-  // test('sendMessage writes message and updates room using batch', () async {
-  //   when(auth.currentUser).thenReturn(mockUser);
-  //   when(mockUser.uid).thenReturn('user-1');
+  test('sendMessage writes message and updates room using batch', () async {
+    when(auth.currentUser).thenReturn(mockUser);
+    when(mockUser.uid).thenReturn('user-1');
 
-  //   when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
 
-  //   when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(messagesCollection.doc()).thenReturn(messageDocRef);
+    when(messageDocRef.id).thenReturn('msg-1');
 
-  //   when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(firestore.batch()).thenReturn(mockBatch);
 
-  //   when(messagesCollection.doc()).thenReturn(messageDocRef);
-  //   when(messageDocRef.id).thenReturn('msg-1');
+    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
+    when(usersCollection.doc('user-1')).thenReturn(userDoc);
+    when(userDoc.get()).thenAnswer((_) async => userSnapshot);
+    when(userSnapshot.data()).thenReturn({
+      FriendField.name: 'Budi',
+    });
 
-  //   when(firestore.batch()).thenReturn(mockBatch);
+    when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
+    when(roomSnapshot.data()).thenReturn({
+      ChatRoomField.participants: ['user-1', 'user-2'],
+    });
 
-  //   when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
-  //   when(roomSnapshot.data()).thenReturn({
-  //     ChatRoomField.participants: ['user-1', 'user-2'],
-  //   });
+    when(mockBatch.commit()).thenAnswer((_) async {});
 
-  //   when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
+    await service.sendMessage(
+      roomId: 'room-1',
+      text: 'Hi',
+      type: MessageType.text,
+    );
 
-  //   when(usersCollection.doc('user-1')).thenReturn(userDoc);
-  //   when(userDoc.get()).thenAnswer((_) async => userSnapshot);
-  //   when(userSnapshot.data()).thenReturn({
-  //     FriendField.name: 'Budi',
-  //   });
+    final localMessage = Hive.box<ChatMessageModel>('chat_messages').get('msg-1');
 
-  //   when(mockBatch.commit()).thenAnswer((_) async {});
+    expect(localMessage, isNotNull);
+    expect(localMessage!.roomId, 'room-1');
+    expect(localMessage.senderId, 'user-1');
+    expect(localMessage.text, 'Hi');
+    expect(localMessage.type, MessageType.text);
+    expect(localMessage.status, MessageStatus.pending);
 
-  //   await service.sendMessage(
-  //     roomId: 'room-1',
-  //     text: 'Hi',
-  //     type: MessageType.text,
-  //   );
+    verify(mockBatch.set(
+      messageDocRef,
+      argThat(predicate<Map<String, dynamic>>((data) {
+        return data[MessageField.text] == 'Hi' &&
+            data[MessageField.senderId] == 'user-1' &&
+            data[MessageField.senderName] == 'Budi' &&
+            data[MessageField.type] == MessageType.text.name &&
+            data[MessageField.imageUrl] == null &&
+            data[MessageField.localImagePath] == null &&
+            data[MessageField.deliveredTo] is Map<String, bool> &&
+            data[MessageField.readBy] is Map<String, bool> &&
+            data.containsKey(MessageField.createdAt) &&
+            data.containsKey(MessageField.createdAtClient);
+      })),
+      null,
+    )).called(1);
 
-  //   verify(mockBatch.set(
-  //     messageDocRef,
-  //     argThat(predicate<Map<String, dynamic>>((data) {
-  //       return data[MessageField.text] == 'Hi' &&
-  //           data[MessageField.senderId] == 'user-1' &&
-  //           data[MessageField.senderName] == 'Budi' &&
-  //           data[MessageField.type] == 'text' &&
-  //           data.containsKey(MessageField.createdAt) &&
-  //           data.containsKey(MessageField.createdAtClient);
-  //     })),
-  //     any,
-  //   )).called(1);
+    verify(mockBatch.update(
+      roomDoc,
+      argThat(predicate<Map<Object, Object?>>((data) {
+        return data[ChatRoomField.lastMessage] == 'Hi' &&
+            data[ChatRoomField.lastSenderId] == 'user-1' &&
+            data[ChatRoomField.imageUrl] == null &&
+            data[ChatRoomField.type] == MessageType.text.name &&
+            data.containsKey(ChatRoomField.lastMessageAt) &&
+            data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
+            data.containsKey('${ChatRoomField.unreadCount}.user-2');
+      })),
+    )).called(1);
 
-  //   verify(mockBatch.update(
-  //     roomDoc,
-  //     argThat(predicate<Map<String, dynamic>>((data) {
-  //       return data[ChatRoomField.lastMessage] == 'Hi' &&
-  //           data[ChatRoomField.lastSenderId] == 'user-1' &&
-  //           data.containsKey(ChatRoomField.lastMessageAt) &&
-  //           data.containsKey('${ChatRoomField.unreadCount}.user-1') &&
-  //           data.containsKey('${ChatRoomField.unreadCount}.user-2');
-  //     })),
-  //   )).called(1);
-
-  //   verify(mockBatch.commit()).called(1);
-  // });
+    verify(mockBatch.commit()).called(1);
+  });
 
   // ==========================================================
   // MARK READ
