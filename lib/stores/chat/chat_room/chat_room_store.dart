@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:chatkuy/core/helpers/image_compress_helper.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -142,11 +143,13 @@ abstract class _ChatRoomStore with Store {
 
     ChatMessageModel? uploadingMessage;
     String? localImagePath;
+    File? uploadImageFile;
 
     if (imageFile != null && currentUid != null) {
       final now = DateTime.now();
+      uploadImageFile = await compressChatImage(imageFile: imageFile);
       localImagePath =
-          await saveImageToLocal(imageFile: imageFile, roomId: roomId!);
+          await saveImageToLocal(imageFile: uploadImageFile, roomId: roomId!);
 
       uploadingMessage = ChatMessageModel(
         id: 'uploading_${now.microsecondsSinceEpoch}',
@@ -171,7 +174,7 @@ abstract class _ChatRoomStore with Store {
       await chatRepository.sendMessage(
         roomId: roomId!,
         text: messageText,
-        imageFile: imageFile,
+        imageFile: uploadImageFile ?? imageFile,
         localImagePath: localImagePath,
         type: imageFile != null ? MessageType.image : MessageType.text,
         onUploadProgress: uploadingMessage == null
