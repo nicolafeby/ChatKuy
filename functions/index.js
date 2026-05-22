@@ -151,26 +151,25 @@ exports.onNewVoiceCall = onDocumentCreated(
 
     const response = await admin.messaging().send({
       token: fcmToken,
-      notification: {
-        title: callerName,
-        body: 'Panggilan suara masuk',
-      },
       data: {
         type: 'voice_call',
         callId: event.params.callId,
         roomId: call.roomId || '',
         callerId: callerId,
         callerName: callerName,
+        title: callerName,
+        body: 'Panggilan suara masuk',
       },
       android: {
         priority: 'high',
-        notification: {
-          channelId: 'chat_notification',
-        },
       },
       apns: {
+        headers: {
+          'apns-priority': '10',
+        },
         payload: {
           aps: {
+            contentAvailable: true,
             sound: 'default',
           },
         },
