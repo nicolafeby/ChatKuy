@@ -110,3 +110,69 @@ jobs:
           groups: testers
           file: app-release.apk
           releaseNotesFile: release_notes.txt
+
+  deploy-firebase:
+    name: Deploy Firebase Functions & Firestore
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Firebase changes
+        id: firebase_changes
+        shell: bash
+        run: |
+          base="${{ github.event.before }}"
+          head="${{ github.sha }}"
+
+          if [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="$(git rev-list --max-parents=0 "$head")"
+          fi
+
+          if git diff --quiet "$base" "$head" -- functions firebase.json firestore.rules firestore.indexes.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          targets=()
+
+          if ! git diff --quiet "$base" "$head" -- functions firebase.json; then
+            targets+=("functions")
+          fi
+
+          if ! git diff --quiet "$base" "$head" -- firestore.rules firebase.json; then
+            targets+=("firestore:rules")
+          fi
+
+          if ! git diff --quiet "$base" "$head" -- firestore.indexes.json firebase.json; then
+            targets+=("firestore:indexes")
+          fi
+
+          IFS=,
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "targets=${targets[*]}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.firebase_changes.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Functions dependencies
+        if: contains(steps.firebase_changes.outputs.targets, 'functions')
+        working-directory: functions
+        run: npm ci
+
+      - name: Install Firebase CLI
+        if: steps.firebase_changes.outputs.changed == 'true'
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firebase changes
+        if: steps.firebase_changes.outputs.changed == 'true'
+        run: firebase deploy --only "${{ steps.firebase_changes.outputs.targets }}" --project chatkuy-3f559
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
