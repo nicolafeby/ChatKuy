@@ -8,6 +8,7 @@ import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 
@@ -15,6 +16,9 @@ class LocalNotificationService implements LocalNotificationRepository {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static const _acceptVoiceCallAction = 'accept_voice_call';
   static const _declineVoiceCallAction = 'decline_voice_call';
+  static const _chatChannelId = 'chat_notification';
+  static const _callChannelId = 'incoming_call_notification';
+  static NotificationResponse? _pendingLaunchResponse;
 
   @override
   Future<void> init() async {
@@ -40,24 +44,47 @@ class LocalNotificationService implements LocalNotificationRepository {
       final launchResponse = launchDetails?.notificationResponse;
       if (launchDetails?.didNotificationLaunchApp == true &&
           launchResponse != null) {
-        Future.delayed(
-          const Duration(milliseconds: 800),
-          () => _handleNotificationResponse(launchResponse),
-        );
+        _pendingLaunchResponse = launchResponse;
       }
     }
 
     const channel = AndroidNotificationChannel(
-      'chat_notification',
+      _chatChannelId,
       'Chat Notification',
       description: 'Notification for incoming chat messages',
       importance: Importance.max,
+    );
+
+    const callChannel = AndroidNotificationChannel(
+      _callChannelId,
+      'Incoming Call',
+      description: 'Notification for incoming voice calls',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
     );
 
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(callChannel);
+
+    if (handleLaunchDetails) {
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      final notificationGranted =
+          await androidPlugin?.requestNotificationsPermission();
+      final fullScreenGranted =
+          await androidPlugin?.requestFullScreenIntentPermission();
+      debugPrint(
+        'LocalNotification permission: notifications=$notificationGranted fullScreen=$fullScreenGranted',
+      );
+    }
   }
 
   @override
@@ -72,14 +99,17 @@ class LocalNotificationService implements LocalNotificationRepository {
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        'chat_notification',
-        'Chat Notification',
+        isVoiceCall ? _callChannelId : _chatChannelId,
+        isVoiceCall ? 'Incoming Call' : 'Chat Notification',
         importance: Importance.max,
-        priority: Priority.high,
+        priority: isVoiceCall ? Priority.max : Priority.high,
         category: isVoiceCall
             ? AndroidNotificationCategory.call
             : AndroidNotificationCategory.message,
         fullScreenIntent: isVoiceCall,
+        visibility: NotificationVisibility.public,
+        ongoing: isVoiceCall,
+        autoCancel: !isVoiceCall,
         actions: isVoiceCall
             ? const [
                 AndroidNotificationAction(
@@ -108,6 +138,15 @@ class LocalNotificationService implements LocalNotificationRepository {
     );
   }
 
+  static Future<void> processPendingLaunchNotification() async {
+    final response = _pendingLaunchResponse;
+    if (response == null) return;
+
+    _pendingLaunchResponse = null;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await _handleNotificationResponse(response);
+  }
+
   static Future<void> _handleNotificationResponse(
     NotificationResponse response,
   ) async {
@@ -116,6 +155,9 @@ class LocalNotificationService implements LocalNotificationRepository {
 
     final data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
     final type = data['type'];
+    debugPrint(
+      'LocalNotification response: action=${response.actionId} type=$type',
+    );
 
     if (type == 'voice_call') {
       if (response.actionId == _declineVoiceCallAction) {
