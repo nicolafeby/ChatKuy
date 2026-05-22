@@ -8,5 +8,7 @@ abstract class SecureStorageRepository {
   Future<void> setFcmToken(String token);
   Future<String?> getFcmToken();
 
+  Future<List<int>> getHiveEncryptionKey();
+
   Future<void> clear();
 }

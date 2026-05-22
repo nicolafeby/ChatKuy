@@ -12,7 +12,7 @@ import 'di/injection.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  setupDI();
+  await setupDI();
   await getIt<LocalNotificationRepository>().init();
   await AppContext.init();
   await getIt<NotificationRepository>().init();

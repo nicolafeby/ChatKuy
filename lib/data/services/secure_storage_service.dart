@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -7,6 +10,7 @@ class SecureStorageService implements SecureStorageRepository {
   static const _keyIsLogin = 'is_login';
   static const _keyUserID = 'user_id';
   static const _keyFcmToken = 'fcmToken';
+  static const _hiveEncryptionKeyName = 'hive_encryption_key_v1';
 
   @override
   Future<void> setIsLogin(bool value) async {
@@ -37,7 +41,11 @@ class SecureStorageService implements SecureStorageRepository {
 
   @override
   Future<void> clear() async {
-    await _storage.deleteAll();
+    await Future.wait([
+      _storage.delete(key: _keyIsLogin),
+      _storage.delete(key: _keyUserID),
+      _storage.delete(key: _keyFcmToken),
+    ]);
   }
 
   @override
@@ -51,5 +59,21 @@ class SecureStorageService implements SecureStorageRepository {
       key: _keyFcmToken,
       value: token,
     );
+  }
+
+  @override
+  Future<List<int>> getHiveEncryptionKey() async {
+    final storedKey = await _storage.read(key: _hiveEncryptionKeyName);
+    if (storedKey != null) {
+      return base64Url.decode(storedKey);
+    }
+
+    final key = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+    await _storage.write(
+      key: _hiveEncryptionKeyName,
+      value: base64UrlEncode(key),
+    );
+
+    return key;
   }
 }
