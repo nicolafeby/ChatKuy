@@ -8,7 +8,13 @@ import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_callkit_incoming/entities/android_params.dart';
+import 'package:flutter_callkit_incoming/entities/call_event.dart';
+import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
+import 'package:flutter_callkit_incoming/entities/ios_params.dart';
+import 'package:flutter_callkit_incoming/entities/notification_params.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 
@@ -19,10 +25,24 @@ class LocalNotificationService implements LocalNotificationRepository {
   static const _chatChannelId = 'chat_notification';
   static const _callChannelId = 'incoming_call_notification';
   static NotificationResponse? _pendingLaunchResponse;
+  static ({
+    Map<String, dynamic> data,
+    bool autoAccept,
+    bool closeAppOnEnd,
+  })? _lastIncomingCall;
+  static ({
+    Map<String, dynamic> data,
+    bool autoAccept,
+    bool closeAppOnEnd,
+  })? _pendingVoiceCall;
+  static bool _isCallKitListenerAttached = false;
+  static final Set<String> _handledAcceptedCallIds = {};
+  static final Map<String, bool> _closeAppAfterCallById = {};
 
   @override
   Future<void> init() async {
     await _initPlugin(handleLaunchDetails: true);
+    _listenCallKitEvents();
   }
 
   static Future<void> showFromBackground(RemoteMessage message) async {
@@ -84,48 +104,40 @@ class LocalNotificationService implements LocalNotificationRepository {
       debugPrint(
         'LocalNotification permission: notifications=$notificationGranted fullScreen=$fullScreenGranted',
       );
+      await FlutterCallkitIncoming.requestNotificationPermission({
+        'rationaleMessagePermission':
+            'ChatKuy membutuhkan izin notifikasi untuk menampilkan panggilan masuk.',
+        'postNotificationMessageRequired':
+            'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
+      });
+      await FlutterCallkitIncoming.requestFullIntentPermission();
     }
   }
 
   @override
   void show(RemoteMessage message) {
     final isVoiceCall = message.data['type'] == 'voice_call';
-    final title = message.notification?.title ??
-        message.data['title'] ??
-        (isVoiceCall ? 'Panggilan suara' : 'Pesan baru');
+    if (isVoiceCall) {
+      _showIncomingCall(message.data);
+      return;
+    }
+
+    final title =
+        message.notification?.title ?? message.data['title'] ?? 'Pesan baru';
     final body = message.notification?.body ??
         message.data['body'] ??
-        (isVoiceCall ? 'Panggilan suara masuk' : message.data['text'] ?? '');
+        message.data['text'] ??
+        '';
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        isVoiceCall ? _callChannelId : _chatChannelId,
-        isVoiceCall ? 'Incoming Call' : 'Chat Notification',
+        _chatChannelId,
+        'Chat Notification',
         importance: Importance.max,
-        priority: isVoiceCall ? Priority.max : Priority.high,
-        category: isVoiceCall
-            ? AndroidNotificationCategory.call
-            : AndroidNotificationCategory.message,
-        fullScreenIntent: isVoiceCall,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.message,
         visibility: NotificationVisibility.public,
-        ongoing: isVoiceCall,
-        autoCancel: !isVoiceCall,
-        actions: isVoiceCall
-            ? const [
-                AndroidNotificationAction(
-                  _declineVoiceCallAction,
-                  'Tolak',
-                  showsUserInterface: true,
-                  cancelNotification: true,
-                ),
-                AndroidNotificationAction(
-                  _acceptVoiceCallAction,
-                  'Terima',
-                  showsUserInterface: true,
-                  cancelNotification: true,
-                ),
-              ]
-            : null,
+        autoCancel: true,
       ),
     );
 
@@ -138,13 +150,271 @@ class LocalNotificationService implements LocalNotificationRepository {
     );
   }
 
+  static Future<void> _showIncomingCall(Map<String, dynamic> data) async {
+    final callId = data['callId'];
+    final roomId = data['roomId'];
+    final callerId = data['callerId'];
+    final callerName = data['callerName'] ?? data['title'] ?? 'Panggilan suara';
+
+    if (callId is! String ||
+        callId.isEmpty ||
+        roomId is! String ||
+        callerId is! String) {
+      return;
+    }
+
+    await FlutterCallkitIncoming.endAllCalls();
+
+    final closeAppOnEnd = _isAppNotForeground();
+    _closeAppAfterCallById[callId] = closeAppOnEnd;
+
+    final params = CallKitParams(
+      id: callId,
+      nameCaller: callerName.toString(),
+      appName: 'ChatKuy',
+      handle: callerName.toString(),
+      type: 0,
+      duration: 30000,
+      textAccept: 'Terima',
+      textDecline: 'Tolak',
+      extra: Map<String, dynamic>.from(data),
+      missedCallNotification: const NotificationParams(
+        showNotification: true,
+        subtitle: 'Panggilan tak terjawab',
+        callbackText: 'Telepon balik',
+      ),
+      callingNotification: const NotificationParams(
+        showNotification: true,
+        subtitle: 'Panggilan berlangsung',
+        callbackText: 'Akhiri',
+      ),
+      android: const AndroidParams(
+        isCustomNotification: true,
+        isCustomSmallExNotification: true,
+        isShowLogo: false,
+        ringtonePath: 'system_ringtone_default',
+        backgroundColor: '#101820',
+        actionColor: '#0098FF',
+        textColor: '#ffffff',
+        incomingCallNotificationChannelName: 'Incoming Call',
+        missedCallNotificationChannelName: 'Missed Call',
+        isShowCallID: false,
+        isShowFullLockedScreen: true,
+        isImportant: true,
+      ),
+      ios: const IOSParams(
+        handleType: 'generic',
+        supportsVideo: false,
+        maximumCallGroups: 1,
+        maximumCallsPerCallGroup: 1,
+        audioSessionMode: 'voiceChat',
+        audioSessionActive: true,
+        supportsDTMF: false,
+        supportsHolding: false,
+        supportsGrouping: false,
+        supportsUngrouping: false,
+        ringtonePath: 'system_ringtone_default',
+      ),
+    );
+
+    _lastIncomingCall = (
+      data: Map<String, dynamic>.from(data),
+      autoAccept: false,
+      closeAppOnEnd: closeAppOnEnd,
+    );
+    await FlutterCallkitIncoming.showCallkitIncoming(params);
+  }
+
+  static void _listenCallKitEvents() {
+    if (_isCallKitListenerAttached) return;
+    _isCallKitListenerAttached = true;
+
+    FlutterCallkitIncoming.onEvent.listen((event) async {
+      if (event == null) return;
+
+      final data = _extractCallKitData(event);
+      debugPrint('CallKit event: ${event.event} data=$data');
+
+      switch (event.event) {
+        case Event.actionCallAccept:
+          final closeAppOnEnd = _closeAppOnEndFor(data);
+          _lastIncomingCall = (
+            data: data,
+            autoAccept: true,
+            closeAppOnEnd: closeAppOnEnd,
+          );
+          _openVoiceCall(
+            data,
+            autoAccept: true,
+            closeAppOnEnd: closeAppOnEnd,
+          );
+          break;
+        case Event.actionCallDecline:
+        case Event.actionCallTimeout:
+          await _declineVoiceCall(data);
+          break;
+        case Event.actionCallEnded:
+          await _endVoiceCall(data);
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
+  static Map<String, dynamic> _extractCallKitData(CallEvent event) {
+    final body = event.body;
+    if (body is! Map) return _lastIncomingCall?.data ?? {};
+
+    final mappedBody = Map<String, dynamic>.from(body);
+    final extra = mappedBody['extra'];
+    if (extra is Map) {
+      return Map<String, dynamic>.from(extra);
+    }
+
+    final nestedBody = mappedBody['body'];
+    if (nestedBody is Map) {
+      final nestedExtra = nestedBody['extra'];
+      if (nestedExtra is Map) {
+        return Map<String, dynamic>.from(nestedExtra);
+      }
+      final nested = Map<String, dynamic>.from(nestedBody);
+      if (_hasVoiceCallKeys(nested)) return nested;
+    }
+
+    final data = mappedBody['data'];
+    if (data is Map) {
+      final dataExtra = data['extra'];
+      if (dataExtra is Map) {
+        return Map<String, dynamic>.from(dataExtra);
+      }
+      final mappedData = Map<String, dynamic>.from(data);
+      if (_hasVoiceCallKeys(mappedData)) return mappedData;
+    }
+
+    if (!_hasVoiceCallKeys(mappedBody)) {
+      return _lastIncomingCall?.data ?? mappedBody;
+    }
+
+    return mappedBody;
+  }
+
+  static Map<String, dynamic> _extractCallKitMapData(
+    Map<String, dynamic> data,
+  ) {
+    final extra = data['extra'];
+    if (extra is Map) {
+      return Map<String, dynamic>.from(extra);
+    }
+
+    final nestedBody = data['body'];
+    if (nestedBody is Map) {
+      final nested = Map<String, dynamic>.from(nestedBody);
+      final nestedExtra = nested['extra'];
+      if (nestedExtra is Map) {
+        return Map<String, dynamic>.from(nestedExtra);
+      }
+      if (_hasVoiceCallKeys(nested)) return nested;
+    }
+
+    if (_hasVoiceCallKeys(data)) return data;
+    return _lastIncomingCall?.data ?? data;
+  }
+
+  static bool _hasVoiceCallKeys(Map<String, dynamic> data) {
+    return data['callId'] is String &&
+        data['roomId'] is String &&
+        data['callerId'] is String;
+  }
+
   static Future<void> processPendingLaunchNotification() async {
     final response = _pendingLaunchResponse;
-    if (response == null) return;
+    if (response != null) {
+      _pendingLaunchResponse = null;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await _handleNotificationResponse(response);
+    }
 
-    _pendingLaunchResponse = null;
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    await _handleNotificationResponse(response);
+    final voiceCall = _pendingVoiceCall;
+    if (voiceCall != null) {
+      _pendingVoiceCall = null;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      _openVoiceCall(
+        voiceCall.data,
+        autoAccept: voiceCall.autoAccept,
+        closeAppOnEnd: voiceCall.closeAppOnEnd,
+      );
+    }
+
+    await processAcceptedCallKitCalls();
+  }
+
+  static Future<VoiceCallArgument?> takeInitialAcceptedCallArgument() async {
+    final voiceCall = _pendingVoiceCall;
+    if (voiceCall != null) {
+      _pendingVoiceCall = null;
+      return _voiceCallArgumentFromData(
+        voiceCall.data,
+        autoAccept: voiceCall.autoAccept,
+        closeAppOnEnd: voiceCall.closeAppOnEnd,
+      );
+    }
+
+    final activeCalls = await FlutterCallkitIncoming.activeCalls();
+    debugPrint('CallKit initial activeCalls: $activeCalls');
+    if (activeCalls is! List) return null;
+
+    for (final call in activeCalls) {
+      if (call is! Map) continue;
+
+      final callMap = Map<String, dynamic>.from(call);
+      if (callMap['isAccepted'] != true) continue;
+
+      final data = _extractCallKitMapData(callMap);
+      if (!_hasVoiceCallKeys(data)) continue;
+
+      final callId = data['callId']?.toString();
+      if (callId != null) _handledAcceptedCallIds.add(callId);
+
+      return _voiceCallArgumentFromData(
+        data,
+        autoAccept: true,
+        closeAppOnEnd: _closeAppOnEndFor(data, fallback: true),
+      );
+    }
+
+    return null;
+  }
+
+  static Future<void> processAcceptedCallKitCalls() async {
+    final activeCalls = await FlutterCallkitIncoming.activeCalls();
+    debugPrint('CallKit activeCalls: $activeCalls');
+
+    if (activeCalls is! List) return;
+
+    for (final call in activeCalls) {
+      if (call is! Map) continue;
+
+      final callMap = Map<String, dynamic>.from(call);
+      final isAccepted = callMap['isAccepted'] == true;
+      if (!isAccepted) continue;
+
+      final callId = callMap['id']?.toString();
+      if (callId == null || _handledAcceptedCallIds.contains(callId)) {
+        continue;
+      }
+
+      final data = _extractCallKitMapData(callMap);
+      if (!_hasVoiceCallKeys(data)) continue;
+
+      _handledAcceptedCallIds.add(callId);
+      _openVoiceCall(
+        data,
+        autoAccept: true,
+        closeAppOnEnd: _closeAppOnEndFor(data),
+      );
+      break;
+    }
   }
 
   static Future<void> _handleNotificationResponse(
@@ -181,18 +451,93 @@ class LocalNotificationService implements LocalNotificationRepository {
     final callId = data['callId'];
     if (callId is! String || callId.isEmpty) return;
 
-    await FirebaseFirestore.instance
-        .collection(FirebaseCollections.calls)
-        .doc(callId)
-        .update({
-      CallField.status: CallStatus.declined,
-      CallField.endedAt: FieldValue.serverTimestamp(),
-    });
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebaseCollections.calls)
+          .doc(callId)
+          .update({
+        CallField.status: CallStatus.declined,
+        CallField.endedAt: FieldValue.serverTimestamp(),
+      });
+    } finally {
+      await _finishCallKitCall(callId);
+    }
+  }
+
+  static Future<void> _endVoiceCall(Map<String, dynamic> data) async {
+    final callId = data['callId'];
+    if (callId is! String || callId.isEmpty) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebaseCollections.calls)
+          .doc(callId)
+          .update({
+        CallField.status: CallStatus.ended,
+        CallField.endedAt: FieldValue.serverTimestamp(),
+      });
+    } finally {
+      await _finishCallKitCall(callId);
+    }
+  }
+
+  static Future<void> _finishCallKitCall(String callId) async {
+    try {
+      await FlutterCallkitIncoming.endCall(callId);
+      await FlutterCallkitIncoming.endAllCalls();
+    } finally {
+      _closeAppAfterCallById.remove(callId);
+
+      final lastCallId = _lastIncomingCall?.data['callId'];
+      if (lastCallId == callId) _lastIncomingCall = null;
+
+      final pendingCallId = _pendingVoiceCall?.data['callId'];
+      if (pendingCallId == callId) _pendingVoiceCall = null;
+    }
   }
 
   static void _openVoiceCall(
     Map<String, dynamic> data, {
     bool autoAccept = false,
+    bool closeAppOnEnd = false,
+  }) {
+    final argument = _voiceCallArgumentFromData(
+      data,
+      autoAccept: autoAccept,
+      closeAppOnEnd: closeAppOnEnd,
+    );
+    if (argument == null) {
+      _pendingVoiceCall = (
+        data: data,
+        autoAccept: autoAccept,
+        closeAppOnEnd: closeAppOnEnd,
+      );
+      return;
+    }
+
+    if (autoAccept) {
+      _handledAcceptedCallIds.add(argument.callId ?? '');
+    }
+
+    if (Get.key.currentState == null) {
+      _pendingVoiceCall = (
+        data: data,
+        autoAccept: autoAccept,
+        closeAppOnEnd: closeAppOnEnd,
+      );
+      return;
+    }
+
+    Get.toNamed(
+      AppRouteName.VOICE_CALL_SCREEN,
+      arguments: argument,
+    );
+  }
+
+  static VoiceCallArgument? _voiceCallArgumentFromData(
+    Map<String, dynamic> data, {
+    required bool autoAccept,
+    bool closeAppOnEnd = false,
   }) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final roomId = data['roomId'];
@@ -204,21 +549,36 @@ class LocalNotificationService implements LocalNotificationRepository {
         roomId is! String ||
         callId is! String ||
         callerId is! String) {
-      return;
+      return null;
     }
 
-    Get.toNamed(
-      AppRouteName.VOICE_CALL_SCREEN,
-      arguments: VoiceCallArgument(
-        roomId: roomId,
-        currentUid: currentUid,
-        targetUid: callerId,
-        targetName: callerName.toString(),
-        callId: callId,
-        isCaller: false,
-        autoAccept: autoAccept,
-      ),
+    return VoiceCallArgument(
+      roomId: roomId,
+      currentUid: currentUid,
+      targetUid: callerId,
+      targetName: callerName.toString(),
+      callId: callId,
+      isCaller: false,
+      autoAccept: autoAccept,
+      closeAppOnEnd: closeAppOnEnd,
     );
+  }
+
+  static bool _closeAppOnEndFor(
+    Map<String, dynamic> data, {
+    bool? fallback,
+  }) {
+    final callId = data['callId'];
+    if (callId is String) {
+      final closeAppOnEnd = _closeAppAfterCallById[callId];
+      if (closeAppOnEnd != null) return closeAppOnEnd;
+    }
+
+    return fallback ?? _isAppNotForeground();
+  }
+
+  static bool _isAppNotForeground() {
+    return WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
   }
 
   static void _openChatRoom(Map<String, dynamic> data) {

@@ -9,10 +9,22 @@ import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'app.dart';
 import 'di/injection.dart';
+
+class _CallKitLifecycleObserver extends WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      LocalNotificationService.processPendingLaunchNotification();
+    });
+  }
+}
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -30,12 +42,14 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
       await Firebase.initializeApp();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       isCrashlyticsReady = true;
 
-      FlutterError.onError =
-          FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         return true;
@@ -46,6 +60,7 @@ Future<void> main() async {
       await AppContext.init();
       await getIt<NotificationRepository>().init();
       getIt<PresenceService>().init();
+      WidgetsBinding.instance.addObserver(_CallKitLifecycleObserver());
 
       FirebaseMessaging.onMessage.listen((message) {
         getIt<LocalNotificationRepository>().show(message);
@@ -55,15 +70,19 @@ Future<void> main() async {
         getIt<NotificationRepository>().handleMessage(message);
       });
 
-      final initialMessage =
-          await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
       if (initialMessage != null) {
         getIt<NotificationRepository>().handleMessage(initialMessage);
       }
 
-      runApp(const MyApp());
+      final initialVoiceCallArgument = await LocalNotificationService.takeInitialAcceptedCallArgument();
+
+      runApp(MyApp(initialVoiceCallArgument: initialVoiceCallArgument));
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        LocalNotificationService.processPendingLaunchNotification();
+      });
+      Future.delayed(const Duration(seconds: 1), () {
         LocalNotificationService.processPendingLaunchNotification();
       });
     },

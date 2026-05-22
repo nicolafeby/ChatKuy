@@ -5,6 +5,7 @@ import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:mobx/mobx.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -27,6 +28,7 @@ abstract class _VoiceCallStore with Store {
   StreamSubscription? _candidateSubscription;
   String? _callId;
   bool _isEnding = false;
+  bool _isDisposed = false;
   bool _remoteDescriptionSet = false;
   VoidCallback? _onClose;
   void Function(String message)? _onMessage;
@@ -237,7 +239,8 @@ abstract class _VoiceCallStore with Store {
     if (callId == null || currentArgument == null) return;
 
     _callSubscription?.cancel();
-    _callSubscription = callRepository.watchCall(callId).listen((snapshot) {
+    _callSubscription =
+        callRepository.watchCall(callId).listen((snapshot) async {
       final data = snapshot.data();
       if (data == null) return;
 
@@ -245,6 +248,9 @@ abstract class _VoiceCallStore with Store {
       if (status == CallStatus.declined ||
           status == CallStatus.ended ||
           status == CallStatus.missed) {
+        _setStatus(_closedStatusText(status));
+        _isEnding = true;
+        await _teardownCallResources(endCallKit: true);
         _close();
         return;
       }
@@ -290,6 +296,7 @@ abstract class _VoiceCallStore with Store {
     if (callId != null) {
       await callRepository.declineCall(callId);
     }
+    await _teardownCallResources(endCallKit: true);
     _close();
   }
 
@@ -385,6 +392,7 @@ abstract class _VoiceCallStore with Store {
         await callRepository.endCall(callId);
       }
     }
+    await _teardownCallResources(endCallKit: true);
     _close();
   }
 
@@ -396,6 +404,10 @@ abstract class _VoiceCallStore with Store {
         state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
       isConnecting = false;
       statusText = 'Terhubung';
+      final callId = _callId;
+      if (callId != null) {
+        FlutterCallkitIncoming.setCallConnected(callId);
+      }
     } else if (state == RTCIceConnectionState.RTCIceConnectionStateChecking) {
       isConnecting = true;
       statusText = 'Menyambungkan audio...';
@@ -433,12 +445,45 @@ abstract class _VoiceCallStore with Store {
     _onClose?.call();
   }
 
+  String _closedStatusText(dynamic status) {
+    if (status == CallStatus.declined) return 'Panggilan ditolak';
+    if (status == CallStatus.missed) return 'Panggilan tak terjawab';
+    return 'Panggilan berakhir';
+  }
+
+  Future<void> _teardownCallResources({required bool endCallKit}) async {
+    if (_isDisposed) return;
+    _isDisposed = true;
+
+    final callSubscription = _callSubscription;
+    _callSubscription = null;
+    if (callSubscription != null) {
+      unawaited(callSubscription.cancel());
+    }
+
+    final candidateSubscription = _candidateSubscription;
+    _candidateSubscription = null;
+    if (candidateSubscription != null) {
+      unawaited(candidateSubscription.cancel());
+    }
+
+    await _peerConnection?.close();
+    _peerConnection = null;
+    _localStream?.getTracks().forEach((track) => track.stop());
+    await _localStream?.dispose();
+    _localStream = null;
+    _pendingRemoteCandidates.clear();
+    _addedCandidateIds.clear();
+
+    final callId = _callId;
+    if (endCallKit && callId != null) {
+      await FlutterCallkitIncoming.endCall(callId);
+      await FlutterCallkitIncoming.endAllCalls();
+    }
+  }
+
   @action
   void dispose() {
-    _callSubscription?.cancel();
-    _candidateSubscription?.cancel();
-    _peerConnection?.close();
-    _localStream?.getTracks().forEach((track) => track.stop());
-    _localStream?.dispose();
+    unawaited(_teardownCallResources(endCallKit: false));
   }
 }
