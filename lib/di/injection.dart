@@ -7,6 +7,7 @@ import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
+import 'package:chatkuy/data/repositories/hive_encryption_repository.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
@@ -16,6 +17,7 @@ import 'package:chatkuy/data/services/auth_service.dart';
 import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:chatkuy/data/services/chat_user_list_service.dart';
 import 'package:chatkuy/data/services/friend_service.dart';
+import 'package:chatkuy/data/services/hive_encryption_service.dart';
 import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
@@ -34,8 +36,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 final getIt = GetIt.I;
 
 Future<void> setupDI() async {
-  getIt.registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance);
-  getIt.registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance);
+  getIt.registerLazySingleton<FirebaseFirestore>(
+      () => FirebaseFirestore.instance);
+  getIt.registerLazySingleton<FirebaseMessaging>(
+      () => FirebaseMessaging.instance);
   getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
 
   registerService();
@@ -44,11 +48,18 @@ Future<void> setupDI() async {
 }
 
 void registerService() {
-  getIt.registerLazySingleton<AuthRepository>(() => AuthService(FirebaseAuth.instance, FirebaseFirestore.instance));
+  getIt.registerLazySingleton<AuthRepository>(
+      () => AuthService(FirebaseAuth.instance, FirebaseFirestore.instance));
 
-  getIt.registerLazySingleton<UserRepository>(() => UserService(FirebaseFirestore.instance));
+  getIt.registerLazySingleton<UserRepository>(
+      () => UserService(FirebaseFirestore.instance));
 
-  getIt.registerLazySingleton<SecureStorageRepository>(() => SecureStorageService());
+  getIt.registerLazySingleton<SecureStorageRepository>(
+      () => SecureStorageService());
+
+  getIt.registerLazySingleton<HiveEncryptionRepository>(
+    () => HiveEncryptionService(getIt<SecureStorageRepository>()),
+  );
 
   getIt.registerLazySingleton<PresenceService>(
     () => PresenceService(
@@ -74,7 +85,8 @@ void registerService() {
   );
 
   getIt.registerLazySingleton<FriendRequestRepository>(
-    () => FriendRequestService(FirebaseAuth.instance, FirebaseFirestore.instance),
+    () =>
+        FriendRequestService(FirebaseAuth.instance, FirebaseFirestore.instance),
   );
 
   getIt.registerLazySingleton<ChatUserListRepository>(
@@ -135,8 +147,5 @@ Future registerHive() async {
     Hive.registerAdapter(UserModelAdapter());
   }
 
-  await Hive.openBox<ChatMessageModel>('chat_messages');
-  await Hive.openBox<ChatRoomModel>('chat_room');
-  await Hive.openBox<ChatUserItemModel>('chat_list');
-  await Hive.openBox<UserModel>('user_model');
+  await getIt<HiveEncryptionRepository>().openEncryptedBoxes();
 }
