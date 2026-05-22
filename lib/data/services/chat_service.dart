@@ -87,8 +87,10 @@ class ChatService implements ChatRepository {
             roomId: existing.roomId,
             senderId: existing.senderId,
             text: existing.text,
-            imageUrl: existing.imageUrl,
-            localImagePath: existing.localImagePath,
+            imageUrl: existing.imageUrl ?? data[MessageField.imageUrl],
+            localImagePath: _existingFilePath(existing.localImagePath),
+            videoUrl: existing.videoUrl ?? data[MessageField.videoUrl],
+            localVideoPath: _existingFilePath(existing.localVideoPath),
             type: existing.type,
             createdAt: existing.createdAt,
             createdAtClient: existing.createdAtClient,
@@ -110,10 +112,10 @@ class ChatService implements ChatRepository {
           senderId: data[MessageField.senderId] ?? '',
           text: data[MessageField.text],
           imageUrl: data[MessageField.imageUrl],
-          localImagePath: data[MessageField.localImagePath],
-          type: data[MessageField.type] == 'image'
-              ? MessageType.image
-              : MessageType.text,
+          localImagePath: _existingFilePath(data[MessageField.localImagePath]),
+          videoUrl: data[MessageField.videoUrl],
+          localVideoPath: _existingFilePath(data[MessageField.localVideoPath]),
+          type: _messageTypeFromString(data[MessageField.type]),
           createdAt: DateTime.now(),
           createdAtClient: DateTime.now(),
           deliveredTo:
@@ -151,8 +153,11 @@ class ChatService implements ChatRepository {
     String? text,
     String? imageUrl,
     File? imageFile,
+    String? videoUrl,
+    File? videoFile,
     required MessageType type,
     String? localImagePath,
+    String? localVideoPath,
     void Function(int progress)? onUploadProgress,
   }) async {
     final uid = auth.currentUser!.uid;
@@ -174,6 +179,10 @@ class ChatService implements ChatRepository {
         (imageFile != null
             ? await saveImageToLocal(imageFile: imageFile, roomId: roomId)
             : null);
+    final localVideo = localVideoPath ??
+        (videoFile != null
+            ? await saveVideoToLocal(videoFile: videoFile, roomId: roomId)
+            : null);
 
     /// OPTIMISTIC LOCAL MESSAGE
     final localMessage = ChatMessageModel(
@@ -182,6 +191,7 @@ class ChatService implements ChatRepository {
       senderId: uid,
       text: text,
       imageUrl: imageUrl,
+      videoUrl: videoUrl,
       type: type,
       createdAt: createdAtClient,
       createdAtClient: createdAtClient,
@@ -189,12 +199,14 @@ class ChatService implements ChatRepository {
       readBy: {},
       status: MessageStatus.pending,
       localImagePath: localPath,
+      localVideoPath: localVideo,
     );
 
     await _messageBox.put(localMessage.id, localMessage);
 
     try {
       String? uploadedImageUrl = imageUrl;
+      String? uploadedVideoUrl = videoUrl;
 
       if (imageFile != null) {
         final ref = firebaseStorage
@@ -224,6 +236,34 @@ class ChatService implements ChatRepository {
         );
       }
 
+      if (videoFile != null) {
+        final ref = firebaseStorage
+            .ref()
+            .child(StorageCollection.chatVideos)
+            .child(mediaNameFormat(roomId, videoFile));
+
+        final uploadTask = ref.putFile(videoFile);
+
+        await for (final snapshot in uploadTask.snapshotEvents) {
+          final totalBytes = snapshot.totalBytes;
+
+          if (totalBytes > 0) {
+            final progress = ((snapshot.bytesTransferred / totalBytes) * 100)
+                .round()
+                .clamp(0, 100);
+            onUploadProgress?.call(progress);
+          }
+        }
+
+        onUploadProgress?.call(100);
+        uploadedVideoUrl = await ref.getDownloadURL();
+
+        await _messageBox.put(
+          localMessage.id,
+          localMessage.copyWith(videoUrl: uploadedVideoUrl),
+        );
+      }
+
       final batch = firestore.batch();
 
       batch.set(messageRef, {
@@ -231,6 +271,8 @@ class ChatService implements ChatRepository {
         MessageField.text: text,
         MessageField.imageUrl: uploadedImageUrl,
         MessageField.localImagePath: localPath,
+        MessageField.videoUrl: uploadedVideoUrl,
+        MessageField.localVideoPath: localVideo,
         MessageField.createdAt: FieldValue.serverTimestamp(),
         MessageField.createdAtClient: createdAtClient,
         MessageField.deliveredTo: <String, bool>{},
@@ -240,7 +282,7 @@ class ChatService implements ChatRepository {
       });
 
       batch.update(roomRef, {
-        ChatRoomField.lastMessage: text,
+        ChatRoomField.lastMessage: _resolveLastMessage(text, type),
         ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
         ChatRoomField.lastSenderId: uid,
         '${ChatRoomField.unreadCount}.$uid': 0,
@@ -257,6 +299,29 @@ class ChatService implements ChatRepository {
       );
       rethrow;
     }
+  }
+
+  String _fallbackLastMessage(MessageType type) {
+    if (type == MessageType.image) return 'Foto';
+    if (type == MessageType.video) return 'Video';
+    return '';
+  }
+
+  String _resolveLastMessage(String? text, MessageType type) {
+    final messageText = text?.trim();
+    if (messageText != null && messageText.isNotEmpty) return messageText;
+    return _fallbackLastMessage(type);
+  }
+
+  MessageType _messageTypeFromString(dynamic value) {
+    if (value == MessageType.image.name) return MessageType.image;
+    if (value == MessageType.video.name) return MessageType.video;
+    return MessageType.text;
+  }
+
+  String? _existingFilePath(dynamic path) {
+    if (path is! String || path.isEmpty) return null;
+    return File(path).existsSync() ? path : null;
   }
 
   // -------------------------------

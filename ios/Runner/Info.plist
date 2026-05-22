@@ -28,6 +28,12 @@
 	<string>LaunchScreen</string>
 	<key>NSContactsUsageDescription</key>
     <string>Reason we need access to the contact list</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ChatKuy membutuhkan akses kamera untuk mengambil foto.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ChatKuy membutuhkan akses mikrofon saat merekam video.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ChatKuy membutuhkan akses galeri untuk memilih foto dan video.</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>

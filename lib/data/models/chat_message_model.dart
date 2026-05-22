@@ -22,6 +22,9 @@ enum MessageType {
 
   @HiveField(1)
   image,
+
+  @HiveField(2)
+  video,
 }
 
 @HiveType(typeId: 0)
@@ -63,11 +66,17 @@ class ChatMessageModel {
   final Map<String, bool> readBy;
 
   @HiveField(10)
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   final MessageStatus status;
 
   @HiveField(12)
   final String? localImagePath;
+
+  @HiveField(13)
+  final String? videoUrl;
+
+  @HiveField(14)
+  final String? localVideoPath;
 
   ChatMessageModel({
     required this.id,
@@ -83,6 +92,8 @@ class ChatMessageModel {
     required this.type,
     this.imageUrl,
     this.localImagePath,
+    this.videoUrl,
+    this.localVideoPath,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
@@ -94,6 +105,8 @@ class ChatMessageModel {
     MessageStatus? status,
     String? localImagePath,
     String? imageUrl,
+    String? localVideoPath,
+    String? videoUrl,
   }) {
     return ChatMessageModel(
       id: id,
@@ -109,6 +122,8 @@ class ChatMessageModel {
       type: type,
       imageUrl: imageUrl ?? this.imageUrl,
       localImagePath: localImagePath ?? this.localImagePath,
+      videoUrl: videoUrl ?? this.videoUrl,
+      localVideoPath: localVideoPath ?? this.localVideoPath,
     );
   }
 

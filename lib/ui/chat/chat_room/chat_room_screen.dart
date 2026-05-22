@@ -142,10 +142,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                           !message.createdAt.isSameDay(prevMessage.createdAt);
                       final uploadProgress =
                           store.uploadProgressByMessageId[message.id] ??
-                              (message.localImagePath == null
+                              (_localMediaPath(message) == null
                                   ? null
                                   : store.uploadProgressByLocalPath[
-                                      message.localImagePath!]);
+                                      _localMediaPath(message)!]);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,12 +161,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                             isSameGroup: isSameGroup,
                             isFirstInGroup: !isSameGroup,
                             onRetry: message.status == MessageStatus.failed
-                                ? () => store.sendMessage(
-                                      message.text,
-                                      message.localImagePath == null
-                                          ? null
-                                          : File(message.localImagePath!),
-                                    )
+                                ? () => _retryMessage(message)
                                 : null,
                           ),
                         ],
@@ -179,7 +174,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                   sendButtonColor: AppColor.primaryColor,
                   attachmentConfig: AttachmentConfig(
                     showAudio: false,
-                    backgroundColor: Colors.grey.withOpacity(0.7),
+                    backgroundColor: Colors.grey.withValues(alpha: 0.7),
                   ),
                   onSendTap: () {
                     final text = store.messageController.text.trim();
@@ -198,4 +193,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
   @override
   bool get wantKeepAlive => true;
+
+  String? _localMediaPath(ChatMessageModel message) {
+    if (message.type == MessageType.video) return message.localVideoPath;
+    return message.localImagePath;
+  }
+
+  void _retryMessage(ChatMessageModel message) {
+    if (message.type == MessageType.video && message.localVideoPath != null) {
+      store.sendVideoMessage(message.text, File(message.localVideoPath!));
+      return;
+    }
+
+    store.sendMessage(
+      message.text,
+      message.localImagePath == null ? null : File(message.localImagePath!),
+    );
+  }
 }

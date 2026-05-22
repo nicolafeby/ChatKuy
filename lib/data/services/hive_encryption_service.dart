@@ -31,6 +31,7 @@ class HiveEncryptionService implements HiveEncryptionRepository {
     await Future.wait([
       _clearHiveBoxes(),
       _clearChatImages(),
+      _clearChatVideos(),
     ]);
   }
 
@@ -83,6 +84,16 @@ class HiveEncryptionService implements HiveEncryptionRepository {
     final directory = await getApplicationDocumentsDirectory();
     final chatDir =
         Directory('${directory.path}/${StorageCollection.chatImages}');
+
+    if (await chatDir.exists()) {
+      await chatDir.delete(recursive: true);
+    }
+  }
+
+  Future<void> _clearChatVideos() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final chatDir =
+        Directory('${directory.path}/${StorageCollection.chatVideos}');
 
     if (await chatDir.exists()) {
       await chatDir.delete(recursive: true);

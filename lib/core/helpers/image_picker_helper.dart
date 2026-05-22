@@ -21,10 +21,32 @@ class ImagePickerHelper {
   }) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
-        source: source == PickImageSource.camera ? ImageSource.camera : ImageSource.gallery,
+        source: source == PickImageSource.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
         imageQuality: imageQuality,
         maxWidth: maxWidth,
         maxHeight: maxHeight,
+      );
+
+      if (pickedFile == null) return null;
+
+      return File(pickedFile.path);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<File?> pickVideo({
+    required PickImageSource source,
+    Duration? maxDuration,
+  }) async {
+    try {
+      final XFile? pickedFile = await _picker.pickVideo(
+        source: source == PickImageSource.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
+        maxDuration: maxDuration,
       );
 
       if (pickedFile == null) return null;

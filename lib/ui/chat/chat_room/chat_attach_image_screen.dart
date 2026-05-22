@@ -88,7 +88,7 @@ class _ChatAttachImageScreenState extends State<ChatAttachImageScreen> {
         child: Container(
           padding: EdgeInsets.all(8.r),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.65),
+            color: Colors.grey.withValues(alpha: 0.65),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -119,7 +119,8 @@ class _ChatAttachImageScreenState extends State<ChatAttachImageScreen> {
   }
 
   Future _cropImage() async {
-    final croppedImage = await ImageCropperHelper.cropImage(imageFile: argument!.image);
+    final croppedImage =
+        await ImageCropperHelper.cropImage(imageFile: argument!.image);
 
     if (croppedImage == null) return;
     argument?.store.croppedImage = croppedImage;

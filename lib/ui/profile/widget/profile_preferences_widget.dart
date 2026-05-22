@@ -21,13 +21,14 @@ class ProfilePreferencesWidget extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: EdgeInsets.all(6.r),
-            decoration: BoxDecoration(color: AppColor.whiteBlue, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: AppColor.whiteBlue, shape: BoxShape.circle),
             child: Container(
               height: 40.r,
               width: 40.r,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColor.primaryColor.withOpacity(0.8),
+                color: AppColor.primaryColor.withValues(alpha: 0.8),
               ),
               child: icon,
             ),

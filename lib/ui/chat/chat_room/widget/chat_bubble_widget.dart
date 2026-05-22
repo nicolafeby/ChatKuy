@@ -4,6 +4,7 @@ import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
+import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -57,7 +58,7 @@ class ChatBubbleWidget extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isMe
-                      ? AppColor.primaryColor.withOpacity(0.8)
+                      ? AppColor.primaryColor.withValues(alpha: 0.8)
                       : Colors.grey.shade200,
                   borderRadius: _bubbleRadius(),
                 ),
@@ -87,6 +88,11 @@ class ChatBubbleWidget extends StatelessWidget {
     final localImagePath = message.localImagePath;
     final hasImage = type == MessageType.image &&
         (localImagePath != null || imageUrl != null);
+    final videoUrl = message.videoUrl;
+    final localVideoPath = message.localVideoPath;
+    final playableLocalVideoPath = _existingFilePath(localVideoPath);
+    final hasVideo = type == MessageType.video &&
+        (playableLocalVideoPath != null || videoUrl != null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -110,6 +116,41 @@ class ChatBubbleWidget extends StatelessWidget {
                     child: _buildImagePreview(
                       imageUrl: imageUrl,
                       localImagePath: localImagePath,
+                    ),
+                  ),
+                ),
+              ),
+              4.verticalSpace,
+              Visibility(
+                visible: message.text?.isNotEmpty == true,
+                child: Text(
+                  message.text ?? '',
+                  softWrap: true,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : Colors.black87,
+                    fontSize: 14.sp,
+                  ),
+                ),
+              ),
+            ],
+          )
+        ] else if (hasVideo) ...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4.r),
+                child: InkWell(
+                  onTap: () => _openVideoViewer(
+                    videoUrl: videoUrl,
+                    localVideoPath: playableLocalVideoPath,
+                  ),
+                  child: Hero(
+                    tag: _videoHeroTag(videoUrl, playableLocalVideoPath),
+                    child: _buildVideoPreview(
+                      videoUrl: videoUrl,
+                      localVideoPath: playableLocalVideoPath,
                     ),
                   ),
                 ),
@@ -199,6 +240,92 @@ class ChatBubbleWidget extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  Widget _buildVideoPreview({
+    required String? videoUrl,
+    required String? localVideoPath,
+  }) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          height: 200.h,
+          width: double.infinity,
+          color: Colors.black87,
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.play_circle_fill,
+            size: 58.r,
+            color: Colors.white,
+          ),
+        ),
+        Positioned(
+          left: 10.w,
+          bottom: 10.h,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(4.r),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.videocam_outlined,
+                  size: 14.r,
+                  color: Colors.white,
+                ),
+                4.horizontalSpace,
+                Text(
+                  'Video',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (message.status == MessageStatus.pending)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Colors.black38,
+              child: Center(
+                child: _buildUploadProgress(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _openVideoViewer({
+    required String? videoUrl,
+    required String? localVideoPath,
+  }) {
+    if (videoUrl == null && localVideoPath == null) return;
+
+    Get.toNamed(
+      AppRouteName.VIDEO_VIEWER_SCREEN,
+      arguments: VideoViewerArgument(
+        videoUrl: videoUrl,
+        localVideoPath: localVideoPath,
+        heroTag: _videoHeroTag(videoUrl, localVideoPath),
+      ),
+    );
+  }
+
+  String _videoHeroTag(String? videoUrl, String? localVideoPath) {
+    return videoUrl ?? localVideoPath ?? message.id;
+  }
+
+  String? _existingFilePath(String? path) {
+    if (path == null) return null;
+    return File(path).existsSync() ? path : null;
   }
 
   Widget _buildUploadProgress() {

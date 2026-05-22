@@ -10,13 +10,16 @@ class LocalImageModel {
   final String localImagePath;
   final String downloadUrl;
 
-  const LocalImageModel({required this.localImagePath, required this.downloadUrl});
+  const LocalImageModel(
+      {required this.localImagePath, required this.downloadUrl});
 }
 
-Future<String> saveImageToLocal({required File imageFile, required String roomId}) async {
+Future<String> saveImageToLocal(
+    {required File imageFile, required String roomId}) async {
   final directory = await getApplicationDocumentsDirectory();
 
-  final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
+  final chatDir =
+      Directory('${directory.path}/${StorageCollection.chatImages}');
   if (!await chatDir.exists()) {
     await chatDir.create(recursive: true);
   }
@@ -30,10 +33,30 @@ Future<String> saveImageToLocal({required File imageFile, required String roomId
   return newFile.path;
 }
 
+Future<String> saveVideoToLocal({
+  required File videoFile,
+  required String roomId,
+}) async {
+  final directory = await getApplicationDocumentsDirectory();
+
+  final chatDir =
+      Directory('${directory.path}/${StorageCollection.chatVideos}');
+  if (!await chatDir.exists()) {
+    await chatDir.create(recursive: true);
+  }
+
+  final fileName = mediaNameFormat(roomId, videoFile);
+  final newPath = '${chatDir.path}/$fileName';
+  final newFile = await videoFile.copy(newPath);
+
+  return newFile.path;
+}
+
 Future<String> getOrDownloadImage({required String imageUrl}) async {
   final directory = await getApplicationDocumentsDirectory();
 
-  final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
+  final chatDir =
+      Directory('${directory.path}/${StorageCollection.chatImages}');
   if (!await chatDir.exists()) {
     await chatDir.create(recursive: true);
   }
@@ -67,4 +90,7 @@ String _extractFileName(String url) {
 }
 
 String imageNameFormat(String roomId, File file) =>
+    '${AppStrings.appName}_${roomId}_${DateTime.now().millisecondsSinceEpoch}${extension(file.path)}';
+
+String mediaNameFormat(String roomId, File file) =>
     '${AppStrings.appName}_${roomId}_${DateTime.now().millisecondsSinceEpoch}${extension(file.path)}';

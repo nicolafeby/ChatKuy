@@ -26,22 +26,28 @@ abstract class FirestorePaths {
   static String user(String uid) => '${FirebaseCollections.users}/$uid';
 
   /// users/{uid}/friends
-  static String userFriends(String uid) => '${user(uid)}/${FirestoreCollection.friends}';
+  static String userFriends(String uid) =>
+      '${user(uid)}/${FirestoreCollection.friends}';
 
   /// users/{uid}/friends/{friendUid}
-  static String userFriendDoc(String uid, String friendUid) => '${userFriends(uid)}/$friendUid';
+  static String userFriendDoc(String uid, String friendUid) =>
+      '${userFriends(uid)}/$friendUid';
 
   /// chat_rooms/{roomId}
-  static String chatRoom(String roomId) => '${FirebaseCollections.chatRooms}/$roomId';
+  static String chatRoom(String roomId) =>
+      '${FirebaseCollections.chatRooms}/$roomId';
 
   /// chat_rooms/{roomId}/messages
-  static String chatMessages(String roomId) => '${chatRoom(roomId)}/${FirestoreCollection.messages}';
+  static String chatMessages(String roomId) =>
+      '${chatRoom(roomId)}/${FirestoreCollection.messages}';
 
   /// users/{uid}/friend_requests
-  static String userFriendRequests(String uid) => '${user(uid)}/${FirestoreCollection.friendRequests}';
+  static String userFriendRequests(String uid) =>
+      '${user(uid)}/${FirestoreCollection.friendRequests}';
 
   /// users/{uid}/friend_requests/{requestId}
-  static String userFriendRequestDoc(String uid, String requestId) => '${userFriendRequests(uid)}/$requestId';
+  static String userFriendRequestDoc(String uid, String requestId) =>
+      '${userFriendRequests(uid)}/$requestId';
 }
 
 /// ==============================
@@ -71,6 +77,8 @@ abstract class MessageField {
   static const senderName = 'senderName';
   static const imageUrl = 'imageUrl';
   static const localImagePath = 'localImagePath';
+  static const videoUrl = 'videoUrl';
+  static const localVideoPath = 'localVideoPath';
   static const type = 'type';
 }
 
@@ -104,4 +112,5 @@ abstract class FriendRequestStatus {
 
 abstract class StorageCollection {
   static const chatImages = 'chat_images';
+  static const chatVideos = 'chat_videos';
 }

@@ -21,8 +21,11 @@ abstract class ChatRepository {
     String? text,
     String? imageUrl,
     File? imageFile,
+    String? videoUrl,
+    File? videoFile,
     required MessageType type,
     String? localImagePath,
+    String? localVideoPath,
     void Function(int progress)? onUploadProgress,
   });
 
