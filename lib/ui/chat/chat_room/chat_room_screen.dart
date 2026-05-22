@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/chat_field/attachment_overlay.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/chat_field/chat_field.dart';
@@ -15,6 +16,7 @@ import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
+import 'package:chatkuy/ui/chat/voice_call/voice_call_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -118,6 +120,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
               store: store,
               userData: user ?? dummy,
               isTyping: isTargetTyping(),
+              onVoiceCallTap: user == null || targetId == null
+                  ? null
+                  : () => _startVoiceCall(user, targetId),
             ),
             body: Column(
               children: [
@@ -208,6 +213,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     store.sendMessage(
       message.text,
       message.localImagePath == null ? null : File(message.localImagePath!),
+    );
+  }
+
+  void _startVoiceCall(UserModel targetUser, String targetId) {
+    if (argument == null) return;
+
+    Get.toNamed(
+      AppRouteName.VOICE_CALL_SCREEN,
+      arguments: VoiceCallArgument(
+        roomId: argument!.roomId,
+        currentUid: argument!.currentUid,
+        targetUid: targetId,
+        targetName: targetUser.name,
+        currentUserName: 'ChatKuy',
+        isCaller: true,
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@
 abstract class FirebaseCollections {
   static const users = 'users';
   static const chatRooms = 'chat_rooms';
+  static const calls = 'calls';
 }
 
 /// ==============================
@@ -14,6 +15,8 @@ abstract class FirestoreCollection {
   static const friends = 'friends';
   static const friendRequests = 'friend_requests';
   static const outgoingFriendRequests = 'outgoing_friend_requests';
+  static const callerCandidates = 'caller_candidates';
+  static const calleeCandidates = 'callee_candidates';
 }
 
 /// ==============================
@@ -80,6 +83,33 @@ abstract class MessageField {
   static const videoUrl = 'videoUrl';
   static const localVideoPath = 'localVideoPath';
   static const type = 'type';
+}
+
+/// ==============================
+/// CALL FIELDS
+/// ==============================
+abstract class CallField {
+  static const roomId = 'roomId';
+  static const callerId = 'callerId';
+  static const calleeId = 'calleeId';
+  static const callerName = 'callerName';
+  static const calleeName = 'calleeName';
+  static const participants = 'participants';
+  static const status = 'status';
+  static const type = 'type';
+  static const offer = 'offer';
+  static const answer = 'answer';
+  static const createdAt = 'createdAt';
+  static const answeredAt = 'answeredAt';
+  static const endedAt = 'endedAt';
+}
+
+abstract class CallStatus {
+  static const ringing = 'ringing';
+  static const active = 'active';
+  static const declined = 'declined';
+  static const ended = 'ended';
+  static const missed = 'missed';
 }
 
 /// ==============================

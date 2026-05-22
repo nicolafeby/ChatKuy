@@ -22,7 +22,8 @@ Future<void> main() async {
       await Firebase.initializeApp();
       isCrashlyticsReady = true;
 
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         return true;
@@ -36,13 +37,17 @@ Future<void> main() async {
 
       FirebaseMessaging.onMessage.listen((message) {
         getIt<LocalNotificationRepository>().show(message);
+        if (message.data['type'] == 'voice_call') {
+          getIt<NotificationRepository>().handleMessage(message);
+        }
       });
 
       FirebaseMessaging.onMessageOpenedApp.listen((message) {
         getIt<NotificationRepository>().handleMessage(message);
       });
 
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage =
+          await FirebaseMessaging.instance.getInitialMessage();
 
       if (initialMessage != null) {
         getIt<NotificationRepository>().handleMessage(initialMessage);

@@ -31,7 +31,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>ChatKuy membutuhkan akses kamera untuk mengambil foto.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ChatKuy membutuhkan akses mikrofon saat merekam video.</string>
+	<string>ChatKuy membutuhkan akses mikrofon untuk merekam video dan telepon suara.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ChatKuy membutuhkan akses galeri untuk memilih foto dan video.</string>
 	<key>UIMainStoryboardFile</key>
