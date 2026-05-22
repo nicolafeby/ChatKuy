@@ -46,6 +46,9 @@ abstract class _VoiceCallStore with Store {
   @observable
   String statusText = 'Menghubungkan...';
 
+  @observable
+  bool isIncomingRinging = false;
+
   static const Map<String, dynamic> _configuration = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
@@ -63,9 +66,36 @@ abstract class _VoiceCallStore with Store {
     _onClose = onClose;
     _onMessage = onMessage;
 
+    if (!argument.isCaller) {
+      _prepareIncomingCall(argument);
+      return;
+    }
+
+    await _startMediaSession(argument);
+  }
+
+  @action
+  void _prepareIncomingCall(VoiceCallArgument argument) {
+    if (argument.callId == null) {
+      _showMessage('Data panggilan tidak lengkap');
+      _close();
+      return;
+    }
+
+    _callId = argument.callId;
+    isIncomingRinging = true;
+    isConnecting = false;
+    statusText = 'Panggilan suara masuk';
+    _listenCall();
+  }
+
+  Future<void> _startMediaSession(VoiceCallArgument argument) async {
     final micStatus = await Permission.microphone.request();
     if (!micStatus.isGranted) {
       _showMessage('ChatKuy membutuhkan akses mikrofon untuk telepon suara');
+      if (!argument.isCaller && _callId != null) {
+        await callRepository.declineCall(_callId!);
+      }
       _close();
       return;
     }
@@ -80,8 +110,7 @@ abstract class _VoiceCallStore with Store {
 
       _peerConnection = await createPeerConnection(_configuration);
       _peerConnection?.onIceConnectionState = _handleIceState;
-      _peerConnection?.onConnectionState =
-          (state) => debugPrint('VoiceCall peer state: $state');
+      _peerConnection?.onConnectionState = (state) => debugPrint('VoiceCall peer state: $state');
 
       for (final track in _localStream!.getTracks()) {
         await _peerConnection?.addTrack(track, _localStream!);
@@ -112,7 +141,7 @@ abstract class _VoiceCallStore with Store {
       if (argument.isCaller) {
         await _startOutgoingCall(argument);
       } else {
-        await _answerIncomingCall(argument);
+        await _answerIncomingCall();
       }
     } catch (e) {
       _showMessage('Gagal memulai panggilan: $e');
@@ -149,8 +178,8 @@ abstract class _VoiceCallStore with Store {
     _setStatus('Memanggil ${argument.targetName}...');
   }
 
-  Future<void> _answerIncomingCall(VoiceCallArgument argument) async {
-    final callId = argument.callId;
+  Future<void> _answerIncomingCall() async {
+    final callId = _callId;
     if (callId == null) {
       _showMessage('Data panggilan tidak lengkap');
       _close();
@@ -200,14 +229,13 @@ abstract class _VoiceCallStore with Store {
     final currentArgument = argument;
     if (callId == null || currentArgument == null) return;
 
+    _callSubscription?.cancel();
     _callSubscription = callRepository.watchCall(callId).listen((snapshot) {
       final data = snapshot.data();
       if (data == null) return;
 
       final status = data[CallField.status];
-      if (status == CallStatus.declined ||
-          status == CallStatus.ended ||
-          status == CallStatus.missed) {
+      if (status == CallStatus.declined || status == CallStatus.ended || status == CallStatus.missed) {
         _close();
         return;
       }
@@ -231,6 +259,29 @@ abstract class _VoiceCallStore with Store {
         });
       }
     });
+  }
+
+  @action
+  Future<void> acceptIncomingCall() async {
+    final currentArgument = argument;
+    if (currentArgument == null || currentArgument.isCaller) return;
+
+    isIncomingRinging = false;
+    isConnecting = true;
+    statusText = 'Menghubungkan...';
+    await _startMediaSession(currentArgument);
+  }
+
+  @action
+  Future<void> declineIncomingCall() async {
+    if (_isEnding) return;
+    _isEnding = true;
+
+    final callId = _callId;
+    if (callId != null) {
+      await callRepository.declineCall(callId);
+    }
+    _close();
   }
 
   void _listenRemoteCandidates() {
@@ -319,7 +370,11 @@ abstract class _VoiceCallStore with Store {
 
     final callId = _callId;
     if (updateRemote && callId != null) {
-      await callRepository.endCall(callId);
+      if (isIncomingRinging) {
+        await callRepository.declineCall(callId);
+      } else {
+        await callRepository.endCall(callId);
+      }
     }
     _close();
   }
@@ -338,8 +393,7 @@ abstract class _VoiceCallStore with Store {
     } else if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
       isConnecting = false;
       statusText = 'Audio gagal tersambung';
-    } else if (state ==
-        RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+    } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
       statusText = 'Koneksi audio terputus';
     }
   }

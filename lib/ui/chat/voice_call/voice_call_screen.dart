@@ -117,27 +117,46 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                     ),
                   ],
                   const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _CallControlButton(
-                        icon: store.isMuted ? Icons.mic_off : Icons.mic,
-                        label: store.isMuted ? 'Unmute' : 'Mute',
-                        onTap: store.toggleMute,
-                      ),
-                      _CallControlButton(
-                        icon: Icons.call_end,
-                        label: 'Akhiri',
-                        color: Colors.redAccent,
-                        onTap: () => store.endCall(),
-                      ),
-                      _CallControlButton(
-                        icon: store.isSpeakerOn ? Icons.volume_up : Icons.volume_down,
-                        label: 'Speaker',
-                        onTap: store.toggleSpeaker,
-                      ),
-                    ],
-                  ),
+                  if (store.isIncomingRinging)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _CallControlButton(
+                          icon: Icons.call_end,
+                          label: 'Tolak',
+                          color: Colors.redAccent,
+                          onTap: store.declineIncomingCall,
+                        ),
+                        _CallControlButton(
+                          icon: Icons.call,
+                          label: 'Terima',
+                          color: Colors.green,
+                          onTap: store.acceptIncomingCall,
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _CallControlButton(
+                          icon: store.isMuted ? Icons.mic_off : Icons.mic,
+                          label: store.isMuted ? 'Unmute' : 'Mute',
+                          onTap: store.toggleMute,
+                        ),
+                        _CallControlButton(
+                          icon: Icons.call_end,
+                          label: 'Akhiri',
+                          color: Colors.redAccent,
+                          onTap: () => store.endCall(),
+                        ),
+                        _CallControlButton(
+                          icon: store.isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+                          label: 'Speaker',
+                          onTap: store.toggleSpeaker,
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
