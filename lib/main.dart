@@ -63,6 +63,9 @@ Future<void> main() async {
       }
 
       runApp(const MyApp());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        LocalNotificationService.processPendingLaunchNotification();
+      });
     },
     (error, stack) {
       if (isCrashlyticsReady) {
