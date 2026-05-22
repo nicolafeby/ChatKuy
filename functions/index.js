@@ -113,4 +113,70 @@ exports.onNewMessage = onDocumentCreated(
   }
 );
 
+exports.onNewVoiceCall = onDocumentCreated(
+  'calls/{callId}',
+  async (event) => {
+    if (!event.data) {
+      logger.error('❌ call event.data is null');
+      return;
+    }
 
+    const call = event.data.data();
+    const callerId = call.callerId;
+    const calleeId = call.calleeId;
+
+    if (!callerId || !calleeId) {
+      logger.error('❌ callerId/calleeId missing');
+      return;
+    }
+
+    const userSnap = await admin
+      .firestore()
+      .collection('users')
+      .doc(calleeId)
+      .get();
+
+    if (!userSnap.exists) {
+      logger.error('❌ callee user not found');
+      return;
+    }
+
+    const fcmToken = userSnap.data().fcmToken;
+    if (!fcmToken) {
+      logger.error('❌ callee fcmToken missing');
+      return;
+    }
+
+    const callerName = call.callerName || 'ChatKuy';
+
+    const response = await admin.messaging().send({
+      token: fcmToken,
+      notification: {
+        title: callerName,
+        body: 'Panggilan suara masuk',
+      },
+      data: {
+        type: 'voice_call',
+        callId: event.params.callId,
+        roomId: call.roomId || '',
+        callerId: callerId,
+        callerName: callerName,
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'chat_notification',
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+          },
+        },
+      },
+    });
+
+    logger.info('✅ Voice call FCM sent:', response);
+  }
+);

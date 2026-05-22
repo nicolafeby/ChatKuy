@@ -3,6 +3,7 @@ import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
+import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -59,6 +60,31 @@ class NotificationService implements NotificationRepository {
               roomId: roomId,
               currentUid: id,
               senderId: senderId,
+            ),
+          );
+        }
+      });
+    }
+
+    if (data['type'] == 'voice_call') {
+      final roomId = data['roomId'];
+      final callId = data['callId'];
+      final callerId = data['callerId'];
+      final callerName = data['callerName'] ?? 'Panggilan suara';
+
+      if (roomId == null || callId == null || callerId == null) return;
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (Get.key.currentState != null) {
+          Get.toNamed(
+            AppRouteName.VOICE_CALL_SCREEN,
+            arguments: VoiceCallArgument(
+              roomId: roomId,
+              currentUid: id,
+              targetUid: callerId,
+              targetName: callerName,
+              callId: callId,
+              isCaller: false,
             ),
           );
         }

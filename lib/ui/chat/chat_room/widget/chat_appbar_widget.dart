@@ -9,11 +9,13 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final ChatRoomStore store;
   final UserModel userData;
   final bool isTyping;
+  final VoidCallback? onVoiceCallTap;
   const ChatAppbarWidget({
     super.key,
     required this.store,
     required this.userData,
     required this.isTyping,
+    this.onVoiceCallTap,
   });
 
   @override
@@ -24,14 +26,24 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
         children: [
           _buildAvatarSection(userData),
           12.horizontalSpace,
-          _buildDisplayNameSections(userData, isTyping: isTyping),
+          Expanded(
+            child: _buildDisplayNameSections(userData, isTyping: isTyping),
+          ),
         ],
       ),
+      actions: [
+        IconButton(
+          onPressed: onVoiceCallTap,
+          icon: const Icon(Icons.call),
+          tooltip: 'Telepon suara',
+        ),
+      ],
       elevation: 2,
     );
   }
 
-  Widget _buildAvatarSection(UserModel user) => ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
+  Widget _buildAvatarSection(UserModel user) =>
+      ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
 
   Widget _buildDisplayNameSections(UserModel user, {required bool isTyping}) {
     return Column(

@@ -3,6 +3,7 @@ import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
@@ -14,6 +15,7 @@ import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/data/services/auth_service.dart';
+import 'package:chatkuy/data/services/call_service.dart';
 import 'package:chatkuy/data/services/chat_service.dart';
 import 'package:chatkuy/data/services/chat_user_list_service.dart';
 import 'package:chatkuy/data/services/friend_service.dart';
@@ -78,6 +80,10 @@ void registerService() {
       FirebaseFirestore.instance,
       FirebaseStorage.instance,
     ),
+  );
+
+  getIt.registerLazySingleton<CallRepository>(
+    () => CallService(FirebaseFirestore.instance),
   );
 
   getIt.registerLazySingleton<FriendRepository>(
