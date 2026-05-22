@@ -67,6 +67,12 @@ abstract class _VoiceCallStore with Store {
     _onMessage = onMessage;
 
     if (!argument.isCaller) {
+      if (argument.autoAccept) {
+        _callId = argument.callId;
+        await _startMediaSession(argument);
+        return;
+      }
+
       _prepareIncomingCall(argument);
       return;
     }
@@ -110,7 +116,8 @@ abstract class _VoiceCallStore with Store {
 
       _peerConnection = await createPeerConnection(_configuration);
       _peerConnection?.onIceConnectionState = _handleIceState;
-      _peerConnection?.onConnectionState = (state) => debugPrint('VoiceCall peer state: $state');
+      _peerConnection?.onConnectionState =
+          (state) => debugPrint('VoiceCall peer state: $state');
 
       for (final track in _localStream!.getTracks()) {
         await _peerConnection?.addTrack(track, _localStream!);
@@ -235,7 +242,9 @@ abstract class _VoiceCallStore with Store {
       if (data == null) return;
 
       final status = data[CallField.status];
-      if (status == CallStatus.declined || status == CallStatus.ended || status == CallStatus.missed) {
+      if (status == CallStatus.declined ||
+          status == CallStatus.ended ||
+          status == CallStatus.missed) {
         _close();
         return;
       }
@@ -393,7 +402,8 @@ abstract class _VoiceCallStore with Store {
     } else if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
       isConnecting = false;
       statusText = 'Audio gagal tersambung';
-    } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+    } else if (state ==
+        RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
       statusText = 'Koneksi audio terputus';
     }
   }

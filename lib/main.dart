@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
+import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -13,6 +14,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'app.dart';
 import 'di/injection.dart';
 
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  if (message.data['type'] == 'voice_call') {
+    await LocalNotificationService.showFromBackground(message);
+  }
+}
+
 Future<void> main() async {
   var isCrashlyticsReady = false;
 
@@ -20,6 +31,7 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       isCrashlyticsReady = true;
 
       FlutterError.onError =
@@ -37,9 +49,6 @@ Future<void> main() async {
 
       FirebaseMessaging.onMessage.listen((message) {
         getIt<LocalNotificationRepository>().show(message);
-        if (message.data['type'] == 'voice_call') {
-          getIt<NotificationRepository>().handleMessage(message);
-        }
       });
 
       FirebaseMessaging.onMessageOpenedApp.listen((message) {
