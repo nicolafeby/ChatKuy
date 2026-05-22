@@ -6,8 +6,9 @@ import 'package:video_compress/video_compress.dart';
 
 Future<File> compressChatVideo({
   required File videoFile,
-  VideoQuality quality = VideoQuality.MediumQuality,
+  VideoQuality quality = VideoQuality.LowQuality,
   bool deleteOrigin = false,
+  int frameRate = 24,
   void Function(int progress)? onProgress,
 }) async {
   final originalSize = await videoFile.length();
@@ -25,6 +26,7 @@ Future<File> compressChatVideo({
         quality: quality,
         deleteOrigin: deleteOrigin,
         includeAudio: true,
+        frameRate: frameRate,
       );
     } finally {
       subscription.unsubscribe();
@@ -54,6 +56,23 @@ Future<File> compressChatVideo({
   } catch (e) {
     debugPrint('[ChatVideoCompress] Failed to compress video: $e');
     return videoFile;
+  }
+}
+
+Future<File?> getChatVideoThumbnail({
+  required File videoFile,
+  int quality = 55,
+  int position = 1000,
+}) async {
+  try {
+    return await VideoCompress.getFileThumbnail(
+      videoFile.path,
+      quality: quality,
+      position: position,
+    );
+  } catch (e) {
+    debugPrint('[ChatVideoThumbnail] Failed to create thumbnail: $e');
+    return null;
   }
 }
 

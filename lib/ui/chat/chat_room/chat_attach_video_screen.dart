@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chatkuy/core/helpers/video_compress_helper.dart';
 import 'package:chatkuy/core/widgets/chat_field/chat_field.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,8 @@ class ChatAttachVideoScreen extends StatefulWidget {
 class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
   ChatAttachVideoArgument? argument;
   VideoPlayerController? _controller;
+  File? _thumbnail;
+  bool _isPreparingPlayer = false;
 
   @override
   void initState() {
@@ -32,11 +35,7 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
     final video = argument?.video;
     if (video == null) return;
 
-    _controller = VideoPlayerController.file(video)
-      ..initialize().then((_) {
-        if (!mounted) return;
-        setState(() {});
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadThumbnail(video));
   }
 
   @override
@@ -71,6 +70,7 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
                 store: argument!.store,
                 disableAttachment: true,
                 onSend: (text) {
+                  _controller?.pause();
                   argument!.store.sendVideoMessage(text, video);
                   argument!.store.messageController.clear();
                   Get.back();
@@ -85,8 +85,38 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
 
   Widget _buildVideoPreview() {
     final controller = _controller;
+
     if (controller == null || !controller.value.isInitialized) {
-      return const CircularProgressIndicator(color: Colors.white);
+      return GestureDetector(
+        onTap: _preparePlayer,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _buildPoster(),
+            Container(
+              padding: EdgeInsets.all(14.r),
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: _isPreparingPlayer
+                  ? SizedBox(
+                      width: 34.r,
+                      height: 34.r,
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 34.r,
+                    ),
+            ),
+          ],
+        ),
+      );
     }
 
     return GestureDetector(
@@ -111,6 +141,48 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
                 size: 34.r,
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPoster() {
+    final thumbnail = _thumbnail;
+
+    if (thumbnail != null) {
+      return Image.file(
+        thumbnail,
+        fit: BoxFit.contain,
+        width: 1.sw,
+        errorBuilder: (context, error, stackTrace) => _buildPosterFallback(),
+      );
+    }
+
+    return _buildPosterFallback();
+  }
+
+  Widget _buildPosterFallback() {
+    return Container(
+      width: 1.sw,
+      height: 0.55.sh,
+      color: Colors.black,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.videocam_outlined,
+            color: Colors.white70,
+            size: 52.r,
+          ),
+          10.verticalSpace,
+          Text(
+            'Video siap dikirim',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13.sp,
+            ),
+          ),
         ],
       ),
     );
@@ -145,5 +217,38 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
     setState(() {
       controller.value.isPlaying ? controller.pause() : controller.play();
     });
+  }
+
+  Future<void> _loadThumbnail(File video) async {
+    final thumbnail = await getChatVideoThumbnail(videoFile: video);
+    if (!mounted || thumbnail == null) return;
+
+    setState(() => _thumbnail = thumbnail);
+  }
+
+  Future<void> _preparePlayer() async {
+    final video = argument?.video;
+    if (video == null || _isPreparingPlayer) return;
+
+    setState(() => _isPreparingPlayer = true);
+
+    final controller = VideoPlayerController.file(video);
+
+    try {
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      setState(() {
+        _controller = controller;
+        _isPreparingPlayer = false;
+      });
+    } catch (_) {
+      await controller.dispose();
+      if (!mounted) return;
+      setState(() => _isPreparingPlayer = false);
+    }
   }
 }
