@@ -20,6 +20,7 @@ jobs:
 
     env:
       FLUTTER_VERSION: "3.41.6"
+      PREINSTALLED_FLUTTER_ROOT: /home/ncladr/actions-runner/_work/_tool/flutter/stable-3.41.6-x64/flutter
 
     steps:
       - name: Checkout
@@ -27,11 +28,18 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
+      - name: Use preinstalled Flutter
+        run: |
+          if [ ! -x "$PREINSTALLED_FLUTTER_ROOT/bin/flutter" ]; then
+            echo "::error::Flutter $FLUTTER_VERSION not found at $PREINSTALLED_FLUTTER_ROOT"
+            ls -la "$(dirname "$PREINSTALLED_FLUTTER_ROOT")" || true
+            exit 1
+          fi
+
+          echo "FLUTTER_ROOT=$PREINSTALLED_FLUTTER_ROOT" >> "$GITHUB_ENV"
+          echo "$PREINSTALLED_FLUTTER_ROOT/bin" >> "$GITHUB_PATH"
+          echo "$PREINSTALLED_FLUTTER_ROOT/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+          "$PREINSTALLED_FLUTTER_ROOT/bin/flutter" --version
 
       - name: Cache Pub dependencies
         uses: actions/cache@v4
