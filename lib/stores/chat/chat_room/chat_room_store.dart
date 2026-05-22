@@ -41,6 +41,14 @@ abstract class _ChatRoomStore with Store {
   @observable
   File? croppedImage;
 
+  final ObservableList<ChatMessageModel> uploadingMessages =
+      ObservableList<ChatMessageModel>();
+
+  final ObservableMap<String, int> uploadProgressByMessageId =
+      ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByLocalPath =
+      ObservableMap<String, int>();
+
   @computed
   List<ChatMessageModel> get messages {
     List<ChatMessageModel> list;
@@ -56,6 +64,21 @@ abstract class _ChatRoomStore with Store {
 
       list = box.values.where((m) => m.id.contains(roomId!)).toList()
         ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+
+    if (uploadingMessages.isNotEmpty) {
+      final visibleUploadingMessages =
+          uploadingMessages.where((uploadingMessage) {
+        return !list.any(
+          (message) =>
+              message.type == MessageType.image &&
+              message.localImagePath != null &&
+              message.localImagePath == uploadingMessage.localImagePath,
+        );
+      });
+
+      list = [...list, ...visibleUploadingMessages]
+        ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     _syncMessageStatus(list);
@@ -77,7 +100,8 @@ abstract class _ChatRoomStore with Store {
 
     messageController = TextEditingController();
 
-    _serverMessages = chatRepository.watchMessages(roomId: roomId).asObservable();
+    _serverMessages =
+        chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
@@ -112,23 +136,69 @@ abstract class _ChatRoomStore with Store {
       return;
     }
 
-    LocalImageModel? imageData;
-
-    if (imageFile != null) {
-      imageData = await chatRepository.uploadImage(file: imageFile, roomId: roomId!);
-    }
-
     /// Clear input
     messageController.clear();
     clearPickedImage();
 
-    await chatRepository.sendMessage(
-      roomId: roomId!,
-      text: messageText,
-      imageUrl: imageData?.downloadUrl,
-      localImagePath: imageData?.localImagePath,
-      type: imageData != null ? MessageType.image : MessageType.text,
-    );
+    ChatMessageModel? uploadingMessage;
+    String? localImagePath;
+
+    if (imageFile != null && currentUid != null) {
+      final now = DateTime.now();
+      localImagePath =
+          await saveImageToLocal(imageFile: imageFile, roomId: roomId!);
+
+      uploadingMessage = ChatMessageModel(
+        id: 'uploading_${now.microsecondsSinceEpoch}',
+        roomId: roomId!,
+        senderId: currentUid!,
+        text: messageText,
+        createdAt: now,
+        createdAtClient: now,
+        deliveredTo: {},
+        readBy: {},
+        status: MessageStatus.pending,
+        type: MessageType.image,
+        localImagePath: localImagePath,
+      );
+
+      uploadingMessages.add(uploadingMessage);
+      uploadProgressByMessageId[uploadingMessage.id] = 0;
+      uploadProgressByLocalPath[localImagePath] = 0;
+    }
+
+    try {
+      await chatRepository.sendMessage(
+        roomId: roomId!,
+        text: messageText,
+        imageFile: imageFile,
+        localImagePath: localImagePath,
+        type: imageFile != null ? MessageType.image : MessageType.text,
+        onUploadProgress: uploadingMessage == null
+            ? null
+            : (progress) {
+                runInAction(() {
+                  uploadProgressByMessageId[uploadingMessage!.id] = progress;
+
+                  if (localImagePath != null) {
+                    uploadProgressByLocalPath[localImagePath] = progress;
+                  }
+                });
+              },
+      );
+    } catch (e) {
+      if (uploadingMessage != null) {
+        final index = uploadingMessages
+            .indexWhere((message) => message.id == uploadingMessage!.id);
+
+        if (index != -1) {
+          uploadingMessages[index] =
+              uploadingMessage.copyWith(status: MessageStatus.failed);
+        }
+      }
+
+      rethrow;
+    }
   }
 
   void initReadMessagePeriodically() {

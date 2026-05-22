@@ -20,8 +20,10 @@ abstract class ChatRepository {
     required String roomId,
     String? text,
     String? imageUrl,
+    File? imageFile,
     required MessageType type,
     String? localImagePath,
+    void Function(int progress)? onUploadProgress,
   });
 
   /// Create room if not exists
@@ -53,5 +55,6 @@ abstract class ChatRepository {
     required String uid,
   });
 
-  Future<LocalImageModel> uploadImage({required File file, required String roomId});
+  Future<LocalImageModel> uploadImage(
+      {required File file, required String roomId});
 }

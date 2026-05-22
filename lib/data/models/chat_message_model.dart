@@ -85,13 +85,15 @@ class ChatMessageModel {
     this.localImagePath,
   });
 
-  factory ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
+  factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
+      _$ChatMessageModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatMessageModelToJson(this);
 
   ChatMessageModel copyWith({
     MessageStatus? status,
     String? localImagePath,
+    String? imageUrl,
   }) {
     return ChatMessageModel(
       id: id,
@@ -105,7 +107,7 @@ class ChatMessageModel {
       deliveredTo: deliveredTo,
       readBy: readBy,
       type: type,
-      imageUrl: imageUrl,
+      imageUrl: imageUrl ?? this.imageUrl,
       localImagePath: localImagePath ?? this.localImagePath,
     );
   }
