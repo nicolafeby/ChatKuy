@@ -16,7 +16,7 @@ import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
-import 'package:chatkuy/ui/chat/voice_call/voice_call_screen.dart';
+import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
