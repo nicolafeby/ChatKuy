@@ -17,7 +17,7 @@ class ChatDateSeparator extends StatelessWidget {
             vertical: 4,
           ).r,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(4.r),
           ),
           child: Text(

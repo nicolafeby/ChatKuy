@@ -11,6 +11,7 @@ import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_attach_image_screen.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_attach_video_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -77,13 +78,15 @@ class ChatField extends StatelessWidget with BaseLayout {
                               if (image == null) return;
 
                               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                                  arguments: ChatAttachImageArgument(image: image, store: store));
+                                  arguments: ChatAttachImageArgument(
+                                      image: image, store: store));
                             },
                             onDenied: (p0) {
                               Get.bottomSheet(BottomsheetWidget(
                                 asset: AppAsset.imgFaceSad,
                                 title: AppStrings.oopsTerjadiKesalahan,
-                                message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+                                message:
+                                    'Kami tidak mendapatkan akses galeri untuk action ini',
                               ));
                             },
                           );
@@ -106,18 +109,21 @@ class ChatField extends StatelessWidget with BaseLayout {
                               if (image == null) return;
 
                               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                                  arguments: ChatAttachImageArgument(image: image, store: store));
+                                  arguments: ChatAttachImageArgument(
+                                      image: image, store: store));
                             },
                             onDenied: (p0) {
                               Get.bottomSheet(BottomsheetWidget(
                                 asset: AppAsset.imgFaceSad,
                                 title: AppStrings.oopsTerjadiKesalahan,
-                                message: 'Kami tidak mendapatkan akses kamera untuk action ini',
+                                message:
+                                    'Kami tidak mendapatkan akses kamera untuk action ini',
                               ));
                             },
                           );
                         },
-                        child: Icon(Icons.camera_alt, size: 22.r).paddingOnly(left: 8.w),
+                        child: Icon(Icons.camera_alt, size: 22.r)
+                            .paddingOnly(left: 8.w),
                       ),
                     ),
                   ],
@@ -130,7 +136,8 @@ class ChatField extends StatelessWidget with BaseLayout {
               backgroundColor: Colors.green,
               child: IconButton(
                 icon: Icon(Icons.send, color: Colors.white, size: 20.r),
-                onPressed: () => onSend.call(store.messageController.text.trim()),
+                onPressed: () =>
+                    onSend.call(store.messageController.text.trim()),
               ),
             ),
           ],
@@ -208,7 +215,8 @@ class ChatFieldV2 extends StatefulWidget {
   }
 }
 
-class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, BaseLayout {
+class _ChatFieldV2State extends State<ChatFieldV2>
+    with WidgetsBindingObserver, BaseLayout {
   bool _showAboveSheet = false;
   bool _showEmojiPicker = false;
   bool isFocused = false;
@@ -231,7 +239,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
 
   @override
   void didChangeMetrics() {
-    final bottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    final bottomInset =
+        View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
 
     if (bottomInset > 0 && bottomInset > (_keyboardHeight ?? 0)) {
       setState(() {
@@ -289,7 +298,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
               if (image == null) return;
 
               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
+                  arguments: ChatAttachImageArgument(
+                      image: image, store: widget.store));
             },
             onDenied: (p0) {
               Get.bottomSheet(BottomsheetWidget(
@@ -317,7 +327,41 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
               if (image == null) return;
 
               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
+                  arguments: ChatAttachImageArgument(
+                      image: image, store: widget.store));
+            },
+            onDenied: (p0) {
+              Get.bottomSheet(BottomsheetWidget(
+                asset: AppAsset.imgFaceSad,
+                title: AppStrings.oopsTerjadiKesalahan,
+                message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+              ));
+            },
+          );
+        },
+      ),
+      AttachmentOption(
+        icon: Icons.videocam,
+        label: "Video",
+        onTap: () {
+          AttachmentOverlay.hide();
+          handlePermission(
+            permission: Permission.mediaLibrary,
+            onSuccess: () async {
+              dismissLoading();
+              final video = await ImagePickerHelper.pickVideo(
+                source: PickImageSource.gallery,
+              );
+
+              if (video == null) return;
+
+              Get.toNamed(
+                AppRouteName.CHAT_ATTACH_VIDEO_SCREEN,
+                arguments: ChatAttachVideoArgument(
+                  video: video,
+                  store: widget.store,
+                ),
+              );
             },
             onDenied: (p0) {
               Get.bottomSheet(BottomsheetWidget(
@@ -406,21 +450,26 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
                           textCapitalization: widget.textCapitalization,
                           decoration: InputDecoration(
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(widget.textFieldRadius),
+                              borderRadius:
+                                  BorderRadius.circular(widget.textFieldRadius),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
                             fillColor: Colors.grey[200],
                             hintText: widget.hintText,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 10),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(widget.textFieldRadius),
+                              borderRadius:
+                                  BorderRadius.circular(widget.textFieldRadius),
                               borderSide: BorderSide.none,
                             ),
                             prefixIcon: widget.showEmogyIcon
                                 ? IconButton(
                                     icon: Icon(
-                                      _showEmojiPicker ? Icons.keyboard_alt_outlined : widget.emojiIcon,
+                                      _showEmojiPicker
+                                          ? Icons.keyboard_alt_outlined
+                                          : widget.emojiIcon,
                                       color: Colors.grey,
                                     ),
                                     onPressed: _toggleEmojiKeyboard,
@@ -433,12 +482,17 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
                                     : null),
                             suffixIcon: widget.showAttachmentIcon &&
                                     ((widget.attachmentConfig?.showCamera ?? true) ||
-                                        (widget.attachmentConfig?.showGallery ?? true) ||
-                                        (widget.attachmentConfig?.showAudio ?? true) ||
-                                        (widget.attachmentConfig?.showDoc ?? true) ||
-                                        (widget.attachmentConfig?.showContact ?? true))
+                                        (widget.attachmentConfig?.showGallery ??
+                                            true) ||
+                                        (widget.attachmentConfig?.showAudio ??
+                                            true) ||
+                                        (widget.attachmentConfig?.showDoc ??
+                                            true) ||
+                                        (widget.attachmentConfig?.showContact ??
+                                            true))
                                 ? IconButton(
-                                    icon: Icon(widget.attachmentIcon, color: Colors.grey),
+                                    icon: Icon(widget.attachmentIcon,
+                                        color: Colors.grey),
                                     onPressed: () => showAttachment(context),
                                   )
                                 : null,

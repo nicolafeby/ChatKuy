@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:chatkuy/core/helpers/image_compress_helper.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
+import 'package:chatkuy/core/helpers/video_compress_helper.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -72,9 +73,9 @@ abstract class _ChatRoomStore with Store {
           uploadingMessages.where((uploadingMessage) {
         return !list.any(
           (message) =>
-              message.type == MessageType.image &&
-              message.localImagePath != null &&
-              message.localImagePath == uploadingMessage.localImagePath,
+              message.type == uploadingMessage.type &&
+              _localMediaPath(message) != null &&
+              _localMediaPath(message) == _localMediaPath(uploadingMessage),
         );
       });
 
@@ -202,6 +203,102 @@ abstract class _ChatRoomStore with Store {
 
       rethrow;
     }
+  }
+
+  @action
+  Future<void> sendVideoMessage(String? text, File video) async {
+    if (roomId == null || currentUid == null) return;
+
+    final messageText = text?.trim();
+
+    messageController.clear();
+
+    final now = DateTime.now();
+    final uploadingMessage = ChatMessageModel(
+      id: 'uploading_${now.microsecondsSinceEpoch}',
+      roomId: roomId!,
+      senderId: currentUid!,
+      text: messageText,
+      createdAt: now,
+      createdAtClient: now,
+      deliveredTo: {},
+      readBy: {},
+      status: MessageStatus.pending,
+      type: MessageType.video,
+      localVideoPath: video.path,
+    );
+
+    uploadingMessages.add(uploadingMessage);
+    uploadProgressByMessageId[uploadingMessage.id] = 0;
+    uploadProgressByLocalPath[video.path] = 0;
+
+    try {
+      final uploadVideoFile = await compressChatVideo(
+        videoFile: video,
+        onProgress: (progress) {
+          runInAction(() {
+            final mappedProgress =
+                (progress * 0.5).round().clamp(0, 50).toInt();
+            uploadProgressByMessageId[uploadingMessage.id] = mappedProgress;
+            uploadProgressByLocalPath[video.path] = mappedProgress;
+          });
+        },
+      );
+      final localVideoPath = await saveVideoToLocal(
+        videoFile: uploadVideoFile,
+        roomId: roomId!,
+      );
+
+      runInAction(() {
+        final index = uploadingMessages
+            .indexWhere((message) => message.id == uploadingMessage.id);
+
+        if (index != -1) {
+          uploadingMessages[index] =
+              uploadingMessage.copyWith(localVideoPath: localVideoPath);
+        }
+
+        uploadProgressByMessageId[uploadingMessage.id] =
+            uploadProgressByMessageId[uploadingMessage.id]
+                    ?.clamp(0, 50)
+                    .toInt() ??
+                50;
+        uploadProgressByLocalPath[localVideoPath] =
+            uploadProgressByMessageId[uploadingMessage.id] ?? 50;
+      });
+
+      await chatRepository.sendMessage(
+        roomId: roomId!,
+        text: messageText,
+        videoFile: uploadVideoFile,
+        localVideoPath: localVideoPath,
+        type: MessageType.video,
+        onUploadProgress: (progress) {
+          runInAction(() {
+            final mappedProgress = (50 + (progress * 0.5)).round();
+            uploadProgressByMessageId[uploadingMessage.id] =
+                mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByLocalPath[localVideoPath] =
+                mappedProgress.clamp(50, 100).toInt();
+          });
+        },
+      );
+    } catch (e) {
+      final index = uploadingMessages
+          .indexWhere((message) => message.id == uploadingMessage.id);
+
+      if (index != -1) {
+        uploadingMessages[index] =
+            uploadingMessage.copyWith(status: MessageStatus.failed);
+      }
+
+      rethrow;
+    }
+  }
+
+  String? _localMediaPath(ChatMessageModel message) {
+    if (message.type == MessageType.video) return message.localVideoPath;
+    return message.localImagePath;
   }
 
   void initReadMessagePeriodically() {

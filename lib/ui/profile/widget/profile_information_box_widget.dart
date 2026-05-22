@@ -19,7 +19,7 @@ class ProfileInformationBoxWidget extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.withOpacity(0.8), width: 1),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.8), width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
