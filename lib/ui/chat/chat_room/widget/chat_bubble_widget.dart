@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
-import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
@@ -22,6 +21,7 @@ class ChatBubbleWidget extends StatelessWidget {
     required this.message,
     required this.isMe,
     this.onRetry,
+    this.uploadProgress,
     this.isFirstInGroup = true,
     this.isSameGroup = false,
   });
@@ -29,6 +29,7 @@ class ChatBubbleWidget extends StatelessWidget {
   final ChatMessageModel message;
   final bool isMe;
   final VoidCallback? onRetry;
+  final int? uploadProgress;
 
   final bool isFirstInGroup;
   final bool isSameGroup;
@@ -40,7 +41,8 @@ class ChatBubbleWidget extends StatelessWidget {
         top: isSameGroup ? 1.5.h : 8.h,
       ),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
@@ -54,7 +56,9 @@ class ChatBubbleWidget extends StatelessWidget {
                   vertical: 8.h,
                 ),
                 decoration: BoxDecoration(
-                  color: isMe ? AppColor.primaryColor.withOpacity(0.8) : Colors.grey.shade200,
+                  color: isMe
+                      ? AppColor.primaryColor.withOpacity(0.8)
+                      : Colors.grey.shade200,
                   borderRadius: _bubbleRadius(),
                 ),
                 child: _buildContent(),
@@ -81,55 +85,32 @@ class ChatBubbleWidget extends StatelessWidget {
     final type = message.type;
     final imageUrl = message.imageUrl;
     final localImagePath = message.localImagePath;
+    final hasImage = type == MessageType.image &&
+        (localImagePath != null || imageUrl != null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (type == MessageType.image && imageUrl != null) ...[
+        if (hasImage) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InkWell(
-                onTap: () => Get.toNamed(
-                  AppRouteName.IMAGE_VIEWER_SCREEN,
-                  arguments: ImageViewerArgument(imageUrl: imageUrl),
-                ),
+                onTap: imageUrl == null
+                    ? null
+                    : () => Get.toNamed(
+                          AppRouteName.IMAGE_VIEWER_SCREEN,
+                          arguments: ImageViewerArgument(imageUrl: imageUrl),
+                        ),
                 child: Hero(
-                  tag: imageUrl,
+                  tag: imageUrl ?? message.id,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4.r),
-                    child: localImagePath != null
-                        ? _buildImage(imageUrl)
-                        : Image.network(
-                            height: 200.h,
-                            width: double.infinity,
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                height: 200.h,
-                                width: double.infinity,
-                                color: Colors.grey.shade300,
-                                alignment: Alignment.center,
-                                child: const CircularProgressIndicator(),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 200.h,
-                                width: double.infinity,
-                                color: Colors.grey.shade300,
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  size: 48,
-                                  color: Colors.grey,
-                                ),
-                              );
-                            },
-                          ),
+                    child: _buildImagePreview(
+                      imageUrl: imageUrl,
+                      localImagePath: localImagePath,
+                    ),
                   ),
                 ),
               ),
@@ -178,41 +159,107 @@ class ChatBubbleWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildImage(String imageUrl) {
-    return FutureBuilder<String>(
-      future: getOrDownloadImage(imageUrl: imageUrl),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Container(
+  Widget _buildImagePreview({
+    required String? imageUrl,
+    required String? localImagePath,
+  }) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        if (localImagePath != null)
+          Image.file(
+            File(localImagePath),
             height: 200.h,
             width: double.infinity,
-            alignment: Alignment.center,
-            child: const CircularProgressIndicator(),
-          );
-        }
-
-        final localImagePath = snapshot.data!;
-
-        return Image.file(
-          File(localImagePath),
-          height: 200.h,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              height: 200.h,
-              width: double.infinity,
-              color: Colors.grey.shade300,
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.broken_image,
-                size: 48,
-                color: Colors.grey,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildBrokenImage(),
+          )
+        else if (imageUrl != null)
+          Image.network(
+            height: 200.h,
+            width: double.infinity,
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return _buildImageLoading();
+            },
+            errorBuilder: (context, error, stackTrace) => _buildBrokenImage(),
+          )
+        else
+          _buildBrokenImage(),
+        if (message.status == MessageStatus.pending)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Colors.black26,
+              child: Center(
+                child: _buildUploadProgress(),
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildUploadProgress() {
+    final progress = uploadProgress?.clamp(0, 100);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 42.r,
+          height: 42.r,
+          child: CircularProgressIndicator(
+            value: progress == null ? null : progress / 100,
+            color: Colors.white,
+            backgroundColor: Colors.white24,
+            strokeWidth: 3,
+          ),
+        ),
+        if (progress != null) ...[
+          8.verticalSpace,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              color: Colors.black45,
+              borderRadius: BorderRadius.circular(4.r),
+            ),
+            child: Text(
+              '$progress%',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildImageLoading() {
+    return Container(
+      height: 200.h,
+      width: double.infinity,
+      color: Colors.grey.shade300,
+      alignment: Alignment.center,
+      child: const CircularProgressIndicator(),
+    );
+  }
+
+  Widget _buildBrokenImage() {
+    return Container(
+      height: 200.h,
+      width: double.infinity,
+      color: Colors.grey.shade300,
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.broken_image,
+        size: 48,
+        color: Colors.grey,
+      ),
     );
   }
 

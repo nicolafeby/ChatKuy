@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/chat_field/attachment_overlay.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
@@ -41,7 +43,8 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAliveClientMixin{
+class _ChatRoomScreenState extends State<ChatRoomScreen>
+    with AutomaticKeepAliveClientMixin {
   ChatRoomStore store = ChatRoomStore(
     chatRepository: getIt<ChatRepository>(),
     userRepository: getIt<UserRepository>(),
@@ -103,13 +106,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
           onPopInvokedWithResult: (didPop, result) {
             if (AttachmentOverlay.isShowing) {
               AttachmentOverlay.hide();
-            } else if(ChatFieldV2.isEmojiShowing){
+            } else if (ChatFieldV2.isEmojiShowing) {
               ChatFieldV2.setEmojiShowing(false);
-            }
-            else {
+            } else {
               Get.back();
             }
-
           },
           child: Scaffold(
             resizeToAvoidBottomInset: true,
@@ -131,12 +132,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                       final message = messages[realIndex];
                       final isMe = message.senderId == argument!.currentUid;
 
-                      final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+                      final prevMessage =
+                          realIndex > 0 ? messages[realIndex - 1] : null;
 
-                      final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+                      final isSameGroup = prevMessage != null &&
+                          prevMessage.senderId == message.senderId;
 
-                      final showDateSeparator =
-                          prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
+                      final showDateSeparator = prevMessage == null ||
+                          !message.createdAt.isSameDay(prevMessage.createdAt);
+                      final uploadProgress =
+                          store.uploadProgressByMessageId[message.id] ??
+                              (message.localImagePath == null
+                                  ? null
+                                  : store.uploadProgressByLocalPath[
+                                      message.localImagePath!]);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -148,10 +157,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                           ChatBubbleWidget(
                             message: message,
                             isMe: isMe,
+                            uploadProgress: uploadProgress,
                             isSameGroup: isSameGroup,
                             isFirstInGroup: !isSameGroup,
                             onRetry: message.status == MessageStatus.failed
-                                ? () => store.sendMessage(message.text, null)
+                                ? () => store.sendMessage(
+                                      message.text,
+                                      message.localImagePath == null
+                                          ? null
+                                          : File(message.localImagePath!),
+                                    )
                                 : null,
                           ),
                         ],
@@ -180,7 +195,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
       },
     );
   }
-  
+
   @override
   bool get wantKeepAlive => true;
 }
