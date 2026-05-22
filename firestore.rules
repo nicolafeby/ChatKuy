@@ -114,7 +114,9 @@ service cloud.firestore {
     }
 
     match /chat_rooms/{roomId} {
-      allow read: if isExistingRoomParticipant();
+      allow get: if isExistingRoomParticipant();
+
+      allow list: if signedIn();
 
       allow create: if isCreatingRoomAsParticipant();
 
