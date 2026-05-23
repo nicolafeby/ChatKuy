@@ -9,6 +9,16 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
+function callKitAvatarUrl(value) {
+  if (!value || typeof value !== 'string') {
+    return '';
+  }
+
+  return value.startsWith('http://') || value.startsWith('https://')
+    ? value
+    : '';
+}
+
 exports.onNewMessage = onDocumentCreated(
   'chat_rooms/{roomId}/messages/{messageId}',
   async (event) => {
@@ -133,24 +143,31 @@ exports.onNewVoiceCall = onDocumentCreated(
       return;
     }
 
-    const userSnap = await admin
+    const calleeSnap = await admin
       .firestore()
       .collection('users')
       .doc(calleeId)
       .get();
 
-    if (!userSnap.exists) {
+    if (!calleeSnap.exists) {
       logger.error('❌ callee user not found');
       return;
     }
 
-    const fcmToken = userSnap.data().fcmToken;
+    const fcmToken = calleeSnap.data().fcmToken;
     if (!fcmToken) {
       logger.error('❌ callee fcmToken missing');
       return;
     }
 
-    const callerName = call.callerName || 'ChatKuy';
+    const callerSnap = await admin
+      .firestore()
+      .collection('users')
+      .doc(callerId)
+      .get();
+    const callerData = callerSnap.exists ? callerSnap.data() : {};
+    const callerName = call.callerName || callerData.name || 'ChatKuy';
+    const callerPhotoUrl = callKitAvatarUrl(callerData.photoUrl);
 
     const response = await admin.messaging().send({
       token: fcmToken,
@@ -160,6 +177,7 @@ exports.onNewVoiceCall = onDocumentCreated(
         roomId: call.roomId || '',
         callerId: callerId,
         callerName: callerName,
+        callerPhotoUrl: callerPhotoUrl,
         title: callerName,
         body: 'Panggilan suara masuk',
       },

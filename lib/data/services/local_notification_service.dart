@@ -160,6 +160,8 @@ class LocalNotificationService implements LocalNotificationRepository {
       return;
     }
 
+    final callerAvatar = await _resolveCallerAvatar(data);
+
     final shouldShowCall = await _shouldShowIncomingCall(callId);
     if (!shouldShowCall) {
       await _finishCallKitCall(callId);
@@ -175,6 +177,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       id: callId,
       nameCaller: callerName.toString(),
       appName: 'ChatKuy',
+      avatar: callerAvatar,
       handle: callerName.toString(),
       type: 0,
       duration: 30000,
@@ -227,6 +230,31 @@ class LocalNotificationService implements LocalNotificationRepository {
     );
     await FlutterCallkitIncoming.showCallkitIncoming(params);
     _watchIncomingCallStatus(callId);
+  }
+
+  static Future<String?> _resolveCallerAvatar(Map<String, dynamic> data) async {
+    final payloadAvatar = data['callerPhotoUrl'];
+    final payloadAvatarUrl = _callKitAvatarUrl(payloadAvatar);
+    if (payloadAvatarUrl != null) return payloadAvatarUrl;
+
+    final callerId = data['callerId'];
+    if (callerId is! String || callerId.isEmpty) return null;
+
+    try {
+      final callerSnap = await FirebaseFirestore.instance.collection(FirebaseCollections.users).doc(callerId).get();
+      return _callKitAvatarUrl(callerSnap.data()?[FriendField.photoUrl]);
+    } catch (error) {
+      debugPrint('Resolve caller avatar failed: $error');
+      return null;
+    }
+  }
+
+  static String? _callKitAvatarUrl(dynamic value) {
+    if (value is! String || value.isEmpty) return null;
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+    return value;
   }
 
   static Future<bool> _shouldShowIncomingCall(String callId) async {
