@@ -49,6 +49,7 @@ class LocalNotificationService implements LocalNotificationRepository {
 
   static Future<void> showFromBackground(RemoteMessage message) async {
     await _initPlugin(handleLaunchDetails: false);
+    _listenCallKitEvents();
     await LocalNotificationService().show(message);
   }
 
