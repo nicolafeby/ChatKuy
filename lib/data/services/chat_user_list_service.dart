@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:chatkuy/core/constants/firestore.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -13,12 +14,15 @@ class ChatUserListService implements ChatUserListRepository {
 
   final FirebaseFirestore firestore;
 
-  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
+  CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
+      firestore.collection(FirebaseCollections.chatRooms);
 
-  CollectionReference<Map<String, dynamic>> get _usersRef => firestore.collection(FirebaseCollections.users);
+  CollectionReference<Map<String, dynamic>> get _usersRef =>
+      firestore.collection(FirebaseCollections.users);
 
   /// HIVE BOX
-  final Box<ChatUserItemModel> _chatListBox = Hive.box<ChatUserItemModel>('chat_list');
+  final Box<ChatUserItemModel> _chatListBox =
+      Hive.box<ChatUserItemModel>('chat_list');
 
   @override
   Stream<List<ChatUserItemModel>> watchChatUsers({
@@ -26,7 +30,8 @@ class ChatUserListService implements ChatUserListRepository {
   }) async* {
     /// 1️⃣ Emit data lokal dulu (biar tidak kosong saat refresh)
     final localData = _chatListBox.values.toList()
-      ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
+      ..sort((a, b) => (b.lastMessageAt ?? DateTime(0))
+          .compareTo(a.lastMessageAt ?? DateTime(0)));
 
     yield localData;
 
@@ -42,7 +47,14 @@ class ChatUserListService implements ChatUserListRepository {
               }))
           .toList();
 
-      final targetUids = rooms.map((room) => room.participants.firstWhere((uid) => uid != myUid)).toSet();
+      await Future.wait(
+        rooms.map((room) =>
+            _markIncomingMessagesDelivered(roomId: room.id, myUid: myUid)),
+      );
+
+      final targetUids = rooms
+          .map((room) => room.participants.firstWhere((uid) => uid != myUid))
+          .toSet();
 
       final userSnaps = await Future.wait(
         targetUids.map((uid) => _usersRef.doc(uid).get()),
@@ -92,9 +104,56 @@ class ChatUserListService implements ChatUserListRepository {
 
       /// 4️⃣ Emit ulang dari Hive (source of truth lokal)
       final updatedLocal = _chatListBox.values.toList()
-        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
+        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0))
+            .compareTo(a.lastMessageAt ?? DateTime(0)));
 
       yield updatedLocal;
+    }
+  }
+
+  Future<void> _markIncomingMessagesDelivered({
+    required String roomId,
+    required String myUid,
+  }) async {
+    try {
+      final messagesSnap = await _chatRoomsRef
+          .doc(roomId)
+          .collection(FirestoreCollection.messages)
+          .orderBy(MessageField.createdAtClient, descending: true)
+          .limit(30)
+          .get();
+
+      final batch = firestore.batch();
+      var hasUpdates = false;
+
+      for (final doc in messagesSnap.docs) {
+        final data = doc.data();
+        final senderId = data[MessageField.senderId];
+        final deliveredTo =
+            Map<String, dynamic>.from(data[MessageField.deliveredTo] ?? {});
+
+        if (senderId == myUid || deliveredTo[myUid] == true) continue;
+
+        batch.update(doc.reference, {
+          '${MessageField.deliveredTo}.$myUid': true,
+        });
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        await batch.commit();
+      }
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Mark chat list messages delivered failed',
+        context: {
+          'room_id': roomId,
+          'current_uid': myUid,
+        },
+        showBottomSheet: false,
+      );
     }
   }
 }

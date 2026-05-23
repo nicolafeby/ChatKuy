@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
@@ -111,6 +112,10 @@ class LocalNotificationService implements LocalNotificationRepository {
 
   @override
   Future<void> show(RemoteMessage message) async {
+    if (message.data['type'] == 'chat') {
+      await markChatMessageDeliveredFromPayload(message.data);
+    }
+
     final isVoiceCall = message.data['type'] == 'voice_call';
     if (isVoiceCall) {
       await _showIncomingCall(message.data);
@@ -148,6 +153,46 @@ class LocalNotificationService implements LocalNotificationRepository {
       details,
       payload: jsonEncode(message.data),
     );
+  }
+
+  static Future<void> markChatMessageDeliveredFromPayload(
+    Map<String, dynamic> data,
+  ) async {
+    final roomId = data['roomId'];
+    final messageId = data['messageId'];
+    final receiverId = data['receiverId'];
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (roomId is! String || roomId.isEmpty || messageId is! String || messageId.isEmpty) {
+      return;
+    }
+
+    final deliveredUid = currentUid ?? (receiverId is String && receiverId.isNotEmpty ? receiverId : null);
+
+    if (deliveredUid == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebaseCollections.chatRooms)
+          .doc(roomId)
+          .collection(FirestoreCollection.messages)
+          .doc(messageId)
+          .update({
+        '${MessageField.deliveredTo}.$deliveredUid': true,
+      });
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Mark chat notification delivered failed',
+        context: {
+          'room_id': roomId,
+          'message_id': messageId,
+          'current_uid': currentUid,
+        },
+        showBottomSheet: false,
+      );
+    }
   }
 
   static Future<void> _showIncomingCall(Map<String, dynamic> data) async {

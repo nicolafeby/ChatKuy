@@ -7,6 +7,7 @@ import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/hive_encryption_repository.dart';
+import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
@@ -54,6 +55,7 @@ abstract class _ProfileStore with Store {
 
     try {
       await presenceRepository.setOffline();
+      await getIt<NotificationRepository>().clearCurrentUserToken();
       await authRepository.logout();
     } catch (e, stackTrace) {
       AppErrorLogger.recordError(
