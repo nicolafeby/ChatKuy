@@ -1,15 +1,15 @@
 import 'package:chatkuy/ui/update/update_screen.dart';
-import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
+import 'package:chatkuy/ui/chat/call/call_argument.dart';
 
 class InitialRouteArgument {
   InitialRouteArgument._();
 
-  static VoiceCallArgument? voiceCall;
+  static CallArgument? call;
   static AppUpdateScreenArgument? appUpdate;
 
-  static VoiceCallArgument? takeVoiceCall() {
-    final argument = voiceCall;
-    voiceCall = null;
+  static CallArgument? takeCall() {
+    final argument = call;
+    call = null;
     return argument;
   }
 

@@ -69,8 +69,8 @@ class AppRoute {
       page: () => ChatAttachVideoScreen(),
     ),
     GetPage(
-      name: AppRouteName.VOICE_CALL_SCREEN,
-      page: () => VoiceCallScreen(),
+      name: AppRouteName.CALL_SCREEN,
+      page: () => CallScreen(),
     ),
     GetPage(
       name: AppRouteName.APP_UPDATE_SCREEN,

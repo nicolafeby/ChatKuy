@@ -1,5 +1,5 @@
-class VoiceCallArgument {
-  const VoiceCallArgument({
+class CallArgument {
+  const CallArgument({
     required this.roomId,
     required this.currentUid,
     required this.targetUid,
@@ -9,6 +9,7 @@ class VoiceCallArgument {
     this.callId,
     this.autoAccept = false,
     this.closeAppOnEnd = false,
+    this.isVideoCall = false,
   });
 
   final String roomId;
@@ -20,4 +21,5 @@ class VoiceCallArgument {
   final String? callId;
   final bool autoAccept;
   final bool closeAppOnEnd;
+  final bool isVideoCall;
 }

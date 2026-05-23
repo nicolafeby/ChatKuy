@@ -6,7 +6,7 @@ import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
-import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
+import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -22,8 +22,8 @@ import 'package:get/get.dart';
 
 class LocalNotificationService implements LocalNotificationRepository {
   static final _plugin = FlutterLocalNotificationsPlugin();
-  static const _acceptVoiceCallAction = 'accept_voice_call';
-  static const _declineVoiceCallAction = 'decline_voice_call';
+  static const _acceptCallAction = 'accept_voice_call';
+  static const _declineCallAction = 'decline_voice_call';
   static const _chatChannelId = 'chat_notification';
   static const _callChannelId = 'incoming_call_notification';
   static NotificationResponse? _pendingLaunchResponse;
@@ -36,7 +36,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     Map<String, dynamic> data,
     bool autoAccept,
     bool closeAppOnEnd,
-  })? _pendingVoiceCall;
+  })? _pendingCall;
   static bool _isCallKitListenerAttached = false;
   static final Set<String> _handledAcceptedCallIds = {};
   static final Map<String, bool> _closeAppAfterCallById = {};
@@ -84,7 +84,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     const callChannel = AndroidNotificationChannel(
       _callChannelId,
       'Incoming Call',
-      description: 'Notification for incoming voice calls',
+      description: 'Notification for incoming calls',
       importance: Importance.max,
       playSound: true,
       enableVibration: true,
@@ -126,14 +126,16 @@ class LocalNotificationService implements LocalNotificationRepository {
       await markChatMessageDeliveredFromPayload(message.data);
     }
 
-    final isVoiceCall = message.data['type'] == 'voice_call';
-    if (isVoiceCall) {
+    final isCall = message.data['type'] == 'voice_call' ||
+        message.data['type'] == 'video_call';
+    if (isCall) {
       await _showIncomingCall(message.data);
       return;
     }
 
-    final isVoiceCallEnded = message.data['type'] == 'voice_call_ended';
-    if (isVoiceCallEnded) {
+    final isCallEnded = message.data['type'] == 'voice_call_ended' ||
+        message.data['type'] == 'video_call_ended';
+    if (isCallEnded) {
       final callId = message.data['callId'];
       if (callId is String && callId.isNotEmpty) {
         await _finishCallKitCall(callId);
@@ -217,7 +219,10 @@ class LocalNotificationService implements LocalNotificationRepository {
     final callId = data['callId'];
     final roomId = data['roomId'];
     final callerId = data['callerId'];
-    final callerName = data['callerName'] ?? data['title'] ?? 'Panggilan suara';
+    final isVideoCall = _isVideoCallPayload(data);
+    final callerName = data['callerName'] ??
+        data['title'] ??
+        (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
 
     if (callId is! String ||
         callId.isEmpty ||
@@ -245,7 +250,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       appName: 'ChatKuy',
       avatar: callerAvatar,
       handle: callerName.toString(),
-      type: 0,
+      type: isVideoCall ? 1 : 0,
       duration: 30000,
       textAccept: 'Terima',
       textDecline: 'Tolak',
@@ -274,9 +279,9 @@ class LocalNotificationService implements LocalNotificationRepository {
         isShowFullLockedScreen: true,
         isImportant: true,
       ),
-      ios: const IOSParams(
+      ios: IOSParams(
         handleType: 'generic',
-        supportsVideo: false,
+        supportsVideo: isVideoCall,
         maximumCallGroups: 1,
         maximumCallsPerCallGroup: 1,
         audioSessionMode: 'voiceChat',
@@ -315,7 +320,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       await AppErrorLogger.recordError(
         error,
         stackTrace,
-        reason: 'Mark incoming voice call ringing failed',
+        reason: 'Mark incoming call ringing failed',
         context: {'call_id': callId},
         showBottomSheet: false,
       );
@@ -412,7 +417,7 @@ class LocalNotificationService implements LocalNotificationRepository {
             autoAccept: true,
             closeAppOnEnd: closeAppOnEnd,
           );
-          _openVoiceCall(
+          _openCall(
             data,
             autoAccept: true,
             closeAppOnEnd: closeAppOnEnd,
@@ -420,10 +425,10 @@ class LocalNotificationService implements LocalNotificationRepository {
           break;
         case Event.actionCallDecline:
         case Event.actionCallTimeout:
-          await _declineVoiceCall(data);
+          await _declineCall(data);
           break;
         case Event.actionCallEnded:
-          await _endVoiceCall(data);
+          await _endCall(data);
           break;
         default:
           break;
@@ -448,7 +453,7 @@ class LocalNotificationService implements LocalNotificationRepository {
         return Map<String, dynamic>.from(nestedExtra);
       }
       final nested = Map<String, dynamic>.from(nestedBody);
-      if (_hasVoiceCallKeys(nested)) return nested;
+      if (_hasCallKeys(nested)) return nested;
     }
 
     final data = mappedBody['data'];
@@ -458,10 +463,10 @@ class LocalNotificationService implements LocalNotificationRepository {
         return Map<String, dynamic>.from(dataExtra);
       }
       final mappedData = Map<String, dynamic>.from(data);
-      if (_hasVoiceCallKeys(mappedData)) return mappedData;
+      if (_hasCallKeys(mappedData)) return mappedData;
     }
 
-    if (!_hasVoiceCallKeys(mappedBody)) {
+    if (!_hasCallKeys(mappedBody)) {
       return _lastIncomingCall?.data ?? mappedBody;
     }
 
@@ -483,14 +488,14 @@ class LocalNotificationService implements LocalNotificationRepository {
       if (nestedExtra is Map) {
         return Map<String, dynamic>.from(nestedExtra);
       }
-      if (_hasVoiceCallKeys(nested)) return nested;
+      if (_hasCallKeys(nested)) return nested;
     }
 
-    if (_hasVoiceCallKeys(data)) return data;
+    if (_hasCallKeys(data)) return data;
     return _lastIncomingCall?.data ?? data;
   }
 
-  static bool _hasVoiceCallKeys(Map<String, dynamic> data) {
+  static bool _hasCallKeys(Map<String, dynamic> data) {
     return data['callId'] is String &&
         data['roomId'] is String &&
         data['callerId'] is String;
@@ -504,28 +509,28 @@ class LocalNotificationService implements LocalNotificationRepository {
       await _handleNotificationResponse(response);
     }
 
-    final voiceCall = _pendingVoiceCall;
-    if (voiceCall != null) {
-      _pendingVoiceCall = null;
+    final call = _pendingCall;
+    if (call != null) {
+      _pendingCall = null;
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      _openVoiceCall(
-        voiceCall.data,
-        autoAccept: voiceCall.autoAccept,
-        closeAppOnEnd: voiceCall.closeAppOnEnd,
+      _openCall(
+        call.data,
+        autoAccept: call.autoAccept,
+        closeAppOnEnd: call.closeAppOnEnd,
       );
     }
 
     await processAcceptedCallKitCalls();
   }
 
-  static Future<VoiceCallArgument?> takeInitialAcceptedCallArgument() async {
-    final voiceCall = _pendingVoiceCall;
-    if (voiceCall != null) {
-      _pendingVoiceCall = null;
-      return _voiceCallArgumentFromData(
-        voiceCall.data,
-        autoAccept: voiceCall.autoAccept,
-        closeAppOnEnd: voiceCall.closeAppOnEnd,
+  static Future<CallArgument?> takeInitialAcceptedCallArgument() async {
+    final call = _pendingCall;
+    if (call != null) {
+      _pendingCall = null;
+      return _callArgumentFromData(
+        call.data,
+        autoAccept: call.autoAccept,
+        closeAppOnEnd: call.closeAppOnEnd,
       );
     }
 
@@ -540,12 +545,12 @@ class LocalNotificationService implements LocalNotificationRepository {
       if (callMap['isAccepted'] != true) continue;
 
       final data = _extractCallKitMapData(callMap);
-      if (!_hasVoiceCallKeys(data)) continue;
+      if (!_hasCallKeys(data)) continue;
 
       final callId = data['callId']?.toString();
       if (callId != null) _handledAcceptedCallIds.add(callId);
 
-      return _voiceCallArgumentFromData(
+      return _callArgumentFromData(
         data,
         autoAccept: true,
         closeAppOnEnd: _closeAppOnEndFor(data, fallback: true),
@@ -574,10 +579,10 @@ class LocalNotificationService implements LocalNotificationRepository {
       }
 
       final data = _extractCallKitMapData(callMap);
-      if (!_hasVoiceCallKeys(data)) continue;
+      if (!_hasCallKeys(data)) continue;
 
       _handledAcceptedCallIds.add(callId);
-      _openVoiceCall(
+      _openCall(
         data,
         autoAccept: true,
         closeAppOnEnd: _closeAppOnEndFor(data),
@@ -598,15 +603,15 @@ class LocalNotificationService implements LocalNotificationRepository {
       'LocalNotification response: action=${response.actionId} type=$type',
     );
 
-    if (type == 'voice_call') {
-      if (response.actionId == _declineVoiceCallAction) {
-        await _declineVoiceCall(data);
+    if (type == 'voice_call' || type == 'video_call') {
+      if (response.actionId == _declineCallAction) {
+        await _declineCall(data);
         return;
       }
 
-      _openVoiceCall(
+      _openCall(
         data,
-        autoAccept: response.actionId == _acceptVoiceCallAction,
+        autoAccept: response.actionId == _acceptCallAction,
       );
       return;
     }
@@ -616,7 +621,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     }
   }
 
-  static Future<void> _declineVoiceCall(Map<String, dynamic> data) async {
+  static Future<void> _declineCall(Map<String, dynamic> data) async {
     final callId = data['callId'];
     if (callId is! String || callId.isEmpty) return;
 
@@ -633,7 +638,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     }
   }
 
-  static Future<void> _endVoiceCall(Map<String, dynamic> data) async {
+  static Future<void> _endCall(Map<String, dynamic> data) async {
     final callId = data['callId'];
     if (callId is! String || callId.isEmpty) return;
 
@@ -662,23 +667,23 @@ class LocalNotificationService implements LocalNotificationRepository {
       final lastCallId = _lastIncomingCall?.data['callId'];
       if (lastCallId == callId) _lastIncomingCall = null;
 
-      final pendingCallId = _pendingVoiceCall?.data['callId'];
-      if (pendingCallId == callId) _pendingVoiceCall = null;
+      final pendingCallId = _pendingCall?.data['callId'];
+      if (pendingCallId == callId) _pendingCall = null;
     }
   }
 
-  static void _openVoiceCall(
+  static void _openCall(
     Map<String, dynamic> data, {
     bool autoAccept = false,
     bool closeAppOnEnd = false,
   }) {
-    final argument = _voiceCallArgumentFromData(
+    final argument = _callArgumentFromData(
       data,
       autoAccept: autoAccept,
       closeAppOnEnd: closeAppOnEnd,
     );
     if (argument == null) {
-      _pendingVoiceCall = (
+      _pendingCall = (
         data: data,
         autoAccept: autoAccept,
         closeAppOnEnd: closeAppOnEnd,
@@ -691,7 +696,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     }
 
     if (Get.key.currentState == null) {
-      _pendingVoiceCall = (
+      _pendingCall = (
         data: data,
         autoAccept: autoAccept,
         closeAppOnEnd: closeAppOnEnd,
@@ -700,12 +705,12 @@ class LocalNotificationService implements LocalNotificationRepository {
     }
 
     Get.toNamed(
-      AppRouteName.VOICE_CALL_SCREEN,
+      AppRouteName.CALL_SCREEN,
       arguments: argument,
     );
   }
 
-  static VoiceCallArgument? _voiceCallArgumentFromData(
+  static CallArgument? _callArgumentFromData(
     Map<String, dynamic> data, {
     required bool autoAccept,
     bool closeAppOnEnd = false,
@@ -714,7 +719,9 @@ class LocalNotificationService implements LocalNotificationRepository {
     final roomId = data['roomId'];
     final callId = data['callId'];
     final callerId = data['callerId'];
-    final callerName = data['callerName'] ?? 'Panggilan suara';
+    final isVideoCall = _isVideoCallPayload(data);
+    final callerName = data['callerName'] ??
+        (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
 
     if (currentUid == null ||
         roomId is! String ||
@@ -723,7 +730,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       return null;
     }
 
-    return VoiceCallArgument(
+    return CallArgument(
       roomId: roomId,
       currentUid: currentUid,
       targetUid: callerId,
@@ -732,7 +739,14 @@ class LocalNotificationService implements LocalNotificationRepository {
       isCaller: false,
       autoAccept: autoAccept,
       closeAppOnEnd: closeAppOnEnd,
+      isVideoCall: isVideoCall,
     );
+  }
+
+  static bool _isVideoCallPayload(Map<String, dynamic> data) {
+    return data['type'] == 'video_call' ||
+        data['callType'] == 'video' ||
+        data[CallField.type] == 'video';
   }
 
   static bool _closeAppOnEndFor(

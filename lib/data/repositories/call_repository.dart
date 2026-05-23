@@ -7,6 +7,7 @@ abstract class CallRepository {
     required String calleeId,
     required String callerName,
     required String calleeName,
+    String callType = 'voice',
   });
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchCall(String callId);
@@ -17,6 +18,26 @@ abstract class CallRepository {
   });
 
   Future<void> setAnswer({
+    required String callId,
+    required Map<String, dynamic> answer,
+  });
+
+  Future<void> requestVideoUpgrade({
+    required String callId,
+    required String requestedBy,
+  });
+
+  Future<void> respondVideoUpgrade({
+    required String callId,
+    required bool accepted,
+  });
+
+  Future<void> setVideoOffer({
+    required String callId,
+    required Map<String, dynamic> offer,
+  });
+
+  Future<void> setVideoAnswer({
     required String callId,
     required Map<String, dynamic> answer,
   });
