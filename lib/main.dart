@@ -34,7 +34,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
   try {
-    if (message.data['type'] == 'voice_call') {
+    if (message.data['type'] == 'voice_call' || message.data['type'] == 'voice_call_ended') {
       await LocalNotificationService.showFromBackground(message);
     }
   } catch (error, stackTrace) {
@@ -83,8 +83,8 @@ Future<void> main() async {
       WidgetsBinding.instance.addObserver(_CallKitLifecycleObserver());
 
       FirebaseMessaging.onMessage.listen(
-        (message) {
-          getIt<LocalNotificationRepository>().show(message);
+        (message) async {
+          await getIt<LocalNotificationRepository>().show(message);
         },
         onError: (error, stackTrace) {
           AppErrorLogger.recordError(
