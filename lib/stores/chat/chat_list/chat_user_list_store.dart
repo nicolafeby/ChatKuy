@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
@@ -38,6 +39,7 @@ abstract class _ChatUserListStore with Store {
   void watchChatUsers(String myUid) {
     isLoading = true;
     errorMessage = null;
+    currentUid = myUid;
 
     _subscription?.cancel();
     _subscription = repository.watchChatUsers(myUid: myUid).listen((users) {
@@ -45,7 +47,13 @@ abstract class _ChatUserListStore with Store {
         ..clear()
         ..addAll(users);
       isLoading = false;
-    }, onError: (e) {
+    }, onError: (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Chat user list stream failed',
+        context: {'current_uid': myUid},
+      );
       errorMessage = e.toString();
       isLoading = false;
     });

@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:ui';
 
 import 'package:chatkuy/core/constants/formatter.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
@@ -54,13 +55,27 @@ abstract class _ProfileStore with Store {
     try {
       await presenceRepository.setOffline();
       await authRepository.logout();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Logout primary cleanup failed',
+      );
       log('⚠️ Logout failed, continuing anyway');
       log('$e');
     } finally {
-      await getIt<PresenceService>().setOffline();
-      await storageRepository.clear();
-      await getIt<HiveEncryptionRepository>().clearSensitiveData();
+      try {
+        await getIt<PresenceService>().setOffline();
+        await storageRepository.clear();
+        await AppErrorLogger.setUserId(null);
+        await getIt<HiveEncryptionRepository>().clearSensitiveData();
+      } catch (e, stackTrace) {
+        AppErrorLogger.recordError(
+          e,
+          stackTrace,
+          reason: 'Logout final cleanup failed',
+        );
+      }
       await Future.delayed(Duration(milliseconds: 200));
       onSuccess.call();
     }
@@ -83,9 +98,19 @@ abstract class _ProfileStore with Store {
 
       // Optional: tunggu untuk capture error
       await future;
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Profile operation failed with FirebaseException',
+      );
       error.general = e;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Profile operation failed with unknown error',
+      );
       error.general = FirebaseException(plugin: e.toString());
 
       rethrow;
@@ -172,7 +197,13 @@ abstract class _ProfileStore with Store {
       if (!available) {
         error.username = 'Username sudah digunakan';
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Check username availability failed',
+        context: {'username_length': username?.length},
+      );
       error.username = 'Gagal mengecek username';
       isUsernameAvailable = null;
     } finally {
@@ -212,9 +243,19 @@ abstract class _ProfileStore with Store {
 
       editProfileFuture = ObservableFuture(future);
       await editProfileFuture;
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Profile operation failed with FirebaseException',
+      );
       error.general = e;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Profile operation failed with unknown error',
+      );
       error.general = FirebaseException(plugin: e.toString());
       rethrow;
     }
@@ -272,10 +313,24 @@ abstract class _ProfileStore with Store {
 
       await Future.delayed(Duration(milliseconds: 200));
       onSuccess();
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Change password failed with FirebaseAuthException',
+        context: {'auth_code': e.code},
+      );
       _handleFirebaseAuthError(e);
-    } catch (e) {
-      error.general = FirebaseException(plugin: e.toString(), message: 'Terjadi kesalahan, silakan coba lagi');
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Change password failed with unknown error',
+      );
+      error.general = FirebaseException(
+        plugin: e.toString(),
+        message: 'Terjadi kesalahan, silakan coba lagi',
+      );
     }
   }
 
@@ -352,9 +407,19 @@ abstract class _ProfileStore with Store {
       changeProfilePictureFuture = ObservableFuture(future);
 
       await changeProfilePictureFuture;
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Profile operation failed with FirebaseException',
+      );
       error.general = e;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Profile operation failed with unknown error',
+      );
       error.general = FirebaseException(plugin: e.toString());
       rethrow;
     }

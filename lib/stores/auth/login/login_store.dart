@@ -1,6 +1,5 @@
-import 'dart:developer';
-
 import 'package:chatkuy/app_context.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
@@ -18,6 +17,7 @@ abstract class _LoginStore with Store {
   final AuthRepository service;
   final SecureStorageRepository storageService;
   final PresenceRepository presenceService;
+
   _LoginStore({
     required this.service,
     required this.storageService,
@@ -76,40 +76,58 @@ abstract class _LoginStore with Store {
 
       loginResponse = resp;
 
+      await AppErrorLogger.setUserId(resp.id);
       await AppContext.sessionStore.setLoggedIn(true);
       await storageService.setUserId(resp.id);
 
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) return;
-
-      await storageService.setFcmToken(token);
-
-      service.updateFcmToken(token: token, currentUid: resp.id);
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await storageService.setFcmToken(token);
+          await service.updateFcmToken(token: token, currentUid: resp.id);
+        }
+      } catch (e, stackTrace) {
+        AppErrorLogger.recordError(
+          e,
+          stackTrace,
+          reason: 'Update FCM token after login failed',
+          context: {'uid': resp.id},
+        );
+      }
 
       await Future.delayed(const Duration(milliseconds: 200));
 
       onSuccess.call();
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e, stackTrace) {
       email = e.email;
-
-      log('🔥 FirebaseAuthException');
-      log('➡️ code    : ${e.code}');
-      log('➡️ message : ${e.message}');
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Login failed with FirebaseAuthException',
+        context: {
+          'auth_code': e.code,
+          'username_length': username?.length,
+        },
+      );
 
       error.general = e;
-    } on FirebaseException catch (e) {
-      log('🔥 FirebaseException');
-      log('➡️ plugin  : ${e.plugin}');
-      log('➡️ code    : ${e.code}');
-      log('➡️ message : ${e.message}');
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Login failed with FirebaseException',
+      );
 
       error.general = FirebaseAuthException(
         code: e.code,
         message: e.message,
       );
-    } catch (e) {
-      log('❌ Unknown error');
-      log(e.toString());
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Login failed with unknown error',
+      );
 
       error.general = FirebaseAuthException(
         code: 'unknown',

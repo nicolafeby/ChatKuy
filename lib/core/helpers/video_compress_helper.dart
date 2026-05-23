@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:video_compress/video_compress.dart';
@@ -40,8 +41,7 @@ Future<File> compressChatVideo({
 
     final result = File(compressedPath);
     final compressedSize = await result.length();
-    final savedPercent =
-        ((1 - (compressedSize / originalSize)) * 100).clamp(0, 100);
+    final savedPercent = ((1 - (compressedSize / originalSize)) * 100).clamp(0, 100);
 
     debugPrint(
       '[ChatVideoCompress] original=${_formatBytes(originalSize)}, '
@@ -53,7 +53,13 @@ Future<File> compressChatVideo({
   } on MissingPluginException {
     debugPrint('[ChatVideoCompress] Missing plugin, using original video.');
     return videoFile;
-  } catch (e) {
+  } catch (e, stackTrace) {
+    AppErrorLogger.recordError(
+      e,
+      stackTrace,
+      reason: 'Compress chat video failed',
+      context: {'original_size': originalSize},
+    );
     debugPrint('[ChatVideoCompress] Failed to compress video: $e');
     return videoFile;
   }
@@ -70,7 +76,13 @@ Future<File?> getChatVideoThumbnail({
       quality: quality,
       position: position,
     );
-  } catch (e) {
+  } catch (e, stackTrace) {
+    AppErrorLogger.recordError(
+      e,
+      stackTrace,
+      reason: 'Create chat video thumbnail failed',
+      context: {'quality': quality, 'position': position},
+    );
     debugPrint('[ChatVideoThumbnail] Failed to create thumbnail: $e');
     return null;
   }

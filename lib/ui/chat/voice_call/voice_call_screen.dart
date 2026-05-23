@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/helpers/call_lifecycle_helper.dart';
 import 'package:chatkuy/core/navigation/initial_route_argument.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/di/injection.dart';
@@ -8,7 +9,6 @@ import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 class VoiceCallScreen extends StatefulWidget {
@@ -19,9 +19,6 @@ class VoiceCallScreen extends StatefulWidget {
 }
 
 class _VoiceCallScreenState extends State<VoiceCallScreen> {
-  static const _callLifecycleChannel =
-      MethodChannel('com.ncladr.chatkuy/call_lifecycle');
-
   VoiceCallArgument? _argument;
   bool _closeAppOnEnd = false;
   bool _isClosing = false;
@@ -32,8 +29,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
   @override
   void initState() {
     super.initState();
-    _argument = Get.arguments as VoiceCallArgument? ??
-        InitialRouteArgument.takeVoiceCall();
+    _argument = Get.arguments as VoiceCallArgument? ?? InitialRouteArgument.takeVoiceCall();
     final argument = _argument;
     if (argument == null) {
       _close();
@@ -57,15 +53,10 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
         Get.offAllNamed(AppRouteName.BASE_SCREEN);
       }
 
-      Future<void>.delayed(const Duration(milliseconds: 250), () async {
-        try {
-          await _callLifecycleChannel.invokeMethod<void>('moveTaskToBack');
-        } on PlatformException {
-          await SystemNavigator.pop();
-        } on MissingPluginException {
-          await SystemNavigator.pop();
-        }
-      });
+      Future<void>.delayed(
+        const Duration(milliseconds: 250),
+        CallLifecycleHelper.moveTaskToBackOrCloseApp,
+      );
       return;
     }
 
@@ -116,10 +107,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                     radius: 52.r,
                     backgroundColor: AppColor.primaryColor,
                     child: Text(
-                      (argument?.targetName.isNotEmpty == true
-                              ? argument!.targetName[0]
-                              : '?')
-                          .toUpperCase(),
+                      (argument?.targetName.isNotEmpty == true ? argument!.targetName[0] : '?').toUpperCase(),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 36.sp,
@@ -139,9 +127,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                   ),
                   8.verticalSpace,
                   Text(
-                    store.hasRemoteAudio
-                        ? 'Audio tersambung'
-                        : store.statusText,
+                    store.hasRemoteAudio ? 'Audio tersambung' : store.statusText,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
@@ -190,9 +176,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                           onTap: () => store.endCall(),
                         ),
                         _CallControlButton(
-                          icon: store.isSpeakerOn
-                              ? Icons.volume_up
-                              : Icons.volume_down,
+                          icon: store.isSpeakerOn ? Icons.volume_up : Icons.volume_down,
                           label: 'Speaker',
                           onTap: store.toggleSpeaker,
                         ),
