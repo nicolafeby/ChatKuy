@@ -135,27 +135,29 @@ abstract class _CallStore with Store {
   }
 
   Future<void> _startMediaSession(CallArgument argument) async {
-    final micStatus = await Permission.microphone.request();
-    if (!micStatus.isGranted) {
-      _showMessage('ChatKuy membutuhkan akses mikrofon untuk telepon suara');
-      if (!argument.isCaller && _callId != null) {
-        await callRepository.declineCall(_callId!);
-      }
-      _close();
+    final micGranted = await _ensureCallPermission(
+      permission: Permission.microphone,
+      deniedMessage: 'ChatKuy membutuhkan akses mikrofon untuk panggilan',
+    );
+    if (!micGranted) {
+      await _closeCallForMissingPermission(
+        'Izin mikrofon ditolak, panggilan ditutup',
+      );
       return;
     }
 
     try {
       final videoEnabled = argument.isVideoCall;
       if (videoEnabled) {
-        final cameraStatus = await Permission.camera.request();
-        if (!cameraStatus.isGranted) {
-          _showMessage(
-              'ChatKuy membutuhkan akses kamera untuk panggilan video');
-          if (!argument.isCaller && _callId != null) {
-            await callRepository.declineCall(_callId!);
-          }
-          _close();
+        final cameraGranted = await _ensureCallPermission(
+          permission: Permission.camera,
+          deniedMessage:
+              'ChatKuy membutuhkan akses kamera untuk panggilan video',
+        );
+        if (!cameraGranted) {
+          await _closeCallForMissingPermission(
+            'Izin kamera ditolak, panggilan ditutup',
+          );
           return;
         }
       }
@@ -640,8 +642,11 @@ abstract class _CallStore with Store {
       return;
     }
 
-    final cameraStatus = await Permission.camera.request();
-    if (!cameraStatus.isGranted) {
+    final cameraGranted = await _ensureCallPermission(
+      permission: Permission.camera,
+      deniedMessage: 'ChatKuy membutuhkan akses kamera untuk panggilan video',
+    );
+    if (!cameraGranted) {
       throw Exception('ChatKuy membutuhkan akses kamera untuk panggilan video');
     }
 
@@ -900,6 +905,34 @@ abstract class _CallStore with Store {
   DateTime? _dateTimeFromTimestamp(dynamic value) {
     if (value is Timestamp) return value.toDate();
     return null;
+  }
+
+  Future<bool> _ensureCallPermission({
+    required Permission permission,
+    required String deniedMessage,
+  }) async {
+    final currentStatus = await permission.status;
+    if (currentStatus.isGranted) return true;
+
+    final requestedStatus = await permission.request();
+    if (requestedStatus.isGranted) return true;
+
+    _showMessage(deniedMessage);
+    return false;
+  }
+
+  Future<void> _closeCallForMissingPermission(String message) async {
+    if (_isEnding) return;
+    _isEnding = true;
+    _showMessage(message);
+
+    final callId = _callId;
+    if (callId != null) {
+      await callRepository.declineCall(callId);
+    }
+
+    await _teardownCallResources(endCallKit: true);
+    _close();
   }
 
   void _showMessage(String message) {
