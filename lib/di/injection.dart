@@ -14,6 +14,7 @@ import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
+import 'package:chatkuy/data/services/app_update_service.dart';
 import 'package:chatkuy/data/services/auth_service.dart';
 import 'package:chatkuy/data/services/call_service.dart';
 import 'package:chatkuy/data/services/chat_service.dart';
@@ -30,6 +31,7 @@ import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -42,6 +44,8 @@ Future<void> setupDI() async {
       () => FirebaseFirestore.instance);
   getIt.registerLazySingleton<FirebaseMessaging>(
       () => FirebaseMessaging.instance);
+  getIt.registerLazySingleton<FirebaseRemoteConfig>(
+      () => FirebaseRemoteConfig.instance);
   getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
 
   registerService();
@@ -105,6 +109,10 @@ void registerService() {
 
   getIt.registerLazySingleton<LocalNotificationRepository>(
     () => LocalNotificationService(),
+  );
+
+  getIt.registerLazySingleton<AppUpdateService>(
+    () => AppUpdateService(getIt<FirebaseRemoteConfig>()),
   );
 }
 

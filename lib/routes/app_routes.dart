@@ -72,5 +72,9 @@ class AppRoute {
       name: AppRouteName.VOICE_CALL_SCREEN,
       page: () => VoiceCallScreen(),
     ),
+    GetPage(
+      name: AppRouteName.APP_UPDATE_SCREEN,
+      page: () => AppUpdateScreen(),
+    ),
   ];
 }
