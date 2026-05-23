@@ -19,6 +19,7 @@ import 'package:flutter_callkit_incoming/entities/notification_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class LocalNotificationService implements LocalNotificationRepository {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -117,6 +118,24 @@ class LocalNotificationService implements LocalNotificationRepository {
             'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
       });
       await FlutterCallkitIncoming.requestFullIntentPermission();
+      await _requestStartupCallMediaPermissions();
+    }
+  }
+
+  static Future<void> _requestStartupCallMediaPermissions() async {
+    try {
+      final microphoneStatus = await Permission.microphone.request();
+      final cameraStatus = await Permission.camera.request();
+      debugPrint(
+        'Startup call media permission: microphone=$microphoneStatus camera=$cameraStatus',
+      );
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Startup call media permission request failed',
+        showBottomSheet: false,
+      );
     }
   }
 

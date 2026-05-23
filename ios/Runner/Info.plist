@@ -29,9 +29,9 @@
 	<key>NSContactsUsageDescription</key>
     <string>Reason we need access to the contact list</string>
 	<key>NSCameraUsageDescription</key>
-	<string>ChatKuy membutuhkan akses kamera untuk mengambil foto.</string>
+	<string>ChatKuy membutuhkan akses kamera untuk foto dan panggilan video.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ChatKuy membutuhkan akses mikrofon untuk merekam video dan telepon suara.</string>
+	<string>ChatKuy membutuhkan akses mikrofon untuk voice call dan video call.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ChatKuy membutuhkan akses galeri untuk memilih foto dan video.</string>
 	<key>UIMainStoryboardFile</key>
