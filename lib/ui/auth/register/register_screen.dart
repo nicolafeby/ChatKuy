@@ -3,6 +3,7 @@ import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
@@ -53,10 +54,12 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
         reaction((p0) => store.error.general, (p0) {
           if (p0 != null) {
             Get.bottomSheet(
+              isScrollControlled: true,
               BottomsheetWidget(
                 asset: AppAsset.imgFaceSad,
                 title: AppStrings.oopsTerjadiKesalahan,
                 message: p0.message.toString(),
+                errorTicketId: AppErrorLogger.latestErrorTicketId,
               ),
             );
           }
@@ -107,7 +110,9 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
                 hintText: 'Masukan Username',
                 textInputType: TextInputType.name,
                 textInputAction: TextInputAction.next,
-                inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)
+                ],
                 onChanged: store.validateUsername,
                 errorText: store.error.username,
               ),
@@ -139,7 +144,8 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
                               asset: AppAsset.imgFaceWink,
                               restricBackNative: true,
                               title: 'Horee!! Registrasi Berhasil',
-                              message: 'Yuk, verifikasi email kamu agar bisa mengakses semua fitur kami',
+                              message:
+                                  'Yuk, verifikasi email kamu agar bisa mengakses semua fitur kami',
                               buttonText: 'Verifikasi Sekarang',
                               onButtonPressed: () {
                                 final email = store.email;
@@ -158,15 +164,19 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
               48.verticalSpace,
               Text.rich(
                 TextSpan(
-                  text: 'Sudah punya akun? ', // Default style applied to this segment
+                  text:
+                      'Sudah punya akun? ', // Default style applied to this segment
                   children: <InlineSpan>[
                     TextSpan(
                       text: 'Masuk',
-                      recognizer: TapGestureRecognizer()..onTap = () => Get.offAndToNamed(AppRouteName.LOGIN_SCREEN),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap =
+                            () => Get.offAndToNamed(AppRouteName.LOGIN_SCREEN),
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                         decorationColor: AppColor.primaryColor,
-                        fontWeight: FontWeight.bold, // Specific style for "bold"
+                        fontWeight:
+                            FontWeight.bold, // Specific style for "bold"
                         color: Colors.blue,
                       ),
                     ),

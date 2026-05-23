@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
@@ -55,10 +56,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> with BaseLa
       reaction((p0) => store.error.general, (p0) {
         if (p0 == null) return;
         Get.bottomSheet(
+          isScrollControlled: true,
           BottomsheetWidget(
             asset: AppAsset.imgFaceSad,
             title: AppStrings.oopsTerjadiKesalahan,
             message: p0.message ?? '',
+            errorTicketId: AppErrorLogger.latestErrorTicketId,
           ),
         );
       })

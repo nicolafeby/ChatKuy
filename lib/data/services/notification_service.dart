@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
@@ -24,13 +27,7 @@ class NotificationService implements NotificationRepository {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final token = await messaging.getToken();
-      if (token != null) {
-        await FirebaseFirestore.instance
-            .collection(FirebaseCollections.users)
-            .doc(user.uid)
-            .update({AppStrings.fcmToken: token});
-      }
+      unawaited(_syncFcmToken(user.uid));
     }
 
     FirebaseMessaging.onMessageOpenedApp.listen(handleMessage);
@@ -89,6 +86,26 @@ class NotificationService implements NotificationRepository {
           );
         }
       });
+    }
+  }
+
+  Future<void> _syncFcmToken(String uid) async {
+    try {
+      final token = await messaging.getToken();
+      if (token == null) return;
+
+      await FirebaseFirestore.instance
+          .collection(FirebaseCollections.users)
+          .doc(uid)
+          .update({AppStrings.fcmToken: token});
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Failed to sync FCM token on notification init',
+        context: {'uid': uid},
+        showBottomSheet: false,
+      );
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
@@ -60,10 +61,12 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
           if (p0 == null) return;
           if (p0.code.contains(AppStrings.emailNotVerified)) {
             Get.bottomSheet(
+              isScrollControlled: true,
               BottomsheetWidget(
                 title: AppStrings.oopsTerjadiKesalahan,
                 asset: AppAsset.imgFaceSad,
                 message: 'Mohon verifikasi email kamu agar bisa mengakses seluruh fitur',
+                errorTicketId: AppErrorLogger.latestErrorTicketId,
                 buttonText: 'Verifikasi Sekarang',
                 onButtonPressed: () {
                   final email = store.email;
@@ -77,10 +80,12 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
             );
           } else {
             Get.bottomSheet(
+              isScrollControlled: true,
               BottomsheetWidget(
                 title: AppStrings.oopsTerjadiKesalahan,
                 asset: AppAsset.imgFaceSad,
                 message: p0.message.toString(),
+                errorTicketId: AppErrorLogger.latestErrorTicketId,
               ),
             );
           }
