@@ -1,1 +1,39 @@
-{}
+{
+  "parameters": {
+    "minimum_required_app_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Force update when the installed app version is lower than this value, for example 1.0.1.",
+      "valueType": "STRING"
+    },
+    "minimum_required_build_number": {
+      "defaultValue": {
+        "value": "0"
+      },
+      "description": "Force update when the installed build number is lower than this value.",
+      "valueType": "NUMBER"
+    },
+    "recommended_app_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Show optional update when the installed app version is lower than this value.",
+      "valueType": "STRING"
+    },
+    "recommended_build_number": {
+      "defaultValue": {
+        "value": "0"
+      },
+      "description": "Show optional update when the installed build number is lower than this value.",
+      "valueType": "NUMBER"
+    },
+    "app_tester_url": {
+      "defaultValue": {
+        "value": "https://appdistribution.firebase.google.com/testerapps"
+      },
+      "description": "External URL opened by the App Tester button on the update screen.",
+      "valueType": "STRING"
+    }
+  }
+}

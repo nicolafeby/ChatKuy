@@ -5,6 +5,7 @@ import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
+import 'package:chatkuy/data/services/app_update_service.dart';
 import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -115,8 +116,12 @@ Future<void> main() async {
       }
 
       final initialVoiceCallArgument = await LocalNotificationService.takeInitialAcceptedCallArgument();
+      final initialUpdateInfo = await getIt<AppUpdateService>().checkForUpdate();
 
-      runApp(MyApp(initialVoiceCallArgument: initialVoiceCallArgument));
+      runApp(MyApp(
+        initialVoiceCallArgument: initialVoiceCallArgument,
+        initialUpdateInfo: initialUpdateInfo,
+      ));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         LocalNotificationService.processPendingLaunchNotification();
       });

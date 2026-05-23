@@ -17,7 +17,8 @@ class FriendListScreen extends StatefulWidget {
   State<FriendListScreen> createState() => _FriendListScreenState();
 }
 
-class _FriendListScreenState extends State<FriendListScreen> with AutomaticKeepAliveClientMixin {
+class _FriendListScreenState extends State<FriendListScreen>
+    with AutomaticKeepAliveClientMixin {
   final FriendListStore store = FriendListStore(
     friendRepository: getIt<FriendRepository>(),
     chatRepository: getIt<ChatRepository>(),
@@ -25,6 +26,12 @@ class _FriendListScreenState extends State<FriendListScreen> with AutomaticKeepA
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    store.dispose();
+    super.dispose();
+  }
 
   PreferredSizeWidget _buildAppbar() {
     return AppBar(
@@ -64,10 +71,12 @@ class _FriendListScreenState extends State<FriendListScreen> with AutomaticKeepA
               width: double.infinity,
               margin: EdgeInsetsDirectional.symmetric(horizontal: 20.w),
               // padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-              decoration:
-                  BoxDecoration(border: Border.all(color: Colors.black54), borderRadius: BorderRadius.circular(8.r)),
+              decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black54),
+                  borderRadius: BorderRadius.circular(8.r)),
               child: ListTile(
-                onTap: () => Get.toNamed(AppRouteName.FRIEND_REQUEST_LIST_SCREEN),
+                onTap: () =>
+                    Get.toNamed(AppRouteName.FRIEND_REQUEST_LIST_SCREEN),
                 title: Text(
                   'Permintaan Pertemanan',
                   textAlign: TextAlign.left,
@@ -95,7 +104,8 @@ class _FriendListScreenState extends State<FriendListScreen> with AutomaticKeepA
                   final user = friend.user;
 
                   return ListTile(
-                    leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 46),
+                    leading: ProfileAvatarWidget(
+                        base64Image: user.photoUrl, size: 46),
                     title: Text(
                       user.name,
                       style: TextStyle(

@@ -4,6 +4,7 @@ import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mobx/mobx.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 
@@ -24,7 +25,8 @@ abstract class _ChatUserListStore with Store {
   // STATE
   // -----------------------------
   @observable
-  ObservableList<ChatUserItemModel> chatUsers = ObservableList<ChatUserItemModel>();
+  ObservableList<ChatUserItemModel> chatUsers =
+      ObservableList<ChatUserItemModel>();
 
   @observable
   bool isLoading = false;
@@ -48,6 +50,11 @@ abstract class _ChatUserListStore with Store {
         ..addAll(users);
       isLoading = false;
     }, onError: (e, stackTrace) {
+      if (_isExpectedLogoutStreamError(e)) {
+        isLoading = false;
+        return;
+      }
+
       AppErrorLogger.recordError(
         e,
         stackTrace,
@@ -57,6 +64,12 @@ abstract class _ChatUserListStore with Store {
       errorMessage = e.toString();
       isLoading = false;
     });
+  }
+
+  bool _isExpectedLogoutStreamError(Object error) {
+    return FirebaseAuth.instance.currentUser == null &&
+        error is FirebaseException &&
+        error.code == 'permission-denied';
   }
 
   String? currentUid;

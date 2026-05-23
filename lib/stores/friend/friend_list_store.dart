@@ -6,6 +6,7 @@ import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mobx/mobx.dart';
 
 part 'friend_list_store.g.dart';
@@ -76,6 +77,11 @@ abstract class _FriendListStore with Store {
         isLoading = false;
       },
       onError: (e, stackTrace) {
+        if (_isExpectedLogoutStreamError(e)) {
+          isLoading = false;
+          return;
+        }
+
         AppErrorLogger.recordError(
           e,
           stackTrace,
@@ -85,6 +91,12 @@ abstract class _FriendListStore with Store {
         isLoading = false;
       },
     );
+  }
+
+  bool _isExpectedLogoutStreamError(Object error) {
+    return FirebaseAuth.instance.currentUser == null &&
+        error is FirebaseException &&
+        error.code == 'permission-denied';
   }
 
   // ======================
@@ -106,7 +118,8 @@ abstract class _FriendListStore with Store {
         : _allFriends.where((friend) {
             final user = friend.user;
 
-            return user.name.toLowerCase().contains(q) || (user.username?.toLowerCase().contains(q) ?? false);
+            return user.name.toLowerCase().contains(q) ||
+                (user.username?.toLowerCase().contains(q) ?? false);
           }).toList();
 
     friends
