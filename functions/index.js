@@ -19,6 +19,25 @@ function callKitAvatarUrl(value) {
     : '';
 }
 
+async function clearInvalidFcmToken(uid, token, error) {
+  const code = error?.code || '';
+  const isInvalidToken =
+    code === 'messaging/registration-token-not-registered' ||
+    code === 'messaging/invalid-registration-token';
+
+  if (!uid || !token || !isInvalidToken) {
+    return;
+  }
+
+  const userRef = admin.firestore().collection('users').doc(uid);
+  const userSnap = await userRef.get();
+
+  if (userSnap.exists && userSnap.data().fcmToken === token) {
+    await userRef.update({ fcmToken: '' });
+    logger.info('🧹 Cleared invalid FCM token:', uid);
+  }
+}
+
 exports.onNewMessage = onDocumentCreated(
   'chat_rooms/{roomId}/messages/{messageId}',
   async (event) => {
@@ -86,43 +105,50 @@ exports.onNewMessage = onDocumentCreated(
     }
 
     // 🔔 Kirim notif
-    const response = await admin.messaging().send({
-      token: fcmToken,
+    try {
+      const response = await admin.messaging().send({
+        token: fcmToken,
 
-      // 🔔 Dipakai OS (background / terminated)
-      notification: {
-        title: message.senderName || 'Pesan Baru',
-        body: message.text || 'Ada pesan baru',
-      },
-
-      // 📦 Dipakai Flutter (navigasi)
-      data: {
-        type: 'chat',
-        roomId: event.params.roomId,
-        senderId: message.senderId ?? '',
-        senderName: message.senderName ?? '',
-        text: message.text ?? '',
-      },
-
-      // 🤖 Android config
-      android: {
-        priority: 'high',
+        // 🔔 Dipakai OS (background / terminated)
         notification: {
-          channelId: 'chat_notification', // HARUS sama dengan Flutter
+          title: message.senderName || 'Pesan Baru',
+          body: message.text || 'Ada pesan baru',
         },
-      },
 
-      // 🍎 iOS config
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
+        // 📦 Dipakai Flutter (navigasi)
+        data: {
+          type: 'chat',
+          roomId: event.params.roomId,
+          messageId: event.params.messageId,
+          receiverId: receiverId,
+          senderId: message.senderId ?? '',
+          senderName: message.senderName ?? '',
+          text: message.text ?? '',
+        },
+
+        // 🤖 Android config
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'chat_notification', // HARUS sama dengan Flutter
           },
         },
-      },
-    });
 
-    logger.info('✅ FCM sent:', response);
+        // 🍎 iOS config
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+            },
+          },
+        },
+      });
+
+      logger.info('✅ FCM sent:', response);
+    } catch (error) {
+      await clearInvalidFcmToken(receiverId, fcmToken, error);
+      throw error;
+    }
   }
 );
 
@@ -169,35 +195,40 @@ exports.onNewVoiceCall = onDocumentCreated(
     const callerName = call.callerName || callerData.name || 'ChatKuy';
     const callerPhotoUrl = callKitAvatarUrl(callerData.photoUrl);
 
-    const response = await admin.messaging().send({
-      token: fcmToken,
-      data: {
-        type: 'voice_call',
-        callId: event.params.callId,
-        roomId: call.roomId || '',
-        callerId: callerId,
-        callerName: callerName,
-        callerPhotoUrl: callerPhotoUrl,
-        title: callerName,
-        body: 'Panggilan suara masuk',
-      },
-      android: {
-        priority: 'high',
-      },
-      apns: {
-        headers: {
-          'apns-priority': '10',
+    try {
+      const response = await admin.messaging().send({
+        token: fcmToken,
+        data: {
+          type: 'voice_call',
+          callId: event.params.callId,
+          roomId: call.roomId || '',
+          callerId: callerId,
+          callerName: callerName,
+          callerPhotoUrl: callerPhotoUrl,
+          title: callerName,
+          body: 'Panggilan suara masuk',
         },
-        payload: {
-          aps: {
-            contentAvailable: true,
-            sound: 'default',
+        android: {
+          priority: 'high',
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+          },
+          payload: {
+            aps: {
+              contentAvailable: true,
+              sound: 'default',
+            },
           },
         },
-      },
-    });
+      });
 
-    logger.info('✅ Voice call FCM sent:', response);
+      logger.info('✅ Voice call FCM sent:', response);
+    } catch (error) {
+      await clearInvalidFcmToken(calleeId, fcmToken, error);
+      throw error;
+    }
   }
 );
 

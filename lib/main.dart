@@ -35,7 +35,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
   try {
-    if (message.data['type'] == 'voice_call' || message.data['type'] == 'voice_call_ended') {
+    if (message.data['type'] == 'chat') {
+      await LocalNotificationService.markChatMessageDeliveredFromPayload(
+        message.data,
+      );
+    } else if (message.data['type'] == 'voice_call' || message.data['type'] == 'voice_call_ended') {
       await LocalNotificationService.showFromBackground(message);
     }
   } catch (error, stackTrace) {

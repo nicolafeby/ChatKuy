@@ -39,6 +39,30 @@ class NotificationService implements NotificationRepository {
   }
 
   @override
+  Future<void> clearCurrentUserToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    try {
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection(FirebaseCollections.users)
+            .doc(user.uid)
+            .update({AppStrings.fcmToken: ''});
+      }
+
+      await messaging.deleteToken();
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Failed to clear FCM token on logout',
+        context: {'uid': user?.uid},
+        showBottomSheet: false,
+      );
+    }
+  }
+
+  @override
   void handleMessage(RemoteMessage message) {
     final id = FirebaseAuth.instance.currentUser?.uid;
     final data = message.data;
