@@ -266,6 +266,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
         FocusScope.of(context).requestFocus(_focusNode);
       }
       await Future.delayed(const Duration(milliseconds: 50));
+      if (!mounted) return;
       setState(() => _showEmojiPicker = false);
       ChatFieldV2.setEmojiShowing(false);
     } else {
@@ -277,6 +278,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
       }
     }
 
+    if (!mounted) return;
     setState(() => _showAboveSheet = false);
   }
 

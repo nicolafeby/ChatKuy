@@ -116,8 +116,12 @@ class ChatService implements ChatRepository {
           videoUrl: data[MessageField.videoUrl],
           localVideoPath: _existingFilePath(data[MessageField.localVideoPath]),
           type: _messageTypeFromString(data[MessageField.type]),
-          createdAt: DateTime.now(),
-          createdAtClient: DateTime.now(),
+          createdAt: _dateFromFirestore(data[MessageField.createdAt]) ??
+              _dateFromFirestore(data[MessageField.createdAtClient]) ??
+              DateTime.now(),
+          createdAtClient:
+              _dateFromFirestore(data[MessageField.createdAtClient]) ??
+                  DateTime.now(),
           deliveredTo:
               Map<String, bool>.from(data[MessageField.deliveredTo] ?? {}),
           readBy: Map<String, bool>.from(data[MessageField.readBy] ?? {}),
@@ -170,10 +174,21 @@ class ChatService implements ChatRepository {
     final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
 
     final roomSnap = await roomRef.get();
-    final participants =
-        List<String>.from(roomSnap.data()![ChatRoomField.participants]);
+    final roomData = roomSnap.data();
+    if (roomData == null) {
+      throw StateError('Chat room $roomId tidak ditemukan');
+    }
 
-    final targetUid = participants.firstWhere((e) => e != uid);
+    final participants =
+        List<String>.from(roomData[ChatRoomField.participants] ?? const []);
+
+    final targetUid = participants.firstWhere(
+      (e) => e != uid,
+      orElse: () => '',
+    );
+    if (targetUid.isEmpty) {
+      throw StateError('Chat room $roomId tidak memiliki penerima pesan');
+    }
     final createdAtClient = DateTime.now();
     final localPath = localImagePath ??
         (imageFile != null
@@ -324,6 +339,13 @@ class ChatService implements ChatRepository {
     return File(path).existsSync() ? path : null;
   }
 
+  DateTime? _dateFromFirestore(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    return null;
+  }
+
   // -------------------------------
   // CREATE / GET ROOM
   // -------------------------------
@@ -453,7 +475,9 @@ class ChatService implements ChatRepository {
     final downloadUrl = await ref.getDownloadURL();
 
     final data = LocalImageModel(
-        localImagePath: localImagePath, downloadUrl: downloadUrl);
+      localImagePath: localImagePath,
+      downloadUrl: downloadUrl,
+    );
 
     return data;
   }

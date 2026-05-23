@@ -36,6 +36,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
   );
 
   List<ReactionDisposer> _reaction = [];
+  Timer? _verificationTimer;
   VerifyArgument? argument;
 
   @override
@@ -61,9 +62,13 @@ class _VerifyScreenState extends State<VerifyScreen> {
   }
 
   void _startTimerPeriodic() {
-    Timer.periodic(Duration(milliseconds: 1500), (_) async {
-      await store.refreshEmailVerification();
-    });
+    _verificationTimer?.cancel();
+    _verificationTimer = Timer.periodic(
+      const Duration(milliseconds: 1500),
+      (_) async {
+        await store.refreshEmailVerification();
+      },
+    );
   }
 
   @override
@@ -71,6 +76,8 @@ class _VerifyScreenState extends State<VerifyScreen> {
     for (var d in _reaction) {
       d();
     }
+    _verificationTimer?.cancel();
+    store.dispose();
     super.dispose();
   }
 

@@ -130,11 +130,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16).r,
                     reverse: true,
+                    cacheExtent: 600,
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final realIndex = messages.length - 1 - index;
 
                       final message = messages[realIndex];
+                      final localMediaPath = _localMediaPath(message);
                       final isMe = message.senderId == argument!.currentUid;
 
                       final prevMessage =
@@ -147,12 +149,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                           !message.createdAt.isSameDay(prevMessage.createdAt);
                       final uploadProgress =
                           store.uploadProgressByMessageId[message.id] ??
-                              (_localMediaPath(message) == null
+                              (localMediaPath == null
                                   ? null
                                   : store.uploadProgressByLocalPath[
-                                      _localMediaPath(message)!]);
+                                      localMediaPath]);
 
                       return Column(
+                        key: ValueKey(message.id),
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (showDateSeparator)
@@ -186,6 +189,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     if (text.isEmpty) return;
                     store.sendMessage(text, null);
                   },
+                  onChanged: store.onTypingChanged,
                   store: store,
                 ),
               ],

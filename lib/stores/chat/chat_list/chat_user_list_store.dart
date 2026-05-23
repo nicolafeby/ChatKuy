@@ -38,6 +38,7 @@ abstract class _ChatUserListStore with Store {
   void watchChatUsers(String myUid) {
     isLoading = true;
     errorMessage = null;
+    currentUid = myUid;
 
     _subscription?.cancel();
     _subscription = repository.watchChatUsers(myUid: myUid).listen((users) {

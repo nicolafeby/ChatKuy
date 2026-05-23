@@ -25,7 +25,7 @@ abstract class _ChatRoomStore with Store {
   final ChatRepository chatRepository;
   final UserRepository userRepository;
 
-  late TextEditingController messageController;
+  final TextEditingController messageController = TextEditingController();
 
   ObservableStream<List<ChatMessageModel>>? _serverMessages;
   ObservableStream<UserModel>? targetUser;
@@ -51,6 +51,13 @@ abstract class _ChatRoomStore with Store {
   final ObservableMap<String, int> uploadProgressByLocalPath =
       ObservableMap<String, int>();
 
+  Timer? _resetUnreadTimer;
+  Timer? _typingTimer;
+  ReactionDisposer? _messageStatusDisposer;
+  bool _isTyping = false;
+  final Set<String> _deliveredMessageIds = {};
+  final Set<String> _readMessageIds = {};
+
   @computed
   List<ChatMessageModel> get messages {
     List<ChatMessageModel> list;
@@ -64,8 +71,8 @@ abstract class _ChatRoomStore with Store {
 
       final box = Hive.box<ChatMessageModel>('chat_messages');
 
-      list = box.values.where((m) => m.id.contains(roomId!)).toList()
-        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      list = box.values.where((m) => m.roomId == roomId).toList()
+        ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     if (uploadingMessages.isNotEmpty) {
@@ -83,8 +90,6 @@ abstract class _ChatRoomStore with Store {
         ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
-    _syncMessageStatus(list);
-
     return list;
   }
 
@@ -100,13 +105,18 @@ abstract class _ChatRoomStore with Store {
     this.roomId = roomId;
     this.currentUid = currentUid;
 
-    messageController = TextEditingController();
-
     _serverMessages =
         chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
+
+    _messageStatusDisposer?.call();
+    _messageStatusDisposer = reaction<List<ChatMessageModel>>(
+      (_) => messages,
+      _syncMessageStatus,
+      fireImmediately: true,
+    );
 
     initReadMessagePeriodically();
   }
@@ -140,6 +150,7 @@ abstract class _ChatRoomStore with Store {
 
     /// Clear input
     messageController.clear();
+    onTypingChanged('');
     clearPickedImage();
 
     ChatMessageModel? uploadingMessage;
@@ -149,8 +160,10 @@ abstract class _ChatRoomStore with Store {
     if (imageFile != null && currentUid != null) {
       final now = DateTime.now();
       uploadImageFile = await compressChatImage(imageFile: imageFile);
-      localImagePath =
-          await saveImageToLocal(imageFile: uploadImageFile, roomId: roomId!);
+      localImagePath = await saveImageToLocal(
+        imageFile: uploadImageFile,
+        roomId: roomId!,
+      );
 
       uploadingMessage = ChatMessageModel(
         id: 'uploading_${now.microsecondsSinceEpoch}',
@@ -192,8 +205,9 @@ abstract class _ChatRoomStore with Store {
       );
     } catch (e) {
       if (uploadingMessage != null) {
-        final index = uploadingMessages
-            .indexWhere((message) => message.id == uploadingMessage!.id);
+        final index = uploadingMessages.indexWhere(
+          (message) => message.id == uploadingMessage!.id,
+        );
 
         if (index != -1) {
           uploadingMessages[index] =
@@ -212,6 +226,7 @@ abstract class _ChatRoomStore with Store {
     final messageText = text?.trim();
 
     messageController.clear();
+    onTypingChanged('');
 
     final now = DateTime.now();
     final uploadingMessage = ChatMessageModel(
@@ -250,8 +265,9 @@ abstract class _ChatRoomStore with Store {
       );
 
       runInAction(() {
-        final index = uploadingMessages
-            .indexWhere((message) => message.id == uploadingMessage.id);
+        final index = uploadingMessages.indexWhere(
+          (message) => message.id == uploadingMessage.id,
+        );
 
         if (index != -1) {
           uploadingMessages[index] =
@@ -284,8 +300,9 @@ abstract class _ChatRoomStore with Store {
         },
       );
     } catch (e) {
-      final index = uploadingMessages
-          .indexWhere((message) => message.id == uploadingMessage.id);
+      final index = uploadingMessages.indexWhere(
+        (message) => message.id == uploadingMessage.id,
+      );
 
       if (index != -1) {
         uploadingMessages[index] =
@@ -302,9 +319,11 @@ abstract class _ChatRoomStore with Store {
   }
 
   void initReadMessagePeriodically() {
-    Timer.periodic(const Duration(milliseconds: 500), (_) {
+    _resetUnreadTimer?.cancel();
+    _resetUnreadTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _resetUnread();
     });
+    _resetUnread();
   }
 
   // -----------------------
@@ -316,20 +335,22 @@ abstract class _ChatRoomStore with Store {
     for (final message in messages) {
       if (message.senderId == currentUid) continue;
 
-      if (!message.deliveredTo.containsKey(currentUid)) {
+      if (!message.deliveredTo.containsKey(currentUid) &&
+          _deliveredMessageIds.add(message.id)) {
         chatRepository.markDelivered(
           roomId: roomId!,
           messageId: message.id,
           uid: currentUid!,
-        );
+        ).catchError((_) {});
       }
 
-      if (!message.readBy.containsKey(currentUid)) {
+      if (!message.readBy.containsKey(currentUid) &&
+          _readMessageIds.add(message.id)) {
         chatRepository.markRead(
           roomId: roomId!,
           messageId: message.id,
           uid: currentUid!,
-        );
+        ).catchError((_) {});
       }
     }
   }
@@ -337,35 +358,43 @@ abstract class _ChatRoomStore with Store {
   // -----------------------
   // TYPING
   // -----------------------
-  Timer? _typingTimer;
-
   @action
   void onTypingChanged(String text) {
     if (roomId == null || currentUid == null) return;
 
-    chatRepository.setTyping(
-      roomId: roomId!,
-      uid: currentUid!,
-      isTyping: text.isNotEmpty,
-    );
+    final nextIsTyping = text.trim().isNotEmpty;
+
+    if (_isTyping != nextIsTyping) {
+      _isTyping = nextIsTyping;
+      chatRepository.setTyping(
+        roomId: roomId!,
+        uid: currentUid!,
+        isTyping: nextIsTyping,
+      ).catchError((_) {});
+    }
 
     _typingTimer?.cancel();
+    if (!nextIsTyping) return;
+
     _typingTimer = Timer(const Duration(seconds: 2), () {
+      _isTyping = false;
       chatRepository.setTyping(
         roomId: roomId!,
         uid: currentUid!,
         isTyping: false,
-      );
+      ).catchError((_) {});
     });
   }
 
   Future<void> _resetUnread() async {
     if (roomId == null || currentUid == null) return;
 
-    await chatRepository.resetUnread(
-      roomId: roomId!,
-      uid: currentUid!,
-    );
+    try {
+      await chatRepository.resetUnread(
+        roomId: roomId!,
+        uid: currentUid!,
+      );
+    } catch (_) {}
   }
 
   // -----------------------
@@ -378,13 +407,19 @@ abstract class _ChatRoomStore with Store {
         roomId: roomId!,
         uid: currentUid!,
         isTyping: false,
-      );
+      ).catchError((_) {});
     }
 
     _typingTimer?.cancel();
+    _resetUnreadTimer?.cancel();
+    _messageStatusDisposer?.call();
+    _messageStatusDisposer = null;
+    _deliveredMessageIds.clear();
+    _readMessageIds.clear();
     roomId = null;
     _serverMessages = null;
     targetUser = null;
+    typing = null;
     messageController.dispose();
   }
 }
