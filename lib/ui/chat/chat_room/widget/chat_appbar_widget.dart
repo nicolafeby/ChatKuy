@@ -9,13 +9,15 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final ChatRoomStore store;
   final UserModel userData;
   final bool isTyping;
-  final VoidCallback? onVoiceCallTap;
+  final VoidCallback? onCallTap;
+  final VoidCallback? onVideoCallTap;
   const ChatAppbarWidget({
     super.key,
     required this.store,
     required this.userData,
     required this.isTyping,
-    this.onVoiceCallTap,
+    this.onCallTap,
+    this.onVideoCallTap,
   });
 
   @override
@@ -33,7 +35,12 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          onPressed: onVoiceCallTap,
+          onPressed: onVideoCallTap,
+          icon: const Icon(Icons.videocam),
+          tooltip: 'Panggilan video',
+        ),
+        IconButton(
+          onPressed: onCallTap,
           icon: const Icon(Icons.call),
           tooltip: 'Telepon suara',
         ),

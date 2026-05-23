@@ -16,7 +16,7 @@ import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
-import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
+import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -120,9 +120,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
               store: store,
               userData: user ?? dummy,
               isTyping: isTargetTyping(),
-              onVoiceCallTap: user == null || targetId == null
+              onCallTap: user == null || targetId == null
                   ? null
-                  : () => _startVoiceCall(user, targetId),
+                  : () => _startCall(user, targetId, isVideoCall: false),
+              onVideoCallTap: user == null || targetId == null
+                  ? null
+                  : () => _startCall(user, targetId, isVideoCall: true),
             ),
             body: Column(
               children: [
@@ -147,12 +150,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
                       final showDateSeparator = prevMessage == null ||
                           !message.createdAt.isSameDay(prevMessage.createdAt);
-                      final uploadProgress =
-                          store.uploadProgressByMessageId[message.id] ??
-                              (localMediaPath == null
-                                  ? null
-                                  : store.uploadProgressByLocalPath[
-                                      localMediaPath]);
+                      final uploadProgress = store
+                              .uploadProgressByMessageId[message.id] ??
+                          (localMediaPath == null
+                              ? null
+                              : store
+                                  .uploadProgressByLocalPath[localMediaPath]);
 
                       return Column(
                         key: ValueKey(message.id),
@@ -220,18 +223,23 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     );
   }
 
-  void _startVoiceCall(UserModel targetUser, String targetId) {
+  void _startCall(
+    UserModel targetUser,
+    String targetId, {
+    required bool isVideoCall,
+  }) {
     if (argument == null) return;
 
     Get.toNamed(
-      AppRouteName.VOICE_CALL_SCREEN,
-      arguments: VoiceCallArgument(
+      AppRouteName.CALL_SCREEN,
+      arguments: CallArgument(
         roomId: argument!.roomId,
         currentUid: argument!.currentUid,
         targetUid: targetId,
         targetName: targetUser.name,
         currentUserName: 'ChatKuy',
         isCaller: true,
+        isVideoCall: isVideoCall,
       ),
     );
   }

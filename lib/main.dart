@@ -39,7 +39,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       await LocalNotificationService.markChatMessageDeliveredFromPayload(
         message.data,
       );
-    } else if (message.data['type'] == 'voice_call' || message.data['type'] == 'voice_call_ended') {
+    } else if (message.data['type'] == 'voice_call' ||
+        message.data['type'] == 'video_call' ||
+        message.data['type'] == 'voice_call_ended' ||
+        message.data['type'] == 'video_call_ended') {
       await LocalNotificationService.showFromBackground(message);
     }
   } catch (error, stackTrace) {
@@ -69,7 +72,8 @@ Future<void> main() async {
       isCrashlyticsReady = true;
       await AppErrorLogger.setUserId(FirebaseAuth.instance.currentUser?.uid);
 
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         AppErrorLogger.recordError(
           error,
@@ -113,17 +117,20 @@ Future<void> main() async {
         },
       );
 
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage =
+          await FirebaseMessaging.instance.getInitialMessage();
 
       if (initialMessage != null) {
         getIt<NotificationRepository>().handleMessage(initialMessage);
       }
 
-      final initialVoiceCallArgument = await LocalNotificationService.takeInitialAcceptedCallArgument();
-      final initialUpdateInfo = await getIt<AppUpdateService>().checkForUpdate();
+      final initialCallArgument =
+          await LocalNotificationService.takeInitialAcceptedCallArgument();
+      final initialUpdateInfo =
+          await getIt<AppUpdateService>().checkForUpdate();
 
       runApp(MyApp(
-        initialVoiceCallArgument: initialVoiceCallArgument,
+        initialCallArgument: initialCallArgument,
         initialUpdateInfo: initialUpdateInfo,
       ));
       WidgetsBinding.instance.addPostFrameCallback((_) {

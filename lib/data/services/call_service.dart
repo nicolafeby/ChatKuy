@@ -17,6 +17,7 @@ class CallService implements CallRepository {
     required String calleeId,
     required String callerName,
     required String calleeName,
+    String callType = 'voice',
   }) async {
     final doc = _callsRef.doc();
     await doc.set({
@@ -27,7 +28,8 @@ class CallService implements CallRepository {
       CallField.calleeName: calleeName,
       CallField.participants: [callerId, calleeId],
       CallField.status: CallStatus.calling,
-      CallField.type: 'voice',
+      CallField.type: callType,
+      CallField.videoUpgradeStatus: VideoUpgradeStatus.none,
       CallField.createdAt: FieldValue.serverTimestamp(),
     });
     return doc;
@@ -56,6 +58,48 @@ class CallService implements CallRepository {
       CallField.status: CallStatus.active,
       CallField.answeredAt: FieldValue.serverTimestamp(),
     });
+  }
+
+  @override
+  Future<void> requestVideoUpgrade({
+    required String callId,
+    required String requestedBy,
+  }) {
+    return _callsRef.doc(callId).update({
+      CallField.videoUpgradeStatus: VideoUpgradeStatus.requested,
+      CallField.videoUpgradeRequestedBy: requestedBy,
+      CallField.videoUpgradeRequestedAt: FieldValue.serverTimestamp(),
+      CallField.videoOffer: FieldValue.delete(),
+      CallField.videoAnswer: FieldValue.delete(),
+    });
+  }
+
+  @override
+  Future<void> respondVideoUpgrade({
+    required String callId,
+    required bool accepted,
+  }) {
+    return _callsRef.doc(callId).update({
+      CallField.videoUpgradeStatus:
+          accepted ? VideoUpgradeStatus.accepted : VideoUpgradeStatus.declined,
+      if (accepted) CallField.videoUpgradedAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> setVideoOffer({
+    required String callId,
+    required Map<String, dynamic> offer,
+  }) {
+    return _callsRef.doc(callId).update({CallField.videoOffer: offer});
+  }
+
+  @override
+  Future<void> setVideoAnswer({
+    required String callId,
+    required Map<String, dynamic> answer,
+  }) {
+    return _callsRef.doc(callId).update({CallField.videoAnswer: answer});
   }
 
   @override

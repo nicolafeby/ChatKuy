@@ -6,7 +6,7 @@ import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
-import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
+import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -87,25 +87,29 @@ class NotificationService implements NotificationRepository {
       });
     }
 
-    if (data['type'] == 'voice_call') {
+    if (data['type'] == 'voice_call' || data['type'] == 'video_call') {
       final roomId = data['roomId'];
       final callId = data['callId'];
       final callerId = data['callerId'];
-      final callerName = data['callerName'] ?? 'Panggilan suara';
+      final isVideoCall =
+          data['type'] == 'video_call' || data['callType'] == 'video';
+      final callerName = data['callerName'] ??
+          (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
 
       if (roomId == null || callId == null || callerId == null) return;
 
       Future.delayed(const Duration(milliseconds: 500), () {
         if (Get.key.currentState != null) {
           Get.toNamed(
-            AppRouteName.VOICE_CALL_SCREEN,
-            arguments: VoiceCallArgument(
+            AppRouteName.CALL_SCREEN,
+            arguments: CallArgument(
               roomId: roomId,
               currentUid: id,
               targetUid: callerId,
               targetName: callerName,
               callId: callId,
               isCaller: false,
+              isVideoCall: isVideoCall,
             ),
           );
         }

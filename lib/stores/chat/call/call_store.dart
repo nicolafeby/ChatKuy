@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
-import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
+import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
@@ -11,31 +11,39 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:mobx/mobx.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-part 'voice_call_store.g.dart';
+part 'call_store.g.dart';
 
-class VoiceCallStore = _VoiceCallStore with _$VoiceCallStore;
+class CallStore = _CallStore with _$CallStore;
 
-abstract class _VoiceCallStore with Store {
-  _VoiceCallStore({required this.callRepository});
+abstract class _CallStore with Store {
+  _CallStore({required this.callRepository});
 
   final CallRepository callRepository;
   final Set<String> _addedCandidateIds = {};
   final List<RTCIceCandidate> _pendingRemoteCandidates = [];
 
-  VoiceCallArgument? argument;
+  CallArgument? argument;
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
+  MediaStream? _localVideoStream;
   StreamSubscription? _callSubscription;
   StreamSubscription? _candidateSubscription;
   String? _callId;
   bool _isEnding = false;
   bool _isDisposed = false;
   bool _remoteDescriptionSet = false;
+  bool _videoOfferSent = false;
+  bool _videoOfferApplied = false;
+  bool _videoAnswerApplied = false;
+  bool _videoRenderersInitialized = false;
   bool _usesServerConnectedAt = false;
   DateTime? _connectedAt;
   Timer? _durationTimer;
   VoidCallback? _onClose;
   void Function(String message)? _onMessage;
+
+  final RTCVideoRenderer localRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
 
   @observable
   bool isMuted = false;
@@ -61,6 +69,21 @@ abstract class _VoiceCallStore with Store {
   @observable
   bool isIncomingRinging = false;
 
+  @observable
+  bool isVideoEnabled = false;
+
+  @observable
+  bool isLocalVideoEnabled = false;
+
+  @observable
+  bool hasRemoteVideo = false;
+
+  @observable
+  bool isVideoUpgradePending = false;
+
+  @observable
+  bool isIncomingVideoUpgradeRequest = false;
+
   static const Map<String, dynamic> _configuration = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
@@ -70,10 +93,12 @@ abstract class _VoiceCallStore with Store {
   };
 
   Future<void> init({
-    required VoiceCallArgument argument,
+    required CallArgument argument,
     VoidCallback? onClose,
     void Function(String message)? onMessage,
   }) async {
+    await _ensureVideoRenderersInitialized();
+
     this.argument = argument;
     _onClose = onClose;
     _onMessage = onMessage;
@@ -93,7 +118,7 @@ abstract class _VoiceCallStore with Store {
   }
 
   @action
-  void _prepareIncomingCall(VoiceCallArgument argument) {
+  void _prepareIncomingCall(CallArgument argument) {
     if (argument.callId == null) {
       _showMessage('Data panggilan tidak lengkap');
       _close();
@@ -103,11 +128,13 @@ abstract class _VoiceCallStore with Store {
     _callId = argument.callId;
     isIncomingRinging = true;
     isConnecting = false;
-    statusText = 'Panggilan suara masuk';
+    statusText = argument.isVideoCall
+        ? 'Panggilan video masuk'
+        : 'Panggilan suara masuk';
     _listenCall();
   }
 
-  Future<void> _startMediaSession(VoiceCallArgument argument) async {
+  Future<void> _startMediaSession(CallArgument argument) async {
     final micStatus = await Permission.microphone.request();
     if (!micStatus.isGranted) {
       _showMessage('ChatKuy membutuhkan akses mikrofon untuk telepon suara');
@@ -119,17 +146,40 @@ abstract class _VoiceCallStore with Store {
     }
 
     try {
+      final videoEnabled = argument.isVideoCall;
+      if (videoEnabled) {
+        final cameraStatus = await Permission.camera.request();
+        if (!cameraStatus.isGranted) {
+          _showMessage(
+              'ChatKuy membutuhkan akses kamera untuk panggilan video');
+          if (!argument.isCaller && _callId != null) {
+            await callRepository.declineCall(_callId!);
+          }
+          _close();
+          return;
+        }
+      }
+
       _localStream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
-        'video': false,
+        'video': videoEnabled
+            ? {
+                'facingMode': 'user',
+              }
+            : false,
       });
+      if (videoEnabled) {
+        localRenderer.srcObject = _localStream;
+        isLocalVideoEnabled = true;
+        isVideoEnabled = true;
+      }
 
       await Helper.setSpeakerphoneOn(isSpeakerOn);
 
       _peerConnection = await createPeerConnection(_configuration);
       _peerConnection?.onIceConnectionState = _handleIceState;
       _peerConnection?.onConnectionState =
-          (state) => debugPrint('VoiceCall peer state: $state');
+          (state) => debugPrint('Call peer state: $state');
 
       for (final track in _localStream!.getTracks()) {
         await _peerConnection?.addTrack(track, _localStream!);
@@ -152,9 +202,13 @@ abstract class _VoiceCallStore with Store {
 
       _peerConnection?.onTrack = (event) {
         debugPrint(
-          'VoiceCall remote track: kind=${event.track.kind}, streams=${event.streams.length}',
+          'Call remote track: kind=${event.track.kind}, streams=${event.streams.length}',
         );
-        _markRemoteAudioReceived();
+        if (event.track.kind == 'video') {
+          _attachRemoteVideo(event);
+        } else {
+          _markRemoteAudioReceived();
+        }
       };
 
       if (argument.isCaller) {
@@ -166,7 +220,7 @@ abstract class _VoiceCallStore with Store {
       AppErrorLogger.recordError(
         e,
         stackTrace,
-        reason: 'Start voice call media session failed',
+        reason: 'Start call media session failed',
         context: {
           'room_id': argument.roomId,
           'current_uid': argument.currentUid,
@@ -179,13 +233,14 @@ abstract class _VoiceCallStore with Store {
     }
   }
 
-  Future<void> _startOutgoingCall(VoiceCallArgument argument) async {
+  Future<void> _startOutgoingCall(CallArgument argument) async {
     final callRef = await callRepository.createCall(
       roomId: argument.roomId,
       callerId: argument.currentUid,
       calleeId: argument.targetUid,
       callerName: argument.currentUserName ?? 'ChatKuy',
       calleeName: argument.targetName,
+      callType: argument.isVideoCall ? 'video' : 'voice',
     );
 
     _callId = callRef.id;
@@ -194,7 +249,7 @@ abstract class _VoiceCallStore with Store {
 
     final offer = await _peerConnection!.createOffer({
       'offerToReceiveAudio': true,
-      'offerToReceiveVideo': false,
+      'offerToReceiveVideo': argument.isVideoCall,
     });
     await _peerConnection!.setLocalDescription(offer);
     await callRepository.setOffer(
@@ -240,7 +295,7 @@ abstract class _VoiceCallStore with Store {
 
     final answer = await _peerConnection!.createAnswer({
       'offerToReceiveAudio': true,
-      'offerToReceiveVideo': false,
+      'offerToReceiveVideo': argument?.isVideoCall == true,
     });
     await _peerConnection!.setLocalDescription(answer);
     await callRepository.setAnswer(
@@ -305,17 +360,29 @@ abstract class _VoiceCallStore with Store {
             AppErrorLogger.recordError(
               error,
               stackTrace,
-              reason: 'Apply remote voice call answer failed',
+              reason: 'Apply remote call answer failed',
               context: {'call_id': callId},
             );
           });
+        }
+
+        try {
+          await _handleVideoUpgradeState(data);
+        } catch (error, stackTrace) {
+          AppErrorLogger.recordError(
+            error,
+            stackTrace,
+            reason: 'Handle video upgrade state failed',
+            context: {'call_id': callId},
+          );
+          _showMessage('Gagal menyambungkan video: $error');
         }
       },
       onError: (error, stackTrace) {
         AppErrorLogger.recordError(
           error,
           stackTrace,
-          reason: 'Voice call stream failed',
+          reason: 'Call stream failed',
           context: {'call_id': callId},
         );
       },
@@ -377,7 +444,7 @@ abstract class _VoiceCallStore with Store {
       AppErrorLogger.recordError(
         error,
         stackTrace,
-        reason: 'Voice call candidate stream failed',
+        reason: 'Call candidate stream failed',
         context: {'call_id': callId},
       );
     });
@@ -398,10 +465,10 @@ abstract class _VoiceCallStore with Store {
       AppErrorLogger.recordError(
         e,
         stackTrace,
-        reason: 'Add remote voice call candidate failed',
+        reason: 'Add remote call candidate failed',
         context: {'call_id': _callId},
       );
-      debugPrint('VoiceCall addCandidate failed: $e');
+      debugPrint('Call addCandidate failed: $e');
     }
   }
 
@@ -419,12 +486,200 @@ abstract class _VoiceCallStore with Store {
         AppErrorLogger.recordError(
           e,
           stackTrace,
-          reason: 'Flush pending voice call candidate failed',
+          reason: 'Flush pending call candidate failed',
           context: {'call_id': _callId},
         );
-        debugPrint('VoiceCall flush candidate failed: $e');
+        debugPrint('Call flush candidate failed: $e');
       }
     }
+  }
+
+  Future<void> _handleVideoUpgradeState(
+    Map<String, dynamic> data,
+  ) async {
+    final currentArgument = argument;
+    final callId = _callId;
+    if (currentArgument == null || callId == null || _peerConnection == null) {
+      return;
+    }
+
+    final upgradeStatus = data[CallField.videoUpgradeStatus];
+    final requestedBy = data[CallField.videoUpgradeRequestedBy];
+    final requestedByMe = requestedBy == currentArgument.currentUid;
+
+    if (upgradeStatus == VideoUpgradeStatus.requested) {
+      if (requestedByMe) {
+        isVideoUpgradePending = true;
+        statusText = 'Menunggu persetujuan video...';
+      } else if (!isVideoEnabled && !isIncomingVideoUpgradeRequest) {
+        isIncomingVideoUpgradeRequest = true;
+        isVideoUpgradePending = false;
+      }
+      return;
+    }
+
+    if (upgradeStatus == VideoUpgradeStatus.declined) {
+      if (isVideoUpgradePending && requestedByMe) {
+        _showMessage('${currentArgument.targetName} menolak panggilan video');
+      }
+      isVideoUpgradePending = false;
+      isIncomingVideoUpgradeRequest = false;
+      return;
+    }
+
+    if (upgradeStatus != VideoUpgradeStatus.accepted) return;
+
+    isVideoUpgradePending = false;
+    isIncomingVideoUpgradeRequest = false;
+
+    if (requestedByMe) {
+      await _sendVideoOfferIfNeeded(callId);
+      await _applyVideoAnswerIfNeeded(data);
+      return;
+    }
+
+    await _applyVideoOfferIfNeeded(data, callId);
+  }
+
+  Future<void> _sendVideoOfferIfNeeded(String callId) async {
+    if (_videoOfferSent) return;
+
+    await _enableLocalVideo();
+    final peerConnection = _peerConnection;
+    if (peerConnection == null) return;
+
+    final offer = await peerConnection.createOffer({
+      'offerToReceiveAudio': true,
+      'offerToReceiveVideo': true,
+    });
+    await peerConnection.setLocalDescription(offer);
+    _videoOfferSent = true;
+    await callRepository.setVideoOffer(
+      callId: callId,
+      offer: {
+        'type': offer.type,
+        'sdp': offer.sdp,
+      },
+    );
+    statusText = 'Menyambungkan video...';
+  }
+
+  Future<void> _applyVideoOfferIfNeeded(
+    Map<String, dynamic> data,
+    String callId,
+  ) async {
+    if (_videoOfferApplied) return;
+
+    final offer = data[CallField.videoOffer];
+    if (offer is! Map) return;
+
+    await _enableLocalVideo();
+    final peerConnection = _peerConnection;
+    if (peerConnection == null) return;
+
+    await peerConnection.setRemoteDescription(
+      RTCSessionDescription(
+        offer['sdp'] as String?,
+        offer['type'] as String?,
+      ),
+    );
+    _videoOfferApplied = true;
+    _remoteDescriptionSet = true;
+    await _flushPendingRemoteCandidates();
+
+    final answer = await peerConnection.createAnswer({
+      'offerToReceiveAudio': true,
+      'offerToReceiveVideo': true,
+    });
+    await peerConnection.setLocalDescription(answer);
+    await callRepository.setVideoAnswer(
+      callId: callId,
+      answer: {
+        'type': answer.type,
+        'sdp': answer.sdp,
+      },
+    );
+    isVideoEnabled = true;
+    statusText = 'Video tersambung';
+  }
+
+  Future<void> _applyVideoAnswerIfNeeded(Map<String, dynamic> data) async {
+    if (_videoAnswerApplied) return;
+
+    final answer = data[CallField.videoAnswer];
+    if (answer is! Map) return;
+
+    final peerConnection = _peerConnection;
+    if (peerConnection == null) return;
+
+    await peerConnection.setRemoteDescription(
+      RTCSessionDescription(
+        answer['sdp'] as String?,
+        answer['type'] as String?,
+      ),
+    );
+    _videoAnswerApplied = true;
+    _remoteDescriptionSet = true;
+    await _flushPendingRemoteCandidates();
+    isVideoEnabled = true;
+    statusText = 'Video tersambung';
+  }
+
+  Future<void> _enableLocalVideo() async {
+    final existingVideoTracks = _localStream?.getVideoTracks() ?? [];
+    if (existingVideoTracks.isNotEmpty) {
+      localRenderer.srcObject = _localStream;
+      isLocalVideoEnabled = existingVideoTracks.any((track) => track.enabled);
+      isVideoEnabled = true;
+      return;
+    }
+
+    if (_localVideoStream != null) {
+      isLocalVideoEnabled = true;
+      isVideoEnabled = true;
+      return;
+    }
+
+    final cameraStatus = await Permission.camera.request();
+    if (!cameraStatus.isGranted) {
+      throw Exception('ChatKuy membutuhkan akses kamera untuk panggilan video');
+    }
+
+    await _ensureVideoRenderersInitialized();
+    _localVideoStream = await navigator.mediaDevices.getUserMedia({
+      'audio': false,
+      'video': {
+        'facingMode': 'user',
+      },
+    });
+    localRenderer.srcObject = _localVideoStream;
+
+    final peerConnection = _peerConnection;
+    if (peerConnection != null) {
+      for (final track in _localVideoStream!.getVideoTracks()) {
+        await peerConnection.addTrack(track, _localVideoStream!);
+      }
+    }
+
+    isLocalVideoEnabled = true;
+    isVideoEnabled = true;
+  }
+
+  Future<void> _ensureVideoRenderersInitialized() async {
+    if (_videoRenderersInitialized) return;
+    await localRenderer.initialize();
+    await remoteRenderer.initialize();
+    _videoRenderersInitialized = true;
+  }
+
+  @action
+  void _attachRemoteVideo(RTCTrackEvent event) {
+    if (event.streams.isNotEmpty) {
+      remoteRenderer.srcObject = event.streams.first;
+    }
+    hasRemoteVideo = true;
+    isVideoEnabled = true;
+    statusText = 'Video tersambung';
   }
 
   @action
@@ -442,6 +697,90 @@ abstract class _VoiceCallStore with Store {
     final nextSpeaker = !isSpeakerOn;
     await Helper.setSpeakerphoneOn(nextSpeaker);
     isSpeakerOn = nextSpeaker;
+  }
+
+  @action
+  Future<void> requestVideoUpgrade() async {
+    final callId = _callId;
+    final currentArgument = argument;
+    if (callId == null || currentArgument == null || isIncomingRinging) return;
+
+    if (!isCallActive) {
+      _showMessage('Tunggu sampai panggilan tersambung');
+      return;
+    }
+
+    if (isVideoEnabled) {
+      await toggleCamera();
+      return;
+    }
+
+    if (isVideoUpgradePending) {
+      _showMessage('Permintaan video sedang menunggu persetujuan');
+      return;
+    }
+
+    isVideoUpgradePending = true;
+    statusText = 'Meminta izin video...';
+    await callRepository.requestVideoUpgrade(
+      callId: callId,
+      requestedBy: currentArgument.currentUid,
+    );
+  }
+
+  @action
+  Future<void> acceptVideoUpgrade() async {
+    final callId = _callId;
+    if (callId == null) return;
+
+    try {
+      await _enableLocalVideo();
+      isIncomingVideoUpgradeRequest = false;
+      isVideoUpgradePending = false;
+      await callRepository.respondVideoUpgrade(
+        callId: callId,
+        accepted: true,
+      );
+      _showMessage('Panggilan video dimulai');
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Accept video upgrade failed',
+        context: {'call_id': callId},
+      );
+      _showMessage('Gagal mengaktifkan kamera: $e');
+      await callRepository.respondVideoUpgrade(
+        callId: callId,
+        accepted: false,
+      );
+    }
+  }
+
+  @action
+  Future<void> declineVideoUpgrade() async {
+    final callId = _callId;
+    if (callId == null) return;
+
+    isIncomingVideoUpgradeRequest = false;
+    await callRepository.respondVideoUpgrade(
+      callId: callId,
+      accepted: false,
+    );
+  }
+
+  @action
+  Future<void> toggleCamera() async {
+    final videoTracks = _localVideoStream?.getVideoTracks().isNotEmpty == true
+        ? _localVideoStream!.getVideoTracks()
+        : _localStream?.getVideoTracks() ?? [];
+    if (videoTracks.isEmpty) return;
+
+    final nextEnabled = !isLocalVideoEnabled;
+    for (final track in videoTracks) {
+      track.enabled = nextEnabled;
+    }
+    isLocalVideoEnabled = nextEnabled;
   }
 
   @action
@@ -463,7 +802,7 @@ abstract class _VoiceCallStore with Store {
 
   @action
   void _handleIceState(RTCIceConnectionState state) {
-    debugPrint('VoiceCall ICE state: $state');
+    debugPrint('Call ICE state: $state');
 
     if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
         state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
@@ -600,6 +939,14 @@ abstract class _VoiceCallStore with Store {
     _localStream?.getTracks().forEach((track) => track.stop());
     await _localStream?.dispose();
     _localStream = null;
+    _localVideoStream?.getTracks().forEach((track) => track.stop());
+    await _localVideoStream?.dispose();
+    _localVideoStream = null;
+    localRenderer.srcObject = null;
+    remoteRenderer.srcObject = null;
+    await localRenderer.dispose();
+    await remoteRenderer.dispose();
+    _videoRenderersInitialized = false;
     _pendingRemoteCandidates.clear();
     _addedCandidateIds.clear();
 

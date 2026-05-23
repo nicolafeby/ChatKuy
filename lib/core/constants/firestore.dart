@@ -29,28 +29,22 @@ abstract class FirestorePaths {
   static String user(String uid) => '${FirebaseCollections.users}/$uid';
 
   /// users/{uid}/friends
-  static String userFriends(String uid) =>
-      '${user(uid)}/${FirestoreCollection.friends}';
+  static String userFriends(String uid) => '${user(uid)}/${FirestoreCollection.friends}';
 
   /// users/{uid}/friends/{friendUid}
-  static String userFriendDoc(String uid, String friendUid) =>
-      '${userFriends(uid)}/$friendUid';
+  static String userFriendDoc(String uid, String friendUid) => '${userFriends(uid)}/$friendUid';
 
   /// chat_rooms/{roomId}
-  static String chatRoom(String roomId) =>
-      '${FirebaseCollections.chatRooms}/$roomId';
+  static String chatRoom(String roomId) => '${FirebaseCollections.chatRooms}/$roomId';
 
   /// chat_rooms/{roomId}/messages
-  static String chatMessages(String roomId) =>
-      '${chatRoom(roomId)}/${FirestoreCollection.messages}';
+  static String chatMessages(String roomId) => '${chatRoom(roomId)}/${FirestoreCollection.messages}';
 
   /// users/{uid}/friend_requests
-  static String userFriendRequests(String uid) =>
-      '${user(uid)}/${FirestoreCollection.friendRequests}';
+  static String userFriendRequests(String uid) => '${user(uid)}/${FirestoreCollection.friendRequests}';
 
   /// users/{uid}/friend_requests/{requestId}
-  static String userFriendRequestDoc(String uid, String requestId) =>
-      '${userFriendRequests(uid)}/$requestId';
+  static String userFriendRequestDoc(String uid, String requestId) => '${userFriendRequests(uid)}/$requestId';
 }
 
 /// ==============================
@@ -99,6 +93,12 @@ abstract class CallField {
   static const type = 'type';
   static const offer = 'offer';
   static const answer = 'answer';
+  static const videoUpgradeStatus = 'videoUpgradeStatus';
+  static const videoUpgradeRequestedBy = 'videoUpgradeRequestedBy';
+  static const videoUpgradeRequestedAt = 'videoUpgradeRequestedAt';
+  static const videoOffer = 'videoOffer';
+  static const videoAnswer = 'videoAnswer';
+  static const videoUpgradedAt = 'videoUpgradedAt';
   static const createdAt = 'createdAt';
   static const answeredAt = 'answeredAt';
   static const endedAt = 'endedAt';
@@ -111,6 +111,13 @@ abstract class CallStatus {
   static const declined = 'declined';
   static const ended = 'ended';
   static const missed = 'missed';
+}
+
+abstract class VideoUpgradeStatus {
+  static const none = 'none';
+  static const requested = 'requested';
+  static const accepted = 'accepted';
+  static const declined = 'declined';
 }
 
 /// ==============================
