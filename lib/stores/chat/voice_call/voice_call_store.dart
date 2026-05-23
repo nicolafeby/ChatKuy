@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:chatkuy/core/constants/firestore.dart';
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/ui/chat/voice_call/voice_call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -118,8 +119,7 @@ abstract class _VoiceCallStore with Store {
 
       _peerConnection = await createPeerConnection(_configuration);
       _peerConnection?.onIceConnectionState = _handleIceState;
-      _peerConnection?.onConnectionState =
-          (state) => debugPrint('VoiceCall peer state: $state');
+      _peerConnection?.onConnectionState = (state) => debugPrint('VoiceCall peer state: $state');
 
       for (final track in _localStream!.getTracks()) {
         await _peerConnection?.addTrack(track, _localStream!);
@@ -152,7 +152,18 @@ abstract class _VoiceCallStore with Store {
       } else {
         await _answerIncomingCall();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Start voice call media session failed',
+        context: {
+          'room_id': argument.roomId,
+          'current_uid': argument.currentUid,
+          'target_uid': argument.targetUid,
+          'is_caller': argument.isCaller,
+        },
+      );
       _showMessage('Gagal memulai panggilan: $e');
       await endCall(updateRemote: true);
     }
@@ -239,41 +250,55 @@ abstract class _VoiceCallStore with Store {
     if (callId == null || currentArgument == null) return;
 
     _callSubscription?.cancel();
-    _callSubscription =
-        callRepository.watchCall(callId).listen((snapshot) async {
-      final data = snapshot.data();
-      if (data == null) return;
+    _callSubscription = callRepository.watchCall(callId).listen(
+      (snapshot) async {
+        final data = snapshot.data();
+        if (data == null) return;
 
-      final status = data[CallField.status];
-      if (status == CallStatus.declined ||
-          status == CallStatus.ended ||
-          status == CallStatus.missed) {
-        _setStatus(_closedStatusText(status));
-        _isEnding = true;
-        await _teardownCallResources(endCallKit: true);
-        _close();
-        return;
-      }
+        final status = data[CallField.status];
+        if (status == CallStatus.declined || status == CallStatus.ended || status == CallStatus.missed) {
+          _setStatus(_closedStatusText(status));
+          _isEnding = true;
+          await _teardownCallResources(endCallKit: true);
+          _close();
+          return;
+        }
 
-      final answer = data[CallField.answer];
-      if (currentArgument.isCaller && answer is Map) {
-        final peerConnection = _peerConnection;
-        if (peerConnection == null) return;
+        final answer = data[CallField.answer];
+        if (currentArgument.isCaller && answer is Map) {
+          final peerConnection = _peerConnection;
+          if (peerConnection == null) return;
 
-        peerConnection.getRemoteDescription().then((description) async {
-          if (description != null) return;
-          await peerConnection.setRemoteDescription(
-            RTCSessionDescription(
-              answer['sdp'] as String?,
-              answer['type'] as String?,
-            ),
-          );
-          _remoteDescriptionSet = true;
-          await _flushPendingRemoteCandidates();
-          _setConnectingStatus('Menyambungkan audio...');
-        });
-      }
-    });
+          peerConnection.getRemoteDescription().then((description) async {
+            if (description != null) return;
+            await peerConnection.setRemoteDescription(
+              RTCSessionDescription(
+                answer['sdp'] as String?,
+                answer['type'] as String?,
+              ),
+            );
+            _remoteDescriptionSet = true;
+            await _flushPendingRemoteCandidates();
+            _setConnectingStatus('Menyambungkan audio...');
+          }).catchError((error, stackTrace) {
+            AppErrorLogger.recordError(
+              error,
+              stackTrace,
+              reason: 'Apply remote voice call answer failed',
+              context: {'call_id': callId},
+            );
+          });
+        }
+      },
+      onError: (error, stackTrace) {
+        AppErrorLogger.recordError(
+          error,
+          stackTrace,
+          reason: 'Voice call stream failed',
+          context: {'call_id': callId},
+        );
+      },
+    );
   }
 
   @action
@@ -327,6 +352,13 @@ abstract class _VoiceCallStore with Store {
           ),
         );
       }
+    }, onError: (error, stackTrace) {
+      AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Voice call candidate stream failed',
+        context: {'call_id': callId},
+      );
     });
   }
 
@@ -341,7 +373,13 @@ abstract class _VoiceCallStore with Store {
 
     try {
       await peerConnection.addCandidate(candidate);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Add remote voice call candidate failed',
+        context: {'call_id': _callId},
+      );
       debugPrint('VoiceCall addCandidate failed: $e');
     }
   }
@@ -356,7 +394,13 @@ abstract class _VoiceCallStore with Store {
     for (final candidate in candidates) {
       try {
         await peerConnection.addCandidate(candidate);
-      } catch (e) {
+      } catch (e, stackTrace) {
+        AppErrorLogger.recordError(
+          e,
+          stackTrace,
+          reason: 'Flush pending voice call candidate failed',
+          context: {'call_id': _callId},
+        );
         debugPrint('VoiceCall flush candidate failed: $e');
       }
     }
@@ -414,8 +458,7 @@ abstract class _VoiceCallStore with Store {
     } else if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
       isConnecting = false;
       statusText = 'Audio gagal tersambung';
-    } else if (state ==
-        RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+    } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
       statusText = 'Koneksi audio terputus';
     }
   }

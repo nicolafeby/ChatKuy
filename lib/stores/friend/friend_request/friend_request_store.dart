@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/request_friend_model.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:mobx/mobx.dart';
@@ -83,7 +84,16 @@ abstract class _FriendRequestStore with Store {
         requestId: requestId,
         fromUid: fromUid,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Accept friend request failed',
+        context: {
+          'request_id': requestId,
+          'from_uid': fromUid,
+        },
+      );
       errorMessage = e.toString();
       rethrow;
     } finally {
@@ -99,7 +109,13 @@ abstract class _FriendRequestStore with Store {
 
     try {
       await repository.cancelFriendRequest(targetUid: targetUid);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Cancel friend request failed',
+        context: {'target_uid': targetUid},
+      );
       errorMessage = e.toString();
       rethrow;
     } finally {
@@ -116,7 +132,13 @@ abstract class _FriendRequestStore with Store {
 
     try {
       await repository.rejectFriendRequest(senderUid: senderUid);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Reject friend request failed',
+        context: {'sender_uid': senderUid},
+      );
       errorMessage = e.toString();
       rethrow;
     } finally {

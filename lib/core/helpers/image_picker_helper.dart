@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:image_picker/image_picker.dart';
 
 enum PickImageSource {
@@ -21,9 +22,7 @@ class ImagePickerHelper {
   }) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
-        source: source == PickImageSource.camera
-            ? ImageSource.camera
-            : ImageSource.gallery,
+        source: source == PickImageSource.camera ? ImageSource.camera : ImageSource.gallery,
         imageQuality: imageQuality,
         maxWidth: maxWidth,
         maxHeight: maxHeight,
@@ -32,7 +31,13 @@ class ImagePickerHelper {
       if (pickedFile == null) return null;
 
       return File(pickedFile.path);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Pick image failed',
+        context: {'source': source.name},
+      );
       return null;
     }
   }
@@ -43,16 +48,20 @@ class ImagePickerHelper {
   }) async {
     try {
       final XFile? pickedFile = await _picker.pickVideo(
-        source: source == PickImageSource.camera
-            ? ImageSource.camera
-            : ImageSource.gallery,
+        source: source == PickImageSource.camera ? ImageSource.camera : ImageSource.gallery,
         maxDuration: maxDuration,
       );
 
       if (pickedFile == null) return null;
 
       return File(pickedFile.path);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Pick video failed',
+        context: {'source': source.name},
+      );
       return null;
     }
   }

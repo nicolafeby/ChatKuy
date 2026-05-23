@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:chatkuy/core/helpers/video_compress_helper.dart';
+import 'package:chatkuy/core/helpers/video_player_helper.dart';
 import 'package:chatkuy/core/widgets/chat_field/chat_field.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:flutter/material.dart';
@@ -232,23 +233,19 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
 
     setState(() => _isPreparingPlayer = true);
 
-    final controller = VideoPlayerController.file(video);
+    final controller = await VideoPlayerHelper.initializeFile(
+      file: video,
+      reason: 'Prepare chat attachment video player failed',
+    );
 
-    try {
-      await controller.initialize();
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-
-      setState(() {
-        _controller = controller;
-        _isPreparingPlayer = false;
-      });
-    } catch (_) {
-      await controller.dispose();
-      if (!mounted) return;
-      setState(() => _isPreparingPlayer = false);
+    if (!mounted) {
+      await controller?.dispose();
+      return;
     }
+
+    setState(() {
+      _controller = controller;
+      _isPreparingPlayer = false;
+    });
   }
 }

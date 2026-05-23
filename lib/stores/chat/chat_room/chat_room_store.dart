@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/core/helpers/image_compress_helper.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/helpers/video_compress_helper.dart';
@@ -43,13 +44,10 @@ abstract class _ChatRoomStore with Store {
   @observable
   File? croppedImage;
 
-  final ObservableList<ChatMessageModel> uploadingMessages =
-      ObservableList<ChatMessageModel>();
+  final ObservableList<ChatMessageModel> uploadingMessages = ObservableList<ChatMessageModel>();
 
-  final ObservableMap<String, int> uploadProgressByMessageId =
-      ObservableMap<String, int>();
-  final ObservableMap<String, int> uploadProgressByLocalPath =
-      ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByMessageId = ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByLocalPath = ObservableMap<String, int>();
 
   Timer? _resetUnreadTimer;
   Timer? _typingTimer;
@@ -76,8 +74,7 @@ abstract class _ChatRoomStore with Store {
     }
 
     if (uploadingMessages.isNotEmpty) {
-      final visibleUploadingMessages =
-          uploadingMessages.where((uploadingMessage) {
+      final visibleUploadingMessages = uploadingMessages.where((uploadingMessage) {
         return !list.any(
           (message) =>
               message.type == uploadingMessage.type &&
@@ -86,8 +83,7 @@ abstract class _ChatRoomStore with Store {
         );
       });
 
-      list = [...list, ...visibleUploadingMessages]
-        ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
+      list = [...list, ...visibleUploadingMessages]..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     return list;
@@ -105,8 +101,7 @@ abstract class _ChatRoomStore with Store {
     this.roomId = roomId;
     this.currentUid = currentUid;
 
-    _serverMessages =
-        chatRepository.watchMessages(roomId: roomId).asObservable();
+    _serverMessages = chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
@@ -203,15 +198,25 @@ abstract class _ChatRoomStore with Store {
                 });
               },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Send chat message failed',
+        context: {
+          'room_id': roomId,
+          'current_uid': currentUid,
+          'message_type': imageFile != null ? MessageType.image.name : MessageType.text.name,
+          'has_text': messageText?.isNotEmpty == true,
+        },
+      );
       if (uploadingMessage != null) {
         final index = uploadingMessages.indexWhere(
           (message) => message.id == uploadingMessage!.id,
         );
 
         if (index != -1) {
-          uploadingMessages[index] =
-              uploadingMessage.copyWith(status: MessageStatus.failed);
+          uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
         }
       }
 
@@ -252,8 +257,7 @@ abstract class _ChatRoomStore with Store {
         videoFile: video,
         onProgress: (progress) {
           runInAction(() {
-            final mappedProgress =
-                (progress * 0.5).round().clamp(0, 50).toInt();
+            final mappedProgress = (progress * 0.5).round().clamp(0, 50).toInt();
             uploadProgressByMessageId[uploadingMessage.id] = mappedProgress;
             uploadProgressByLocalPath[video.path] = mappedProgress;
           });
@@ -270,17 +274,12 @@ abstract class _ChatRoomStore with Store {
         );
 
         if (index != -1) {
-          uploadingMessages[index] =
-              uploadingMessage.copyWith(localVideoPath: localVideoPath);
+          uploadingMessages[index] = uploadingMessage.copyWith(localVideoPath: localVideoPath);
         }
 
         uploadProgressByMessageId[uploadingMessage.id] =
-            uploadProgressByMessageId[uploadingMessage.id]
-                    ?.clamp(0, 50)
-                    .toInt() ??
-                50;
-        uploadProgressByLocalPath[localVideoPath] =
-            uploadProgressByMessageId[uploadingMessage.id] ?? 50;
+            uploadProgressByMessageId[uploadingMessage.id]?.clamp(0, 50).toInt() ?? 50;
+        uploadProgressByLocalPath[localVideoPath] = uploadProgressByMessageId[uploadingMessage.id] ?? 50;
       });
 
       await chatRepository.sendMessage(
@@ -292,21 +291,28 @@ abstract class _ChatRoomStore with Store {
         onUploadProgress: (progress) {
           runInAction(() {
             final mappedProgress = (50 + (progress * 0.5)).round();
-            uploadProgressByMessageId[uploadingMessage.id] =
-                mappedProgress.clamp(50, 100).toInt();
-            uploadProgressByLocalPath[localVideoPath] =
-                mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByMessageId[uploadingMessage.id] = mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByLocalPath[localVideoPath] = mappedProgress.clamp(50, 100).toInt();
           });
         },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Send video chat message failed',
+        context: {
+          'room_id': roomId,
+          'current_uid': currentUid,
+          'has_text': messageText?.isNotEmpty == true,
+        },
+      );
       final index = uploadingMessages.indexWhere(
         (message) => message.id == uploadingMessage.id,
       );
 
       if (index != -1) {
-        uploadingMessages[index] =
-            uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
       }
 
       rethrow;
@@ -335,22 +341,46 @@ abstract class _ChatRoomStore with Store {
     for (final message in messages) {
       if (message.senderId == currentUid) continue;
 
-      if (!message.deliveredTo.containsKey(currentUid) &&
-          _deliveredMessageIds.add(message.id)) {
-        chatRepository.markDelivered(
+      if (!message.deliveredTo.containsKey(currentUid) && _deliveredMessageIds.add(message.id)) {
+        chatRepository
+            .markDelivered(
           roomId: roomId!,
           messageId: message.id,
           uid: currentUid!,
-        ).catchError((_) {});
+        )
+            .catchError((error, stackTrace) {
+          AppErrorLogger.recordError(
+            error,
+            stackTrace,
+            reason: 'Mark message delivered failed',
+            context: {
+              'room_id': roomId,
+              'message_id': message.id,
+              'current_uid': currentUid,
+            },
+          );
+        });
       }
 
-      if (!message.readBy.containsKey(currentUid) &&
-          _readMessageIds.add(message.id)) {
-        chatRepository.markRead(
+      if (!message.readBy.containsKey(currentUid) && _readMessageIds.add(message.id)) {
+        chatRepository
+            .markRead(
           roomId: roomId!,
           messageId: message.id,
           uid: currentUid!,
-        ).catchError((_) {});
+        )
+            .catchError((error, stackTrace) {
+          AppErrorLogger.recordError(
+            error,
+            stackTrace,
+            reason: 'Mark message read failed',
+            context: {
+              'room_id': roomId,
+              'message_id': message.id,
+              'current_uid': currentUid,
+            },
+          );
+        });
       }
     }
   }
@@ -366,11 +396,24 @@ abstract class _ChatRoomStore with Store {
 
     if (_isTyping != nextIsTyping) {
       _isTyping = nextIsTyping;
-      chatRepository.setTyping(
+      chatRepository
+          .setTyping(
         roomId: roomId!,
         uid: currentUid!,
         isTyping: nextIsTyping,
-      ).catchError((_) {});
+      )
+          .catchError((error, stackTrace) {
+        AppErrorLogger.recordError(
+          error,
+          stackTrace,
+          reason: 'Set typing state failed',
+          context: {
+            'room_id': roomId,
+            'current_uid': currentUid,
+            'is_typing': nextIsTyping,
+          },
+        );
+      });
     }
 
     _typingTimer?.cancel();
@@ -378,11 +421,23 @@ abstract class _ChatRoomStore with Store {
 
     _typingTimer = Timer(const Duration(seconds: 2), () {
       _isTyping = false;
-      chatRepository.setTyping(
+      chatRepository
+          .setTyping(
         roomId: roomId!,
         uid: currentUid!,
         isTyping: false,
-      ).catchError((_) {});
+      )
+          .catchError((error, stackTrace) {
+        AppErrorLogger.recordError(
+          error,
+          stackTrace,
+          reason: 'Clear typing state after timeout failed',
+          context: {
+            'room_id': roomId,
+            'current_uid': currentUid,
+          },
+        );
+      });
     });
   }
 
@@ -394,7 +449,17 @@ abstract class _ChatRoomStore with Store {
         roomId: roomId!,
         uid: currentUid!,
       );
-    } catch (_) {}
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Reset unread count failed',
+        context: {
+          'room_id': roomId,
+          'current_uid': currentUid,
+        },
+      );
+    }
   }
 
   // -----------------------
@@ -403,11 +468,23 @@ abstract class _ChatRoomStore with Store {
   @action
   void dispose() {
     if (roomId != null && currentUid != null) {
-      chatRepository.setTyping(
+      chatRepository
+          .setTyping(
         roomId: roomId!,
         uid: currentUid!,
         isTyping: false,
-      ).catchError((_) {});
+      )
+          .catchError((error, stackTrace) {
+        AppErrorLogger.recordError(
+          error,
+          stackTrace,
+          reason: 'Clear typing state on dispose failed',
+          context: {
+            'room_id': roomId,
+            'current_uid': currentUid,
+          },
+        );
+      });
     }
 
     _typingTimer?.cancel();

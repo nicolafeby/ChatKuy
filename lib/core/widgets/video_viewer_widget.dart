@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chatkuy/core/helpers/video_player_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -165,24 +166,28 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
   }
 
   Future<bool> _tryInitialize(VideoPlayerController controller) async {
-    try {
-      await controller.initialize();
+    final initializedController = await VideoPlayerHelper.initializeController(
+      controller: controller,
+      reason: 'Initialize video viewer failed',
+      context: {
+        'has_video_url': argument?.videoUrl?.isNotEmpty == true,
+        'has_local_video': argument?.localVideoPath?.isNotEmpty == true,
+      },
+    );
 
-      if (!mounted) {
-        await controller.dispose();
-        return false;
-      }
+    if (initializedController == null) return false;
 
-      setState(() {
-        _controller = controller;
-        _hasError = false;
-      });
-
-      return true;
-    } catch (_) {
-      await controller.dispose();
+    if (!mounted) {
+      await initializedController.dispose();
       return false;
     }
+
+    setState(() {
+      _controller = initializedController;
+      _hasError = false;
+    });
+
+    return true;
   }
 
   void _togglePlay() {

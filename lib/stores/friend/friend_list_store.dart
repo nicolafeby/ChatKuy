@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/friend_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
@@ -74,7 +75,12 @@ abstract class _FriendListStore with Store {
         _applySearch();
         isLoading = false;
       },
-      onError: (e) {
+      onError: (e, stackTrace) {
+        AppErrorLogger.recordError(
+          e,
+          stackTrace,
+          reason: 'Friend list stream failed',
+        );
         errorMessage = e.toString();
         isLoading = false;
       },
@@ -100,8 +106,7 @@ abstract class _FriendListStore with Store {
         : _allFriends.where((friend) {
             final user = friend.user;
 
-            return user.name.toLowerCase().contains(q) ||
-                (user.username?.toLowerCase().contains(q) ?? false);
+            return user.name.toLowerCase().contains(q) || (user.username?.toLowerCase().contains(q) ?? false);
           }).toList();
 
     friends
@@ -127,7 +132,16 @@ abstract class _FriendListStore with Store {
         currentUid: currentUid!,
         targetUid: targetUid,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Open chat from friend list failed',
+        context: {
+          'current_uid': currentUid,
+          'target_uid': targetUid,
+        },
+      );
       errorMessage = e.toString();
     } finally {
       isLoading = false;

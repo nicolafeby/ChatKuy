@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:mobx/mobx.dart';
 
@@ -50,7 +51,13 @@ abstract class _AddFriendStore with Store {
 
       await repository.sendFriendRequestByUsername(username.trim());
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Send friend request failed',
+        context: {'username_length': username.trim().length},
+      );
       errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
