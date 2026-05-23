@@ -1,12 +1,16 @@
 import 'dart:developer' as developer;
 
+import 'package:chatkuy/core/widgets/error_bottomsheet_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:get/get.dart';
 
 class AppErrorLogger {
   const AppErrorLogger._();
+
+  static String? latestErrorTicketId;
 
   static Future<void> setUserId(String? uid) async {
     try {
@@ -28,26 +32,34 @@ class AppErrorLogger {
     } catch (_) {}
   }
 
-  static Future<void> recordError(
+  static Future<String> recordError(
     Object error,
     StackTrace stackTrace, {
     required String reason,
     bool fatal = false,
     Map<String, Object?> context = const {},
+    bool showBottomSheet = true,
   }) async {
+    final ticketId = _createTicketId(error);
+    latestErrorTicketId = ticketId;
     final sanitizedContext = _sanitizeContext({
       ...context,
+      'error_ticket_id': ticketId,
       if (error is FirebaseException) 'firebase_code': error.code,
       if (error is FirebaseException) 'firebase_plugin': error.plugin,
       if (error is FirebaseAuthException && error.email != null) 'auth_email_hash': error.email.hashCode,
     });
 
     developer.log(
-      reason,
+      '$reason | error_ticket_id=$ticketId',
       name: 'ChatKuy',
       error: error,
       stackTrace: stackTrace,
     );
+
+    if (showBottomSheet) {
+      _showErrorBottomSheet(ticketId);
+    }
 
     try {
       for (final entry in sanitizedContext.entries) {
@@ -60,11 +72,13 @@ class AppErrorLogger {
       await FirebaseCrashlytics.instance.recordError(
         error,
         stackTrace,
-        reason: reason,
+        reason: '$reason | error_ticket_id=$ticketId',
         fatal: fatal,
         printDetails: kDebugMode,
       );
     } catch (_) {}
+
+    return ticketId;
   }
 
   static Map<String, Object?> _sanitizeContext(Map<String, Object?> context) {
@@ -80,5 +94,29 @@ class AppErrorLogger {
     }
 
     return sanitized;
+  }
+
+  static String _createTicketId(Object error) {
+    final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final hash = identityHashCode(error).toRadixString(16).toUpperCase();
+    return 'ERR-$timestamp-$hash';
+  }
+
+  static void _showErrorBottomSheet(String ticketId) {
+    if (Get.context == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (Get.context == null || Get.isBottomSheetOpen == true) return;
+
+        Get.bottomSheet(
+          ErrorBottomsheetWidget(
+            ticketId: ticketId,
+            message: 'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
+          ),
+          isScrollControlled: true,
+        );
+      });
+    });
   }
 }
