@@ -26,7 +26,7 @@ class CallService implements CallRepository {
       CallField.callerName: callerName,
       CallField.calleeName: calleeName,
       CallField.participants: [callerId, calleeId],
-      CallField.status: CallStatus.ringing,
+      CallField.status: CallStatus.calling,
       CallField.type: 'voice',
       CallField.createdAt: FieldValue.serverTimestamp(),
     });

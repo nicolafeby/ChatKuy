@@ -105,6 +105,7 @@ abstract class CallField {
 }
 
 abstract class CallStatus {
+  static const calling = 'calling';
   static const ringing = 'ringing';
   static const active = 'active';
   static const declined = 'declined';
