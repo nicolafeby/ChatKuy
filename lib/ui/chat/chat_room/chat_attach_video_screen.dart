@@ -25,9 +25,9 @@ class ChatAttachVideoScreen extends StatefulWidget {
 
 class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
   ChatAttachVideoArgument? argument;
-  VideoPlayerController? _controller;
-  File? _thumbnail;
-  bool _isPreparingPlayer = false;
+  final ValueNotifier<VideoPlayerController?> _controller = ValueNotifier(null);
+  final ValueNotifier<File?> _thumbnail = ValueNotifier(null);
+  final ValueNotifier<bool> _isPreparingPlayer = ValueNotifier(false);
 
   @override
   void initState() {
@@ -41,7 +41,10 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _controller.value?.dispose();
+    _controller.dispose();
+    _thumbnail.dispose();
+    _isPreparingPlayer.dispose();
     super.dispose();
   }
 
@@ -71,7 +74,7 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
                 store: argument!.store,
                 disableAttachment: true,
                 onSend: (text) {
-                  _controller?.pause();
+                  _controller.value?.pause();
                   argument!.store.sendVideoMessage(text, video);
                   argument!.store.messageController.clear();
                   Get.back();
@@ -85,81 +88,92 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
   }
 
   Widget _buildVideoPreview() {
-    final controller = _controller;
+    return ValueListenableBuilder<VideoPlayerController?>(
+      valueListenable: _controller,
+      builder: (context, controller, _) {
+        if (controller == null || !controller.value.isInitialized) {
+          return GestureDetector(
+            onTap: _preparePlayer,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                _buildPoster(),
+                Container(
+                  padding: EdgeInsets.all(14.r),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _isPreparingPlayer,
+                    builder: (context, isPreparingPlayer, _) {
+                      if (isPreparingPlayer) {
+                        return SizedBox(
+                          width: 34.r,
+                          height: 34.r,
+                          child: const CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        );
+                      }
 
-    if (controller == null || !controller.value.isInitialized) {
-      return GestureDetector(
-        onTap: _preparePlayer,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            _buildPoster(),
-            Container(
-              padding: EdgeInsets.all(14.r),
-              decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
-              child: _isPreparingPlayer
-                  ? SizedBox(
-                      width: 34.r,
-                      height: 34.r,
-                      child: const CircularProgressIndicator(
+                      return Icon(
+                        Icons.play_arrow,
                         color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : Icon(
-                      Icons.play_arrow,
-                      color: Colors.white,
-                      size: 34.r,
-                    ),
+                        size: 34.r,
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return GestureDetector(
-      onTap: _togglePlay,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          AspectRatio(
-            aspectRatio: controller.value.aspectRatio,
-            child: VideoPlayer(controller),
+        return GestureDetector(
+          onTap: _togglePlay,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
+              ),
+              if (!controller.value.isPlaying)
+                Container(
+                  padding: EdgeInsets.all(14.r),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.play_arrow,
+                    color: Colors.white,
+                    size: 34.r,
+                  ),
+                ),
+            ],
           ),
-          if (!controller.value.isPlaying)
-            Container(
-              padding: EdgeInsets.all(14.r),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.play_arrow,
-                color: Colors.white,
-                size: 34.r,
-              ),
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildPoster() {
-    final thumbnail = _thumbnail;
+    return ValueListenableBuilder<File?>(
+      valueListenable: _thumbnail,
+      builder: (context, thumbnail, _) {
+        if (thumbnail == null) return _buildPosterFallback();
 
-    if (thumbnail != null) {
-      return Image.file(
-        thumbnail,
-        fit: BoxFit.contain,
-        width: 1.sw,
-        errorBuilder: (context, error, stackTrace) => _buildPosterFallback(),
-      );
-    }
-
-    return _buildPosterFallback();
+        return Image.file(
+          thumbnail,
+          fit: BoxFit.contain,
+          width: 1.sw,
+          errorBuilder: (context, error, stackTrace) => _buildPosterFallback(),
+        );
+      },
+    );
   }
 
   Widget _buildPosterFallback() {
@@ -212,26 +226,25 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
   }
 
   void _togglePlay() {
-    final controller = _controller;
+    final controller = _controller.value;
     if (controller == null || !controller.value.isInitialized) return;
 
-    setState(() {
-      controller.value.isPlaying ? controller.pause() : controller.play();
-    });
+    controller.value.isPlaying ? controller.pause() : controller.play();
+    _controller.notifyListeners();
   }
 
   Future<void> _loadThumbnail(File video) async {
     final thumbnail = await getChatVideoThumbnail(videoFile: video);
     if (!mounted || thumbnail == null) return;
 
-    setState(() => _thumbnail = thumbnail);
+    _thumbnail.value = thumbnail;
   }
 
   Future<void> _preparePlayer() async {
     final video = argument?.video;
-    if (video == null || _isPreparingPlayer) return;
+    if (video == null || _isPreparingPlayer.value) return;
 
-    setState(() => _isPreparingPlayer = true);
+    _isPreparingPlayer.value = true;
 
     final controller = await VideoPlayerHelper.initializeFile(
       file: video,
@@ -243,9 +256,7 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
       return;
     }
 
-    setState(() {
-      _controller = controller;
-      _isPreparingPlayer = false;
-    });
+    _controller.value = controller;
+    _isPreparingPlayer.value = false;
   }
 }
