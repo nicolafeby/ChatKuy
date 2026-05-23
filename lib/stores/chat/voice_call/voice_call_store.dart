@@ -31,6 +31,9 @@ abstract class _VoiceCallStore with Store {
   bool _isEnding = false;
   bool _isDisposed = false;
   bool _remoteDescriptionSet = false;
+  bool _usesServerConnectedAt = false;
+  DateTime? _connectedAt;
+  Timer? _durationTimer;
   VoidCallback? _onClose;
   void Function(String message)? _onMessage;
 
@@ -48,6 +51,12 @@ abstract class _VoiceCallStore with Store {
 
   @observable
   String statusText = 'Menghubungkan...';
+
+  @observable
+  String callDurationText = '00:00';
+
+  @observable
+  bool isCallActive = false;
 
   @observable
   bool isIncomingRinging = false;
@@ -119,7 +128,8 @@ abstract class _VoiceCallStore with Store {
 
       _peerConnection = await createPeerConnection(_configuration);
       _peerConnection?.onIceConnectionState = _handleIceState;
-      _peerConnection?.onConnectionState = (state) => debugPrint('VoiceCall peer state: $state');
+      _peerConnection?.onConnectionState =
+          (state) => debugPrint('VoiceCall peer state: $state');
 
       for (final track in _localStream!.getTracks()) {
         await _peerConnection?.addTrack(track, _localStream!);
@@ -256,12 +266,23 @@ abstract class _VoiceCallStore with Store {
         if (data == null) return;
 
         final status = data[CallField.status];
-        if (status == CallStatus.declined || status == CallStatus.ended || status == CallStatus.missed) {
+        if (status == CallStatus.declined ||
+            status == CallStatus.ended ||
+            status == CallStatus.missed) {
           _setStatus(_closedStatusText(status));
           _isEnding = true;
           await _teardownCallResources(endCallKit: true);
           _close();
           return;
+        }
+
+        if (status == CallStatus.calling && currentArgument.isCaller) {
+          _setConnectingStatus('Memanggil');
+        } else if (status == CallStatus.ringing && currentArgument.isCaller) {
+          _setConnectingStatus('Berdering');
+        } else if (status == CallStatus.active) {
+          _startCallDuration(
+              _dateTimeFromTimestamp(data[CallField.answeredAt]));
         }
 
         final answer = data[CallField.answer];
@@ -447,18 +468,23 @@ abstract class _VoiceCallStore with Store {
     if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
         state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
       isConnecting = false;
-      statusText = 'Terhubung';
+      if (!isCallActive) {
+        statusText = 'Terhubung';
+      }
       final callId = _callId;
       if (callId != null) {
         FlutterCallkitIncoming.setCallConnected(callId);
       }
     } else if (state == RTCIceConnectionState.RTCIceConnectionStateChecking) {
       isConnecting = true;
-      statusText = 'Menyambungkan audio...';
+      if (!isCallActive) {
+        statusText = 'Menyambungkan audio...';
+      }
     } else if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
       isConnecting = false;
       statusText = 'Audio gagal tersambung';
-    } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+    } else if (state ==
+        RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
       statusText = 'Koneksi audio terputus';
     }
   }
@@ -466,7 +492,9 @@ abstract class _VoiceCallStore with Store {
   @action
   void _markRemoteAudioReceived() {
     hasRemoteAudio = true;
-    statusText = 'Audio diterima';
+    if (!isCallActive) {
+      statusText = 'Audio diterima';
+    }
   }
 
   @action
@@ -476,8 +504,63 @@ abstract class _VoiceCallStore with Store {
 
   @action
   void _setConnectingStatus(String text) {
+    if (isCallActive) return;
     statusText = text;
     isConnecting = true;
+  }
+
+  @action
+  void _startCallDuration(DateTime? startedAt) {
+    if (isCallActive && _connectedAt != null) {
+      if (startedAt != null && !_usesServerConnectedAt) {
+        _connectedAt = startedAt;
+        _usesServerConnectedAt = true;
+        _updateCallDuration();
+      }
+      return;
+    }
+
+    _connectedAt = startedAt ?? DateTime.now();
+    _usesServerConnectedAt = startedAt != null;
+    isCallActive = true;
+    isConnecting = false;
+    statusText = 'Terhubung';
+    _updateCallDuration();
+    _durationTimer?.cancel();
+    _durationTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _updateCallDuration(),
+    );
+  }
+
+  @action
+  void _updateCallDuration() {
+    final startedAt = _connectedAt;
+    if (startedAt == null) {
+      callDurationText = '00:00';
+      return;
+    }
+
+    final duration = DateTime.now().difference(startedAt);
+    final totalSeconds = duration.inSeconds < 0 ? 0 : duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      callDurationText = '${hours.toString().padLeft(2, '0')}:'
+          '${minutes.toString().padLeft(2, '0')}:'
+          '${seconds.toString().padLeft(2, '0')}';
+      return;
+    }
+
+    callDurationText = '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _dateTimeFromTimestamp(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    return null;
   }
 
   void _showMessage(String message) {
@@ -512,6 +595,8 @@ abstract class _VoiceCallStore with Store {
 
     await _peerConnection?.close();
     _peerConnection = null;
+    _durationTimer?.cancel();
+    _durationTimer = null;
     _localStream?.getTracks().forEach((track) => track.stop());
     await _localStream?.dispose();
     _localStream = null;

@@ -29,7 +29,8 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
   @override
   void initState() {
     super.initState();
-    _argument = Get.arguments as VoiceCallArgument? ?? InitialRouteArgument.takeVoiceCall();
+    _argument = Get.arguments as VoiceCallArgument? ??
+        InitialRouteArgument.takeVoiceCall();
     final argument = _argument;
     if (argument == null) {
       _close();
@@ -107,7 +108,10 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                     radius: 52.r,
                     backgroundColor: AppColor.primaryColor,
                     child: Text(
-                      (argument?.targetName.isNotEmpty == true ? argument!.targetName[0] : '?').toUpperCase(),
+                      (argument?.targetName.isNotEmpty == true
+                              ? argument!.targetName[0]
+                              : '?')
+                          .toUpperCase(),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 36.sp,
@@ -127,7 +131,9 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                   ),
                   8.verticalSpace,
                   Text(
-                    store.hasRemoteAudio ? 'Audio tersambung' : store.statusText,
+                    store.isCallActive
+                        ? store.callDurationText
+                        : store.statusText,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
@@ -176,7 +182,9 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                           onTap: () => store.endCall(),
                         ),
                         _CallControlButton(
-                          icon: store.isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+                          icon: store.isSpeakerOn
+                              ? Icons.volume_up
+                              : Icons.volume_down,
                           label: 'Speaker',
                           onTap: store.toggleSpeaker,
                         ),
