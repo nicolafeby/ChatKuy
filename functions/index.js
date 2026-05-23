@@ -1,5 +1,8 @@
 const { setGlobalOptions } = require('firebase-functions/v2');
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const {
+  onDocumentCreated,
+  onDocumentUpdated,
+} = require('firebase-functions/v2/firestore');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 
@@ -177,5 +180,73 @@ exports.onNewVoiceCall = onDocumentCreated(
     });
 
     logger.info('✅ Voice call FCM sent:', response);
+  }
+);
+
+exports.onVoiceCallStatusUpdated = onDocumentUpdated(
+  'calls/{callId}',
+  async (event) => {
+    if (!event.data) {
+      logger.error('❌ call update event.data is null');
+      return;
+    }
+
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    const beforeStatus = before.status;
+    const afterStatus = after.status;
+    const closedStatuses = ['declined', 'ended', 'missed'];
+
+    if (
+      beforeStatus === afterStatus ||
+      !closedStatuses.includes(afterStatus)
+    ) {
+      return;
+    }
+
+    const participantIds = (after.participants || []).filter(Boolean);
+    if (participantIds.length === 0) {
+      logger.error('❌ call participants missing');
+      return;
+    }
+
+    const userSnaps = await admin.firestore().getAll(
+      ...participantIds.map((uid) =>
+        admin.firestore().collection('users').doc(uid)
+      )
+    );
+
+    const messages = userSnaps
+      .map((snap) => (snap.exists ? snap.data().fcmToken : null))
+      .filter(Boolean)
+      .map((token) => ({
+        token,
+        data: {
+          type: 'voice_call_ended',
+          callId: event.params.callId,
+          status: afterStatus,
+        },
+        android: {
+          priority: 'high',
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+          },
+          payload: {
+            aps: {
+              contentAvailable: true,
+            },
+          },
+        },
+      }));
+
+    if (messages.length === 0) {
+      logger.error('❌ no fcmToken found for call participants');
+      return;
+    }
+
+    const response = await admin.messaging().sendEach(messages);
+    logger.info('✅ Voice call ended FCM sent:', response);
   }
 );

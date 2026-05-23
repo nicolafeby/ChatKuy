@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chatkuy/core/constants/firestore.dart';
@@ -38,6 +39,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   static bool _isCallKitListenerAttached = false;
   static final Set<String> _handledAcceptedCallIds = {};
   static final Map<String, bool> _closeAppAfterCallById = {};
+  static final Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>> _callStatusSubscriptions = {};
 
   @override
   Future<void> init() async {
@@ -47,7 +49,7 @@ class LocalNotificationService implements LocalNotificationRepository {
 
   static Future<void> showFromBackground(RemoteMessage message) async {
     await _initPlugin(handleLaunchDetails: false);
-    LocalNotificationService().show(message);
+    await LocalNotificationService().show(message);
   }
 
   static Future<void> _initPlugin({required bool handleLaunchDetails}) async {
@@ -62,8 +64,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (handleLaunchDetails) {
       final launchDetails = await _plugin.getNotificationAppLaunchDetails();
       final launchResponse = launchDetails?.notificationResponse;
-      if (launchDetails?.didNotificationLaunchApp == true &&
-          launchResponse != null) {
+      if (launchDetails?.didNotificationLaunchApp == true && launchResponse != null) {
         _pendingLaunchResponse = launchResponse;
       }
     }
@@ -85,49 +86,47 @@ class LocalNotificationService implements LocalNotificationRepository {
     );
 
     await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
 
     await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(callChannel);
 
     if (handleLaunchDetails) {
-      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      final notificationGranted =
-          await androidPlugin?.requestNotificationsPermission();
-      final fullScreenGranted =
-          await androidPlugin?.requestFullScreenIntentPermission();
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final notificationGranted = await androidPlugin?.requestNotificationsPermission();
+      final fullScreenGranted = await androidPlugin?.requestFullScreenIntentPermission();
       debugPrint(
         'LocalNotification permission: notifications=$notificationGranted fullScreen=$fullScreenGranted',
       );
       await FlutterCallkitIncoming.requestNotificationPermission({
-        'rationaleMessagePermission':
-            'ChatKuy membutuhkan izin notifikasi untuk menampilkan panggilan masuk.',
-        'postNotificationMessageRequired':
-            'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
+        'rationaleMessagePermission': 'ChatKuy membutuhkan izin notifikasi untuk menampilkan panggilan masuk.',
+        'postNotificationMessageRequired': 'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
       });
       await FlutterCallkitIncoming.requestFullIntentPermission();
     }
   }
 
   @override
-  void show(RemoteMessage message) {
+  Future<void> show(RemoteMessage message) async {
     final isVoiceCall = message.data['type'] == 'voice_call';
     if (isVoiceCall) {
-      _showIncomingCall(message.data);
+      await _showIncomingCall(message.data);
       return;
     }
 
-    final title =
-        message.notification?.title ?? message.data['title'] ?? 'Pesan baru';
-    final body = message.notification?.body ??
-        message.data['body'] ??
-        message.data['text'] ??
-        '';
+    final isVoiceCallEnded = message.data['type'] == 'voice_call_ended';
+    if (isVoiceCallEnded) {
+      final callId = message.data['callId'];
+      if (callId is String && callId.isNotEmpty) {
+        await _finishCallKitCall(callId);
+      }
+      return;
+    }
+
+    final title = message.notification?.title ?? message.data['title'] ?? 'Pesan baru';
+    final body = message.notification?.body ?? message.data['body'] ?? message.data['text'] ?? '';
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -141,7 +140,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       ),
     );
 
-    _plugin.show(
+    await _plugin.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,
       body,
@@ -156,10 +155,13 @@ class LocalNotificationService implements LocalNotificationRepository {
     final callerId = data['callerId'];
     final callerName = data['callerName'] ?? data['title'] ?? 'Panggilan suara';
 
-    if (callId is! String ||
-        callId.isEmpty ||
-        roomId is! String ||
-        callerId is! String) {
+    if (callId is! String || callId.isEmpty || roomId is! String || callerId is! String) {
+      return;
+    }
+
+    final shouldShowCall = await _shouldShowIncomingCall(callId);
+    if (!shouldShowCall) {
+      await _finishCallKitCall(callId);
       return;
     }
 
@@ -223,6 +225,44 @@ class LocalNotificationService implements LocalNotificationRepository {
       closeAppOnEnd: closeAppOnEnd,
     );
     await FlutterCallkitIncoming.showCallkitIncoming(params);
+    _watchIncomingCallStatus(callId);
+  }
+
+  static Future<bool> _shouldShowIncomingCall(String callId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection(FirebaseCollections.calls).doc(callId).get();
+      final status = snapshot.data()?[CallField.status];
+      if (_isClosedCallStatus(status)) return false;
+      return status == null || status == CallStatus.ringing;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static void _watchIncomingCallStatus(String callId) {
+    _callStatusSubscriptions[callId]?.cancel();
+    _callStatusSubscriptions[callId] = FirebaseFirestore.instance
+        .collection(FirebaseCollections.calls)
+        .doc(callId)
+        .snapshots()
+        .listen((snapshot) async {
+      final status = snapshot.data()?[CallField.status];
+      if (_isClosedCallStatus(status)) {
+        await _finishCallKitCall(callId);
+        return;
+      }
+
+      if (status == CallStatus.active) {
+        final subscription = _callStatusSubscriptions.remove(callId);
+        await subscription?.cancel();
+      }
+    }, onError: (Object error) {
+      debugPrint('Incoming call status listener failed: $error');
+    });
+  }
+
+  static bool _isClosedCallStatus(dynamic status) {
+    return status == CallStatus.declined || status == CallStatus.ended || status == CallStatus.missed;
   }
 
   static void _listenCallKitEvents() {
@@ -322,9 +362,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static bool _hasVoiceCallKeys(Map<String, dynamic> data) {
-    return data['callId'] is String &&
-        data['roomId'] is String &&
-        data['callerId'] is String;
+    return data['callId'] is String && data['roomId'] is String && data['callerId'] is String;
   }
 
   static Future<void> processPendingLaunchNotification() async {
@@ -452,10 +490,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (callId is! String || callId.isEmpty) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId)
-          .update({
+      await FirebaseFirestore.instance.collection(FirebaseCollections.calls).doc(callId).update({
         CallField.status: CallStatus.declined,
         CallField.endedAt: FieldValue.serverTimestamp(),
       });
@@ -469,10 +504,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (callId is! String || callId.isEmpty) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId)
-          .update({
+      await FirebaseFirestore.instance.collection(FirebaseCollections.calls).doc(callId).update({
         CallField.status: CallStatus.ended,
         CallField.endedAt: FieldValue.serverTimestamp(),
       });
@@ -486,6 +518,8 @@ class LocalNotificationService implements LocalNotificationRepository {
       await FlutterCallkitIncoming.endCall(callId);
       await FlutterCallkitIncoming.endAllCalls();
     } finally {
+      final subscription = _callStatusSubscriptions.remove(callId);
+      await subscription?.cancel();
       _closeAppAfterCallById.remove(callId);
 
       final lastCallId = _lastIncomingCall?.data['callId'];
@@ -545,10 +579,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     final callerId = data['callerId'];
     final callerName = data['callerName'] ?? 'Panggilan suara';
 
-    if (currentUid == null ||
-        roomId is! String ||
-        callId is! String ||
-        callerId is! String) {
+    if (currentUid == null || roomId is! String || callId is! String || callerId is! String) {
       return null;
     }
 
