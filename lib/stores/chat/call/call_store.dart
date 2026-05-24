@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
+import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -305,6 +306,11 @@ abstract class _CallStore with Store {
 
     final callSnap = await callRepository.watchCall(callId).first;
     final data = callSnap.data();
+    final status = data?[CallField.status];
+    if (_isClosedCallStatus(status) || _isEnding || _isDisposed) {
+      return;
+    }
+
     final offer = data?[CallField.offer];
     if (offer is! Map) {
       _showMessage('Panggilan belum siap');
@@ -312,7 +318,10 @@ abstract class _CallStore with Store {
       return;
     }
 
-    await _peerConnection!.setRemoteDescription(
+    final peerConnection = _peerConnection;
+    if (peerConnection == null) return;
+
+    await peerConnection.setRemoteDescription(
       RTCSessionDescription(
         offer['sdp'] as String?,
         offer['type'] as String?,
@@ -321,11 +330,13 @@ abstract class _CallStore with Store {
     _remoteDescriptionSet = true;
     await _flushPendingRemoteCandidates();
 
-    final answer = await _peerConnection!.createAnswer({
+    if (_isEnding || _isDisposed) return;
+
+    final answer = await peerConnection.createAnswer({
       'offerToReceiveAudio': true,
       'offerToReceiveVideo': argument?.isVideoCall == true,
     });
-    await _peerConnection!.setLocalDescription(answer);
+    await peerConnection.setLocalDescription(answer);
     await callRepository.setAnswer(
       callId: callId,
       answer: {
@@ -705,9 +716,12 @@ abstract class _CallStore with Store {
 
   @action
   void _attachRemoteVideo(RTCTrackEvent event) {
-    if (event.streams.isNotEmpty) {
-      remoteRenderer.srcObject = event.streams.first;
+    if (event.streams.isEmpty) {
+      debugPrint('Call remote video track has no stream yet');
+      return;
     }
+
+    remoteRenderer.srcObject = event.streams.first;
     hasRemoteVideo = true;
     isVideoEnabled = true;
     statusText = 'Video tersambung';
@@ -975,6 +989,12 @@ abstract class _CallStore with Store {
     return 'Panggilan berakhir';
   }
 
+  bool _isClosedCallStatus(dynamic status) {
+    return status == CallStatus.declined ||
+        status == CallStatus.ended ||
+        status == CallStatus.missed;
+  }
+
   Future<void> _teardownCallResources({required bool endCallKit}) async {
     if (_isDisposed) return;
     _isDisposed = true;
@@ -1011,8 +1031,7 @@ abstract class _CallStore with Store {
 
     final callId = _callId;
     if (endCallKit && callId != null) {
-      await FlutterCallkitIncoming.endCall(callId);
-      await FlutterCallkitIncoming.endAllCalls();
+      await LocalNotificationService.finishCallKitCall(callId);
     }
   }
 

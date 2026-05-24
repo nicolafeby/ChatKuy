@@ -35,8 +35,10 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
         setOnline();
         break;
 
-      case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
+        break;
+
+      case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         setOffline();
