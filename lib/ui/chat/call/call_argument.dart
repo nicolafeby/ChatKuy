@@ -22,4 +22,21 @@ class CallArgument {
   final bool autoAccept;
   final bool closeAppOnEnd;
   final bool isVideoCall;
+
+  CallArgument copyWith({
+    bool? isVideoCall,
+  }) {
+    return CallArgument(
+      roomId: roomId,
+      currentUid: currentUid,
+      targetUid: targetUid,
+      targetName: targetName,
+      isCaller: isCaller,
+      currentUserName: currentUserName,
+      callId: callId,
+      autoAccept: autoAccept,
+      closeAppOnEnd: closeAppOnEnd,
+      isVideoCall: isVideoCall ?? this.isVideoCall,
+    );
+  }
 }

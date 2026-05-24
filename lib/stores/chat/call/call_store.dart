@@ -135,6 +135,9 @@ abstract class _CallStore with Store {
   }
 
   Future<void> _startMediaSession(CallArgument argument) async {
+    final resolvedArgument = await _resolveCallType(argument);
+    this.argument = resolvedArgument;
+
     final micGranted = await _ensureCallPermission(
       permission: Permission.microphone,
       deniedMessage: 'ChatKuy membutuhkan akses mikrofon untuk panggilan',
@@ -147,7 +150,7 @@ abstract class _CallStore with Store {
     }
 
     try {
-      final videoEnabled = argument.isVideoCall;
+      final videoEnabled = resolvedArgument.isVideoCall;
       if (videoEnabled) {
         final cameraGranted = await _ensureCallPermission(
           permission: Permission.camera,
@@ -193,7 +196,7 @@ abstract class _CallStore with Store {
 
         callRepository.addCandidate(
           callId: callId,
-          isCaller: argument.isCaller,
+          isCaller: resolvedArgument.isCaller,
           candidate: {
             'candidate': candidate.candidate,
             'sdpMid': candidate.sdpMid,
@@ -213,8 +216,8 @@ abstract class _CallStore with Store {
         }
       };
 
-      if (argument.isCaller) {
-        await _startOutgoingCall(argument);
+      if (resolvedArgument.isCaller) {
+        await _startOutgoingCall(resolvedArgument);
       } else {
         await _answerIncomingCall();
       }
@@ -224,10 +227,10 @@ abstract class _CallStore with Store {
         stackTrace,
         reason: 'Start call media session failed',
         context: {
-          'room_id': argument.roomId,
-          'current_uid': argument.currentUid,
-          'target_uid': argument.targetUid,
-          'is_caller': argument.isCaller,
+          'room_id': resolvedArgument.roomId,
+          'current_uid': resolvedArgument.currentUid,
+          'target_uid': resolvedArgument.targetUid,
+          'is_caller': resolvedArgument.isCaller,
         },
       );
       _showMessage('Gagal memulai panggilan: $e');
@@ -263,6 +266,29 @@ abstract class _CallStore with Store {
     );
 
     _setStatus('Memanggil ${argument.targetName}...');
+  }
+
+  Future<CallArgument> _resolveCallType(CallArgument argument) async {
+    final callId = argument.callId;
+    if (argument.isVideoCall || callId == null) return argument;
+
+    try {
+      final snapshot = await callRepository.watchCall(callId).first;
+      final data = snapshot.data();
+      if (data?[CallField.type] == 'video') {
+        return argument.copyWith(isVideoCall: true);
+      }
+    } catch (error, stackTrace) {
+      AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Resolve incoming call type failed',
+        context: {'call_id': callId},
+        showBottomSheet: false,
+      );
+    }
+
+    return argument;
   }
 
   Future<void> _answerIncomingCall() async {
