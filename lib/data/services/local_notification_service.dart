@@ -40,6 +40,8 @@ class LocalNotificationService implements LocalNotificationRepository {
   })? _pendingCall;
   static bool _isCallKitListenerAttached = false;
   static final Set<String> _handledAcceptedCallIds = {};
+  static final Set<String> _finishedCallIds = {};
+  static DateTime? _lastCallKitFinishedAt;
   static final Map<String, bool> _closeAppAfterCallById = {};
   static final Map<String,
           StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
@@ -521,6 +523,8 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static Future<void> processPendingLaunchNotification() async {
+    if (_isInCallKitFinishCooldown()) return;
+
     final response = _pendingLaunchResponse;
     if (response != null) {
       _pendingLaunchResponse = null;
@@ -567,7 +571,11 @@ class LocalNotificationService implements LocalNotificationRepository {
       if (!_hasCallKeys(data)) continue;
 
       final callId = data['callId']?.toString();
-      if (callId != null) _handledAcceptedCallIds.add(callId);
+      if (callId != null) {
+        final shouldOpen = await _shouldOpenAcceptedCall(callId);
+        if (!shouldOpen) continue;
+        _handledAcceptedCallIds.add(callId);
+      }
 
       return _callArgumentFromData(
         data,
@@ -580,6 +588,8 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static Future<void> processAcceptedCallKitCalls() async {
+    if (_isInCallKitFinishCooldown()) return;
+
     final activeCalls = await FlutterCallkitIncoming.activeCalls();
     debugPrint('CallKit activeCalls: $activeCalls');
 
@@ -593,12 +603,17 @@ class LocalNotificationService implements LocalNotificationRepository {
       if (!isAccepted) continue;
 
       final callId = callMap['id']?.toString();
-      if (callId == null || _handledAcceptedCallIds.contains(callId)) {
+      if (callId == null ||
+          _finishedCallIds.contains(callId) ||
+          _handledAcceptedCallIds.contains(callId)) {
         continue;
       }
 
       final data = _extractCallKitMapData(callMap);
       if (!_hasCallKeys(data)) continue;
+
+      final shouldOpen = await _shouldOpenAcceptedCall(callId);
+      if (!shouldOpen) continue;
 
       _handledAcceptedCallIds.add(callId);
       _openCall(
@@ -607,6 +622,26 @@ class LocalNotificationService implements LocalNotificationRepository {
         closeAppOnEnd: _closeAppOnEndFor(data),
       );
       break;
+    }
+  }
+
+  static Future<bool> _shouldOpenAcceptedCall(String callId) async {
+    if (_finishedCallIds.contains(callId)) return false;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(FirebaseCollections.calls)
+          .doc(callId)
+          .get();
+      final status = snapshot.data()?[CallField.status];
+      if (_isClosedCallStatus(status)) {
+        await _finishCallKitCall(callId);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      debugPrint('Check accepted call status failed: $error');
+      return true;
     }
   }
 
@@ -675,6 +710,10 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static Future<void> _finishCallKitCall(String callId) async {
+    _lastCallKitFinishedAt = DateTime.now();
+    _finishedCallIds.add(callId);
+    _handledAcceptedCallIds.add(callId);
+
     try {
       await FlutterCallkitIncoming.endCall(callId);
       await FlutterCallkitIncoming.endAllCalls();
@@ -691,11 +730,20 @@ class LocalNotificationService implements LocalNotificationRepository {
     }
   }
 
+  static Future<void> finishCallKitCall(String callId) {
+    return _finishCallKitCall(callId);
+  }
+
   static void _openCall(
     Map<String, dynamic> data, {
     bool autoAccept = false,
     bool closeAppOnEnd = false,
   }) {
+    final callId = data['callId'];
+    if (callId is String && _finishedCallIds.contains(callId)) {
+      return;
+    }
+
     final argument = _callArgumentFromData(
       data,
       autoAccept: autoAccept,
@@ -714,6 +762,10 @@ class LocalNotificationService implements LocalNotificationRepository {
       _handledAcceptedCallIds.add(argument.callId ?? '');
     }
 
+    if (Get.currentRoute == AppRouteName.CALL_SCREEN) {
+      return;
+    }
+
     if (Get.key.currentState == null) {
       _pendingCall = (
         data: data,
@@ -727,6 +779,12 @@ class LocalNotificationService implements LocalNotificationRepository {
       AppRouteName.CALL_SCREEN,
       arguments: argument,
     );
+  }
+
+  static bool _isInCallKitFinishCooldown() {
+    final finishedAt = _lastCallKitFinishedAt;
+    if (finishedAt == null) return false;
+    return DateTime.now().difference(finishedAt) < const Duration(seconds: 2);
   }
 
   static CallArgument? _callArgumentFromData(

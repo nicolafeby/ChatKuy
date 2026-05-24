@@ -85,12 +85,10 @@ Future<void> presenceServiceTest() async {
     ))).called(1);
   });
 
-  test('inactive lifecycle should call setOffline', () async {
+  test('inactive lifecycle should keep current presence', () async {
     service.didChangeAppLifecycleState(AppLifecycleState.inactive);
 
-    verify(mockDoc.update(argThat(
-      containsPair('isOnline', false),
-    ))).called(1);
+    verifyNever(mockFirestore.collection(any));
   });
 
   test('should do nothing if user is null', () async {
