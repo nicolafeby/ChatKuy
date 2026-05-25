@@ -3,6 +3,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 mixin BaseLayout {
+  ThemeData themeOf(BuildContext context) => Theme.of(context);
+
+  ColorScheme colorSchemeOf(BuildContext context) =>
+      themeOf(context).colorScheme;
+
+  bool isDarkModeOf(BuildContext context) =>
+      themeOf(context).brightness == Brightness.dark;
+
   void showLoading({String? text}) {
     dismissLoading();
     Get.dialog(LoadingDialog(text: text), barrierDismissible: false);
@@ -13,7 +21,8 @@ mixin BaseLayout {
   }
 
   void dismissBottomsheet() {
-    Get.until((route) => Get.isBottomSheetOpen == null || Get.isBottomSheetOpen == false);
+    Get.until((route) =>
+        Get.isBottomSheetOpen == null || Get.isBottomSheetOpen == false);
   }
 
   void showSnackbar({
@@ -22,7 +31,8 @@ mixin BaseLayout {
   }) {
     if (Get.isSnackbarOpen) return;
 
-    final safeMessage = (message != null && message.isNotEmpty) ? message : 'Terjadi kesalahan';
+    final safeMessage =
+        (message != null && message.isNotEmpty) ? message : 'Terjadi kesalahan';
 
     Get.showSnackbar(
       GetSnackBar(

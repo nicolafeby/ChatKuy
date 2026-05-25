@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
@@ -21,7 +22,7 @@ class ChatListScreen extends StatefulWidget {
   State<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> {
+class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   ChatUserListStore store = ChatUserListStore(
     repository: getIt<ChatUserListRepository>(),
   );
@@ -42,6 +43,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   PreferredSizeWidget _buildAppbar() {
+    final isDarkMode = isDarkModeOf(context);
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
@@ -52,17 +54,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
         Image.asset(
           AppAsset.icEditOutlined,
           height: 24.r,
+          color: isDarkMode ? Colors.white : null,
         ).paddingOnly(right: 16.r)
       ],
     );
   }
 
   Widget _buildBody() {
+    final isDark = isDarkModeOf(context);
     return Column(
       children: [
-        ChatListSearchWidget()
-            .paddingSymmetric(horizontal: 20.r)
-            .paddingOnly(bottom: 8.h),
+        ChatListSearchWidget().paddingSymmetric(horizontal: 20.r).paddingOnly(bottom: 8.h),
 
         /// REALTIME CHAT LIST
         Expanded(
@@ -92,16 +94,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final user = item.user;
 
                   return ListTile(
-                    leading: ProfileAvatarWidget(
-                        base64Image: user.photoUrl, size: 48),
+                    leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 48),
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(user.name),
                         Text(
                           item.lastMessageAt?.hhmm ?? '',
-                          style:
-                              TextStyle(fontSize: 11.sp, color: Colors.black54),
+                          style: TextStyle(fontSize: 11.sp, color: isDark ? null : Colors.black54),
                         ),
                       ],
                     ),
@@ -109,13 +109,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       children: [
                         Visibility(
                           visible: item.type == MessageType.image,
-                          child: Icon(Icons.image_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.video,
-                          child: Icon(Icons.videocam_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Flexible(
                           child: Text(

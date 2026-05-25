@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
@@ -16,7 +17,7 @@ enum UiMessageStatus {
   read,
 }
 
-class ChatBubbleWidget extends StatelessWidget {
+class ChatBubbleWidget extends StatelessWidget with BaseLayout {
   const ChatBubbleWidget({
     super.key,
     required this.message,
@@ -37,6 +38,14 @@ class ChatBubbleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = colorSchemeOf(context);
+    final isDarkMode = isDarkModeOf(context);
+    final bubbleColor = isMe
+        ? AppColor.primaryColor.withValues(alpha: isDarkMode ? 0.7 : 0.8)
+        : isDarkMode
+            ? const Color(0xFF18232C)
+            : Colors.grey.shade200;
+
     return Padding(
       padding: EdgeInsets.only(
         top: isSameGroup ? 1.5.h : 8.h,
@@ -57,12 +66,10 @@ class ChatBubbleWidget extends StatelessWidget {
                   vertical: 8.h,
                 ),
                 decoration: BoxDecoration(
-                  color: isMe
-                      ? AppColor.primaryColor.withValues(alpha: 0.8)
-                      : Colors.grey.shade200,
+                  color: bubbleColor,
                   borderRadius: _bubbleRadius(),
                 ),
-                child: _buildContent(),
+                child: _buildContent(colorScheme, isDarkMode),
               ),
             ),
           ),
@@ -82,7 +89,7 @@ class ChatBubbleWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(ColorScheme colorScheme, bool isDarkMode) {
     final type = message.type;
     final imageUrl = message.imageUrl;
     final localImagePath = message.localImagePath;
@@ -93,6 +100,12 @@ class ChatBubbleWidget extends StatelessWidget {
     final playableLocalVideoPath = _existingFilePath(localVideoPath);
     final hasVideo = type == MessageType.video &&
         (playableLocalVideoPath != null || videoUrl != null);
+    final messageTextColor = isMe
+        ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
+        : colorScheme.onSurface;
+    final metaTextColor = isMe
+        ? Colors.white.withValues(alpha: 0.68)
+        : colorScheme.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -128,7 +141,7 @@ class ChatBubbleWidget extends StatelessWidget {
                   softWrap: true,
                   textAlign: TextAlign.left,
                   style: TextStyle(
-                    color: isMe ? Colors.white : Colors.black87,
+                    color: messageTextColor,
                     fontSize: 14.sp,
                   ),
                 ),
@@ -163,7 +176,7 @@ class ChatBubbleWidget extends StatelessWidget {
                   softWrap: true,
                   textAlign: TextAlign.left,
                   style: TextStyle(
-                    color: isMe ? Colors.white : Colors.black87,
+                    color: messageTextColor,
                     fontSize: 14.sp,
                   ),
                 ),
@@ -176,7 +189,7 @@ class ChatBubbleWidget extends StatelessWidget {
             softWrap: true,
             textAlign: TextAlign.left,
             style: TextStyle(
-              color: isMe ? Colors.white : Colors.black87,
+              color: messageTextColor,
               fontSize: 14.sp,
             ),
           ),
@@ -189,7 +202,7 @@ class ChatBubbleWidget extends StatelessWidget {
             Text(
               message.createdAt.hhmm,
               style: TextStyle(
-                color: isMe ? Colors.white70 : Colors.black45,
+                color: metaTextColor,
                 fontSize: 10.sp,
               ),
             ),

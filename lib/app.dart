@@ -1,6 +1,8 @@
 import 'package:chatkuy/core/config/theme/theme.dart';
+import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/core/navigation/initial_route_argument.dart';
 import 'package:chatkuy/data/models/app_update_info.dart';
+import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/routes/app_routes.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:chatkuy/ui/update/update_screen.dart';
@@ -24,7 +26,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     InitialRouteArgument.call = initialCallArgument;
-    final fallbackInitialRoute = initialCallArgument == null ? AppRouteName.BASE_SCREEN : AppRouteName.CALL_SCREEN;
+    final fallbackInitialRoute = initialCallArgument == null
+        ? AppRouteName.BASE_SCREEN
+        : AppRouteName.CALL_SCREEN;
     final shouldShowUpdate = initialUpdateInfo?.shouldShowUpdate == true;
     if (shouldShowUpdate) {
       InitialRouteArgument.appUpdate = AppUpdateScreenArgument(
@@ -35,18 +39,27 @@ class MyApp extends StatelessWidget {
 
     return ScreenUtilInit(
       builder: (_, screenUtilChild) {
-        return GetMaterialApp(
-          navigatorKey: Get.key,
-          theme: getAppTheme(),
-          title: AppStrings.appName,
-          debugShowCheckedModeBanner: false,
-          initialRoute: shouldShowUpdate ? AppRouteName.APP_UPDATE_SCREEN : fallbackInitialRoute,
-          getPages: AppRoute.pages,
-          home: screenUtilChild,
-          builder: (_, getChild) => SafeArea(
-            top: false,
-            bottom: true,
-            child: getChild ?? SizedBox.shrink(),
+        final themeController = getIt<ThemeController>();
+
+        return AnimatedBuilder(
+          animation: themeController,
+          builder: (context, _) => GetMaterialApp(
+            navigatorKey: Get.key,
+            theme: getLightAppTheme(),
+            darkTheme: getDarkAppTheme(),
+            themeMode: themeController.themeMode,
+            title: AppStrings.appName,
+            debugShowCheckedModeBanner: false,
+            initialRoute: shouldShowUpdate
+                ? AppRouteName.APP_UPDATE_SCREEN
+                : fallbackInitialRoute,
+            getPages: AppRoute.pages,
+            home: screenUtilChild,
+            builder: (_, getChild) => SafeArea(
+              top: false,
+              bottom: true,
+              child: getChild ?? SizedBox.shrink(),
+            ),
           ),
         );
       },

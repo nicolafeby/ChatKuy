@@ -27,6 +27,7 @@ import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:chatkuy/data/services/request_friend_service.dart';
 import 'package:chatkuy/data/services/secure_storage_service.dart';
 import 'package:chatkuy/data/services/user_service.dart';
+import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -113,6 +114,10 @@ void registerService() {
 
   getIt.registerLazySingleton<AppUpdateService>(
     () => AppUpdateService(getIt<FirebaseRemoteConfig>()),
+  );
+
+  getIt.registerLazySingleton<ThemeController>(
+    () => ThemeController(getIt<SecureStorageRepository>()),
   );
 }
 
