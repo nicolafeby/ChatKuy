@@ -53,6 +53,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   );
 
   ChatRoomArgument? argument;
+  final Set<String> _selectedMessageIds = {};
 
   @override
   void initState() {
@@ -95,6 +96,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         final user = store.targetUser?.value ?? targetUserFallback;
 
         final messages = store.messages;
+        final visibleMessageIds = messages.map((message) => message.id).toSet();
+        _selectedMessageIds.removeWhere(
+          (messageId) => !visibleMessageIds.contains(messageId),
+        );
+        final isSelectionMode = _selectedMessageIds.isNotEmpty;
 
         final dummy = UserModel(
           name: 'name',
@@ -106,7 +112,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
-            if (AttachmentOverlay.isShowing) {
+            if (_selectedMessageIds.isNotEmpty) {
+              _clearSelectedMessages();
+            } else if (AttachmentOverlay.isShowing) {
               AttachmentOverlay.hide();
             } else if (ChatFieldV2.isEmojiShowing) {
               ChatFieldV2.setEmojiShowing(false);
@@ -116,17 +124,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           },
           child: Scaffold(
             resizeToAvoidBottomInset: true,
-            appBar: ChatAppbarWidget(
-              store: store,
-              userData: user ?? dummy,
-              isTyping: isTargetTyping(),
-              onCallTap: user == null || targetId == null
-                  ? null
-                  : () => _startCall(user, targetId, isVideoCall: false),
-              onVideoCallTap: user == null || targetId == null
-                  ? null
-                  : () => _startCall(user, targetId, isVideoCall: true),
-            ),
+            appBar: isSelectionMode
+                ? _buildSelectionAppBar(messages)
+                : ChatAppbarWidget(
+                    store: store,
+                    userData: user ?? dummy,
+                    isTyping: isTargetTyping(),
+                    onCallTap: user == null || targetId == null
+                        ? null
+                        : () => _startCall(user, targetId, isVideoCall: false),
+                    onVideoCallTap: user == null || targetId == null
+                        ? null
+                        : () => _startCall(user, targetId, isVideoCall: true),
+                  ),
             body: Column(
               children: [
                 Expanded(
@@ -141,6 +151,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                       final message = messages[realIndex];
                       final localMediaPath = _localMediaPath(message);
                       final isMe = message.senderId == argument!.currentUid;
+                      final isSelected =
+                          _selectedMessageIds.contains(message.id);
 
                       final prevMessage =
                           realIndex > 0 ? messages[realIndex - 1] : null;
@@ -176,9 +188,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                             onRetry: message.status == MessageStatus.failed
                                 ? () => _retryMessage(message)
                                 : null,
-                            onReply: message.status == MessageStatus.sent
+                            onReply: !isSelectionMode &&
+                                    message.status == MessageStatus.sent
                                 ? () => store.setReplyToMessage(message)
                                 : null,
+                            onDelete: () => _deleteMessageForMe(message),
+                            onSelect: () => _toggleSelectedMessage(message.id),
+                            selectionMode: isSelectionMode,
+                            isSelected: isSelected,
                           ),
                         ],
                       );
@@ -229,6 +246,38 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   @override
   bool get wantKeepAlive => true;
 
+  PreferredSizeWidget _buildSelectionAppBar(List<ChatMessageModel> messages) {
+    return AppBar(
+      leading: IconButton(
+        onPressed: _clearSelectedMessages,
+        icon: const Icon(Icons.arrow_back),
+      ),
+      title: Text('${_selectedMessageIds.length}'),
+      actions: [
+        IconButton(
+          tooltip: 'Hapus untuk saya',
+          onPressed: () => _deleteSelectedMessagesForMe(messages),
+          icon: const Icon(Icons.delete_outline),
+        ),
+      ],
+    );
+  }
+
+  void _toggleSelectedMessage(String messageId) {
+    setState(() {
+      if (_selectedMessageIds.contains(messageId)) {
+        _selectedMessageIds.remove(messageId);
+      } else {
+        _selectedMessageIds.add(messageId);
+      }
+    });
+  }
+
+  void _clearSelectedMessages() {
+    if (_selectedMessageIds.isEmpty) return;
+    setState(_selectedMessageIds.clear);
+  }
+
   String? _localMediaPath(ChatMessageModel message) {
     if (message.type == MessageType.video) return message.localVideoPath;
     return message.localImagePath;
@@ -244,6 +293,66 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       message.text,
       message.localImagePath == null ? null : File(message.localImagePath!),
     );
+  }
+
+  Future<void> _deleteMessageForMe(ChatMessageModel message) async {
+    try {
+      await store.deleteMessageForMe(message);
+    } catch (_) {
+      if (!mounted) return;
+
+      Get.snackbar(
+        'Chat',
+        'Pesan gagal dihapus',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> _deleteSelectedMessagesForMe(
+    List<ChatMessageModel> messages,
+  ) async {
+    final selectedMessages = messages
+        .where((message) => _selectedMessageIds.contains(message.id))
+        .toList();
+
+    if (selectedMessages.isEmpty) {
+      _clearSelectedMessages();
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Hapus ${selectedMessages.length} pesan?'),
+        content: const Text('Pesan akan dihapus hanya dari chat Anda.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await store.deleteMessagesForMe(selectedMessages);
+      _clearSelectedMessages();
+    } catch (_) {
+      if (!mounted) return;
+
+      Get.snackbar(
+        'Chat',
+        'Pesan yang dipilih gagal dihapus',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 
   void _startCall(

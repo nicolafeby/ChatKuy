@@ -55,6 +55,12 @@ abstract class ChatRepository {
     required String uid,
   });
 
+  Future<void> deleteMessageForMe({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  });
+
   Future<void> resetUnread({
     required String roomId,
     required String uid,

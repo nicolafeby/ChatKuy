@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
+import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
@@ -46,11 +47,27 @@ class ChatUserListService implements ChatUserListRepository {
                 ...doc.data(),
               }))
           .toList();
+      final roomDataById = {
+        for (final doc in snapshot.docs) doc.id: doc.data(),
+      };
 
-      await Future.wait(
-        rooms.map((room) =>
-            _markIncomingMessagesDelivered(roomId: room.id, myUid: myUid)),
+      final latestVisibleByRoom = <String, _LatestVisibleMessage?>{};
+      final latestVisibleResults = await Future.wait(
+        rooms.map(
+          (room) => _syncRecentMessagesAndResolveLatestVisible(
+            roomId: room.id,
+            myUid: myUid,
+            roomDeletedMessageIds: _roomDeletedMessageIdsForUser(
+              roomDataById[room.id],
+              myUid,
+            ),
+          ),
+        ),
       );
+
+      for (var index = 0; index < rooms.length; index++) {
+        latestVisibleByRoom[rooms[index].id] = latestVisibleResults[index];
+      }
 
       final targetUids = rooms
           .map((room) => room.participants.firstWhere((uid) => uid != myUid))
@@ -76,15 +93,16 @@ class ChatUserListService implements ChatUserListRepository {
 
         final user = usersMap[targetUid];
         if (user == null) continue;
+        final latestVisible = latestVisibleByRoom[room.id];
 
         final item = ChatUserItemModel(
           roomId: room.id,
           user: user,
-          lastMessage: room.lastMessage,
-          lastMessageAt: room.lastMessageAt,
+          lastMessage: latestVisible?.text,
+          lastMessageAt: latestVisible?.createdAt,
           unreadCount: room.unreadCount?[myUid] ?? 0,
-          imageUrl: room.imageUrl,
-          type: room.type,
+          imageUrl: latestVisible?.imageUrl,
+          type: latestVisible?.type,
         );
 
         items.add(item);
@@ -111,9 +129,10 @@ class ChatUserListService implements ChatUserListRepository {
     }
   }
 
-  Future<void> _markIncomingMessagesDelivered({
+  Future<_LatestVisibleMessage?> _syncRecentMessagesAndResolveLatestVisible({
     required String roomId,
     required String myUid,
+    required Set<String> roomDeletedMessageIds,
   }) async {
     try {
       final messagesSnap = await _chatRoomsRef
@@ -125,14 +144,32 @@ class ChatUserListService implements ChatUserListRepository {
 
       final batch = firestore.batch();
       var hasUpdates = false;
+      _LatestVisibleMessage? latestVisibleMessage;
 
       for (final doc in messagesSnap.docs) {
         final data = doc.data();
         final senderId = data[MessageField.senderId];
         final deliveredTo =
             Map<String, dynamic>.from(data[MessageField.deliveredTo] ?? {});
+        final deletedFor =
+            Map<String, dynamic>.from(data[MessageField.deletedFor] ?? {});
+        final isDeletedForMe =
+            deletedFor[myUid] == true || roomDeletedMessageIds.contains(doc.id);
 
-        if (senderId == myUid || deliveredTo[myUid] == true) continue;
+        final messageType = _messageTypeFromString(data[MessageField.type]);
+        latestVisibleMessage ??= isDeletedForMe
+            ? null
+            : _LatestVisibleMessage(
+                text: _resolveLastMessage(data[MessageField.text], messageType),
+                imageUrl: data[MessageField.imageUrl],
+                createdAt: _dateFromFirestore(data[MessageField.createdAt]) ??
+                    _dateFromFirestore(data[MessageField.createdAtClient]),
+                type: messageType,
+              );
+
+        if (senderId == myUid || deliveredTo[myUid] == true || isDeletedForMe) {
+          continue;
+        }
 
         batch.update(doc.reference, {
           '${MessageField.deliveredTo}.$myUid': true,
@@ -143,6 +180,8 @@ class ChatUserListService implements ChatUserListRepository {
       if (hasUpdates) {
         await batch.commit();
       }
+
+      return latestVisibleMessage;
     } catch (error, stackTrace) {
       await AppErrorLogger.recordError(
         error,
@@ -154,6 +193,58 @@ class ChatUserListService implements ChatUserListRepository {
         },
         showBottomSheet: false,
       );
+      return null;
     }
   }
+
+  MessageType _messageTypeFromString(dynamic value) {
+    if (value == MessageType.image.name) return MessageType.image;
+    if (value == MessageType.video.name) return MessageType.video;
+    return MessageType.text;
+  }
+
+  String? _resolveLastMessage(dynamic text, MessageType type) {
+    if (text is String && text.trim().isNotEmpty) return text.trim();
+    if (type == MessageType.image) return 'Foto';
+    if (type == MessageType.video) return 'Video';
+    return null;
+  }
+
+  Set<String> _roomDeletedMessageIdsForUser(
+    Map<String, dynamic>? roomData,
+    String myUid,
+  ) {
+    final deletedMessagesFor = Map<String, dynamic>.from(
+      roomData?[ChatRoomField.deletedMessagesFor] ?? {},
+    );
+    final deletedMessagesById = Map<String, dynamic>.from(
+      deletedMessagesFor[myUid] ?? {},
+    );
+
+    return deletedMessagesById.entries
+        .where((entry) => entry.value == true)
+        .map((entry) => entry.key)
+        .toSet();
+  }
+
+  DateTime? _dateFromFirestore(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    return null;
+  }
+}
+
+class _LatestVisibleMessage {
+  const _LatestVisibleMessage({
+    required this.text,
+    required this.imageUrl,
+    required this.createdAt,
+    required this.type,
+  });
+
+  final String? text;
+  final String? imageUrl;
+  final DateTime? createdAt;
+  final MessageType type;
 }

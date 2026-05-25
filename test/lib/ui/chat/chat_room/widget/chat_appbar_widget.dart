@@ -143,6 +143,15 @@ class _FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Future<void> deleteMessageForMe({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> resetUnread({
     required String roomId,
     required String uid,
