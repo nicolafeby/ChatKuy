@@ -74,7 +74,13 @@ abstract class _ChatRoomStore with Store {
 
       final box = Hive.box<ChatMessageModel>('chat_messages');
 
-      list = box.values.where((m) => m.roomId == roomId).toList()
+      list = box.values
+          .where(
+            (m) =>
+                m.roomId == roomId &&
+                (currentUid == null || m.deletedFor[currentUid] != true),
+          )
+          .toList()
         ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
@@ -388,6 +394,103 @@ abstract class _ChatRoomStore with Store {
     if (message.type == MessageType.image) return 'Foto';
     if (message.type == MessageType.video) return 'Video';
     return null;
+  }
+
+  @action
+  Future<void> deleteMessageForMe(ChatMessageModel message) async {
+    if (roomId == null || currentUid == null) return;
+
+    clearReplyToMessage();
+    uploadProgressByMessageId.remove(message.id);
+
+    final localMediaPath = _localMediaPath(message);
+    if (localMediaPath != null) {
+      uploadProgressByLocalPath.remove(localMediaPath);
+    }
+
+    final isUploadingMessage =
+        uploadingMessages.any((item) => item.id == message.id);
+    uploadingMessages.removeWhere((item) => item.id == message.id);
+    if (isUploadingMessage) return;
+
+    try {
+      await chatRepository.deleteMessageForMe(
+        roomId: roomId!,
+        messageId: message.id,
+        uid: currentUid!,
+      );
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete chat message for current user failed',
+        context: {
+          'room_id': roomId,
+          'message_id': message.id,
+          'current_uid': currentUid,
+        },
+      );
+      rethrow;
+    }
+  }
+
+  @action
+  Future<void> deleteMessagesForMe(Iterable<ChatMessageModel> messages) async {
+    if (roomId == null || currentUid == null) return;
+
+    final uniqueMessages = <String, ChatMessageModel>{
+      for (final message in messages) message.id: message,
+    }.values.toList();
+
+    if (uniqueMessages.isEmpty) return;
+
+    clearReplyToMessage();
+
+    final uploadingMessageIds =
+        uploadingMessages.map((item) => item.id).toSet();
+
+    for (final message in uniqueMessages) {
+      uploadProgressByMessageId.remove(message.id);
+
+      final localMediaPath = _localMediaPath(message);
+      if (localMediaPath != null) {
+        uploadProgressByLocalPath.remove(localMediaPath);
+      }
+    }
+
+    uploadingMessages.removeWhere(
+      (item) => uniqueMessages.any((message) => message.id == item.id),
+    );
+
+    final persistedMessages = uniqueMessages
+        .where((message) => !uploadingMessageIds.contains(message.id))
+        .toList();
+
+    if (persistedMessages.isEmpty) return;
+
+    try {
+      await Future.wait(
+        persistedMessages.map(
+          (message) => chatRepository.deleteMessageForMe(
+            roomId: roomId!,
+            messageId: message.id,
+            uid: currentUid!,
+          ),
+        ),
+      );
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete selected chat messages for current user failed',
+        context: {
+          'room_id': roomId,
+          'message_count': persistedMessages.length,
+          'current_uid': currentUid,
+        },
+      );
+      rethrow;
+    }
   }
 
   void initReadMessagePeriodically() {

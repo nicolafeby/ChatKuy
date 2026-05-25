@@ -93,6 +93,10 @@ class ChatMessageModel {
   @HiveField(19)
   final MessageType? replyToType;
 
+  @HiveField(20)
+  @JsonKey(defaultValue: <String, bool>{})
+  final Map<String, bool> deletedFor;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -114,6 +118,7 @@ class ChatMessageModel {
     this.replyToSenderName,
     this.replyToText,
     this.replyToType,
+    this.deletedFor = const {},
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
@@ -127,6 +132,7 @@ class ChatMessageModel {
     String? imageUrl,
     String? localVideoPath,
     String? videoUrl,
+    Map<String, bool>? deletedFor,
   }) {
     return ChatMessageModel(
       id: id,
@@ -149,6 +155,7 @@ class ChatMessageModel {
       replyToSenderName: replyToSenderName,
       replyToText: replyToText,
       replyToType: replyToType,
+      deletedFor: deletedFor ?? this.deletedFor,
     );
   }
 

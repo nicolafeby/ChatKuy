@@ -132,7 +132,7 @@ service cloud.firestore {
           && request.resource.data.senderId == request.auth.uid;
 
         allow update: if isParentRoomParticipant(roomId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveredTo', 'readBy']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'deletedFor']);
 
         allow delete: if false;
       }

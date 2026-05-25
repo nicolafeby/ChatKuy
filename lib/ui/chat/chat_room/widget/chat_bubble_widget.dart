@@ -28,6 +28,10 @@ class ChatBubbleWidget extends StatefulWidget {
     this.isFirstInGroup = true,
     this.isSameGroup = false,
     this.onReply,
+    this.onDelete,
+    this.onSelect,
+    this.selectionMode = false,
+    this.isSelected = false,
     this.currentUid,
     this.targetName,
   });
@@ -37,6 +41,10 @@ class ChatBubbleWidget extends StatefulWidget {
   final VoidCallback? onRetry;
   final int? uploadProgress;
   final VoidCallback? onReply;
+  final VoidCallback? onDelete;
+  final VoidCallback? onSelect;
+  final bool selectionMode;
+  final bool isSelected;
   final String? currentUid;
   final String? targetName;
 
@@ -64,71 +72,159 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         : isDarkMode
             ? const Color(0xFF18232C)
             : Colors.grey.shade200;
-    final replyProgress = (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
+    final replyProgress =
+        (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
+    final selectedRowColor = AppColor.primaryColor.withValues(
+      alpha: isDarkMode ? 0.22 : 0.12,
+    );
 
-    return Padding(
-      padding: EdgeInsets.only(
-        top: widget.isSameGroup ? 1.5.h : 8.h,
-      ),
-      child: Row(
-        mainAxisAlignment: widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.8,
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.centerLeft,
-              children: [
-                Positioned(
-                  left: 12.w,
-                  child: Opacity(
-                    opacity: replyProgress,
-                    child: Transform.scale(
-                      scale: 0.82 + (replyProgress * 0.18),
-                      child: Container(
-                        width: 32.r,
-                        height: 32.r,
-                        decoration: BoxDecoration(
-                          color: AppColor.primaryColor.withValues(alpha: 0.14),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.reply,
-                          size: 18.r,
-                          color: AppColor.primaryColor,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      color: widget.isSelected ? selectedRowColor : Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: widget.isSameGroup ? 1.5.h : 8.h,
+          bottom: widget.isSelected ? 1.5.h : 0,
+        ),
+        child: Row(
+          mainAxisAlignment:
+              widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.8,
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  Positioned(
+                    left: 12.w,
+                    child: Opacity(
+                      opacity: replyProgress,
+                      child: Transform.scale(
+                        scale: 0.82 + (replyProgress * 0.18),
+                        child: Container(
+                          width: 32.r,
+                          height: 32.r,
+                          decoration: BoxDecoration(
+                            color:
+                                AppColor.primaryColor.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.reply,
+                            size: 18.r,
+                            color: AppColor.primaryColor,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                GestureDetector(
-                  onTap: widget.message.status == MessageStatus.failed ? widget.onRetry : null,
-                  onHorizontalDragStart: widget.onReply == null ? null : _onHorizontalDragStart,
-                  onHorizontalDragUpdate: widget.onReply == null ? null : _onHorizontalDragUpdate,
-                  onHorizontalDragEnd: widget.onReply == null ? null : _onHorizontalDragEnd,
-                  onHorizontalDragCancel: widget.onReply == null ? null : _resetDrag,
-                  child: AnimatedContainer(
-                    duration: _isDragging ? Duration.zero : const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    transform: Matrix4.translationValues(_dragOffset, 0, 0),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                  GestureDetector(
+                    onTap: widget.selectionMode
+                        ? widget.onSelect
+                        : widget.message.status == MessageStatus.failed
+                            ? widget.onRetry
+                            : null,
+                    onLongPress:
+                        widget.onSelect == null && widget.onDelete == null
+                            ? null
+                            : _handleLongPress,
+                    onHorizontalDragStart:
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _onHorizontalDragStart,
+                    onHorizontalDragUpdate:
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _onHorizontalDragUpdate,
+                    onHorizontalDragEnd:
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _onHorizontalDragEnd,
+                    onHorizontalDragCancel:
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _resetDrag,
+                    child: AnimatedContainer(
+                      duration: _isDragging
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      transform: Matrix4.translationValues(_dragOffset, 0, 0),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 8.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: bubbleColor,
+                        borderRadius: _bubbleRadius(),
+                      ),
+                      child: _buildContent(colorScheme, isDarkMode),
                     ),
-                    decoration: BoxDecoration(
-                      color: bubbleColor,
-                      borderRadius: _bubbleRadius(),
-                    ),
-                    child: _buildContent(colorScheme, isDarkMode),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  void _handleLongPress() {
+    HapticFeedback.selectionClick();
+
+    if (widget.onSelect != null) {
+      widget.onSelect?.call();
+      return;
+    }
+
+    _showMessageActions();
+  }
+
+  void _showMessageActions() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onReply != null)
+                ListTile(
+                  leading: Icon(
+                    Icons.reply,
+                    color: colorScheme.onSurface,
+                  ),
+                  title: const Text('Balas'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    widget.onReply?.call();
+                  },
+                ),
+              if (widget.onDelete != null)
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.redAccent,
+                  ),
+                  title: const Text('Hapus untuk saya'),
+                  textColor: Colors.redAccent,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    widget.onDelete?.call();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -140,7 +236,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    final nextOffset = (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
+    final nextOffset =
+        (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
     final nextIsReplyArmed = nextOffset >= _replyTriggerOffset;
 
     if (nextIsReplyArmed && !_isReplyArmed) {
@@ -154,7 +251,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragEnd(DragEndDetails details) {
-    final shouldReply = _dragOffset >= _replyTriggerOffset || (details.primaryVelocity ?? 0) > 480;
+    final shouldReply = _dragOffset >= _replyTriggerOffset ||
+        (details.primaryVelocity ?? 0) > 480;
 
     if (shouldReply) {
       widget.onReply?.call();
@@ -188,13 +286,19 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final type = widget.message.type;
     final imageUrl = widget.message.imageUrl;
     final localImagePath = widget.message.localImagePath;
-    final hasImage = type == MessageType.image && (localImagePath != null || imageUrl != null);
+    final hasImage = type == MessageType.image &&
+        (localImagePath != null || imageUrl != null);
     final videoUrl = widget.message.videoUrl;
     final localVideoPath = widget.message.localVideoPath;
     final playableLocalVideoPath = _existingFilePath(localVideoPath);
-    final hasVideo = type == MessageType.video && (playableLocalVideoPath != null || videoUrl != null);
-    final messageTextColor = widget.isMe ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1) : colorScheme.onSurface;
-    final metaTextColor = widget.isMe ? Colors.white.withValues(alpha: 0.68) : colorScheme.onSurfaceVariant;
+    final hasVideo = type == MessageType.video &&
+        (playableLocalVideoPath != null || videoUrl != null);
+    final messageTextColor = widget.isMe
+        ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
+        : colorScheme.onSurface;
+    final metaTextColor = widget.isMe
+        ? Colors.white.withValues(alpha: 0.68)
+        : colorScheme.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -311,7 +415,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: widget.isMe ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.06),
+        color: widget.isMe
+            ? Colors.white.withValues(alpha: 0.14)
+            : Colors.black.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Row(
@@ -368,7 +474,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   String _replySenderName() {
-    if (widget.message.replyToSenderId != null && widget.message.replyToSenderId == widget.currentUid) {
+    if (widget.message.replyToSenderId != null &&
+        widget.message.replyToSenderId == widget.currentUid) {
       return 'Anda';
     }
 

@@ -80,15 +80,22 @@ Future<void> chatServiceTest() async {
   // WATCH MESSAGES
   // ==========================================================
   test('watchMessages emits updated list after firestore snapshot', () async {
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(auth.currentUser).thenReturn(mockUser);
+    when(mockUser.uid).thenReturn('user-1');
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
 
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
 
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
 
-    when(messagesCollection.orderBy(MessageField.createdAtClient)).thenReturn(messageQuery);
+    when(messagesCollection.orderBy(MessageField.createdAtClient))
+        .thenReturn(messageQuery);
 
-    when(messageQuery.snapshots(includeMetadataChanges: true)).thenAnswer((_) => Stream.value(messageQuerySnapshot));
+    when(messageQuery.snapshots(includeMetadataChanges: true))
+        .thenAnswer((_) => Stream.value(messageQuerySnapshot));
 
     when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
 
@@ -114,6 +121,38 @@ Future<void> chatServiceTest() async {
     expect(result.first.text, 'Hello');
   });
 
+  test('watchMessages hides messages deleted for current user only', () async {
+    when(auth.currentUser).thenReturn(mockUser);
+    when(mockUser.uid).thenReturn('user-1');
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
+    when(messagesCollection.orderBy(MessageField.createdAtClient))
+        .thenReturn(messageQuery);
+    when(messageQuery.snapshots(includeMetadataChanges: true))
+        .thenAnswer((_) => Stream.value(messageQuerySnapshot));
+    when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
+    when(messageSnapshot.id).thenReturn('msg-1');
+    when(mockMetadata.hasPendingWrites).thenReturn(false);
+    when(messageSnapshot.metadata).thenReturn(mockMetadata);
+    when(messageSnapshot.data()).thenReturn({
+      MessageField.senderId: 'user-2',
+      MessageField.text: 'Secret',
+      MessageField.imageUrl: null,
+      MessageField.type: 'text',
+      MessageField.deliveredTo: {},
+      MessageField.readBy: {},
+      MessageField.deletedFor: {'user-1': true},
+    });
+
+    final result = await service.watchMessages(roomId: 'room-1').skip(1).first;
+
+    expect(result, isEmpty);
+  });
+
   // ==========================================================
   // SEND MESSAGE
   // ==========================================================
@@ -121,16 +160,19 @@ Future<void> chatServiceTest() async {
     when(auth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
 
     when(messagesCollection.doc()).thenReturn(messageDocRef);
     when(messageDocRef.id).thenReturn('msg-1');
 
     when(firestore.batch()).thenReturn(mockBatch);
 
-    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
     when(usersCollection.doc('user-1')).thenReturn(userDoc);
     when(userDoc.get()).thenAnswer((_) async => userSnapshot);
     when(userSnapshot.data()).thenReturn({
@@ -150,7 +192,8 @@ Future<void> chatServiceTest() async {
       type: MessageType.text,
     );
 
-    final localMessage = Hive.box<ChatMessageModel>('chat_messages').get('msg-1');
+    final localMessage =
+        Hive.box<ChatMessageModel>('chat_messages').get('msg-1');
 
     expect(localMessage, isNotNull);
     expect(localMessage!.roomId, 'room-1');
@@ -170,6 +213,7 @@ Future<void> chatServiceTest() async {
             data[MessageField.localImagePath] == null &&
             data[MessageField.deliveredTo] is Map<String, bool> &&
             data[MessageField.readBy] is Map<String, bool> &&
+            data[MessageField.deletedFor] is Map<String, bool> &&
             data.containsKey(MessageField.createdAt) &&
             data.containsKey(MessageField.createdAtClient);
       })),
@@ -196,11 +240,13 @@ Future<void> chatServiceTest() async {
   // MARK READ
   // ==========================================================
   test('markRead updates readBy on message document', () async {
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
 
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
 
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
 
     when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
 
@@ -214,6 +260,89 @@ Future<void> chatServiceTest() async {
 
     verify(messageDocRef.update({
       '${MessageField.readBy}.user-1': true,
+    })).called(1);
+  });
+
+  test('deleteMessageForMe marks message deleted for only that uid', () async {
+    final box = Hive.box<ChatMessageModel>('chat_messages');
+    await box.put(
+      'msg-1',
+      ChatMessageModel(
+        id: 'msg-1',
+        roomId: 'room-1',
+        senderId: 'user-2',
+        text: 'Hello',
+        createdAt: DateTime(2026, 1, 1),
+        createdAtClient: DateTime(2026, 1, 1),
+        deliveredTo: {},
+        readBy: {},
+        status: MessageStatus.sent,
+        type: MessageType.text,
+      ),
+    );
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
+    when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
+    when(messageDocRef.update(any)).thenAnswer((_) async {});
+
+    await service.deleteMessageForMe(
+      roomId: 'room-1',
+      messageId: 'msg-1',
+      uid: 'user-1',
+    );
+
+    expect(box.get('msg-1')!.deletedFor['user-1'], isTrue);
+    verify(messageDocRef.update({
+      '${MessageField.deletedFor}.user-1': true,
+    })).called(1);
+  });
+
+  test(
+      'deleteMessageForMe falls back to room marker when message update is denied',
+      () async {
+    final box = Hive.box<ChatMessageModel>('chat_messages');
+    await box.put(
+      'msg-1',
+      ChatMessageModel(
+        id: 'msg-1',
+        roomId: 'room-1',
+        senderId: 'user-2',
+        text: 'Hello',
+        createdAt: DateTime(2026, 1, 1),
+        createdAtClient: DateTime(2026, 1, 1),
+        deliveredTo: {},
+        readBy: {},
+        status: MessageStatus.sent,
+        type: MessageType.text,
+      ),
+    );
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
+    when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
+    when(messageDocRef.update(any)).thenThrow(
+      FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
+      ),
+    );
+    when(roomDoc.update(any)).thenAnswer((_) async {});
+
+    await service.deleteMessageForMe(
+      roomId: 'room-1',
+      messageId: 'msg-1',
+      uid: 'user-1',
+    );
+
+    verify(roomDoc.update({
+      '${ChatRoomField.deletedMessagesFor}.user-1.msg-1': true,
     })).called(1);
   });
 }
