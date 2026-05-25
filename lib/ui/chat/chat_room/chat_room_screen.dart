@@ -465,6 +465,7 @@ class _ReplyPreviewBar extends StatelessWidget {
     if (text != null && text.isNotEmpty) return text;
     if (message.type == MessageType.image) return 'Foto';
     if (message.type == MessageType.video) return 'Video';
+    if (message.type == MessageType.call) return 'Panggilan';
     return 'Pesan';
   }
 }

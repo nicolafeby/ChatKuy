@@ -680,13 +680,10 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (callId is! String || callId.isEmpty) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId)
-          .update({
-        CallField.status: CallStatus.declined,
-        CallField.endedAt: FieldValue.serverTimestamp(),
-      });
+      await _finishRemoteCall(
+        callId: callId,
+        status: CallStatus.declined,
+      );
     } finally {
       await _finishCallKitCall(callId);
     }
@@ -697,16 +694,95 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (callId is! String || callId.isEmpty) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId)
-          .update({
-        CallField.status: CallStatus.ended,
-        CallField.endedAt: FieldValue.serverTimestamp(),
-      });
+      await _finishRemoteCall(
+        callId: callId,
+        status: CallStatus.ended,
+      );
     } finally {
       await _finishCallKitCall(callId);
     }
+  }
+
+  static Future<void> _finishRemoteCall({
+    required String callId,
+    required String status,
+  }) async {
+    final firestore = FirebaseFirestore.instance;
+    final callRef = firestore.collection(FirebaseCollections.calls).doc(callId);
+    final callSnap = await callRef.get();
+    final callData = callSnap.data();
+
+    if (callData == null) {
+      await callRef.update({
+        CallField.status: status,
+        CallField.endedAt: FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    final roomId = callData[CallField.roomId] as String?;
+    final callType = callData[CallField.type] as String? ?? 'voice';
+    final durationSeconds =
+        _callDurationSeconds(callData[CallField.answeredAt]);
+    final text = _callMessageText(
+      status,
+      callType,
+      durationSeconds: durationSeconds,
+    );
+    final batch = firestore.batch();
+
+    batch.update(callRef, {
+      CallField.status: status,
+      CallField.endedAt: FieldValue.serverTimestamp(),
+    });
+
+    if (roomId != null && roomId.isNotEmpty) {
+      final chatRoomRef =
+          firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
+      final messageRef =
+          chatRoomRef.collection(FirestoreCollection.messages).doc(callId);
+
+      batch.set(
+        messageRef,
+        {
+          MessageField.text: text,
+          MessageField.callStatus: status,
+          MessageField.callType: callType,
+          MessageField.callDurationSeconds: durationSeconds,
+        },
+        SetOptions(merge: true),
+      );
+
+      batch.update(chatRoomRef, {
+        ChatRoomField.lastMessage: text,
+        ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
+        ChatRoomField.lastSenderId: callData[CallField.callerId],
+        ChatRoomField.type: 'call',
+      });
+    }
+
+    await batch.commit();
+  }
+
+  static int _callDurationSeconds(dynamic answeredAt) {
+    if (answeredAt is! Timestamp) return 0;
+    final duration = DateTime.now().difference(answeredAt.toDate()).inSeconds;
+    return duration < 0 ? 0 : duration;
+  }
+
+  static String _callMessageText(
+    String status,
+    String callType, {
+    int durationSeconds = 0,
+  }) {
+    final label = callType == 'video' ? 'Panggilan video' : 'Panggilan suara';
+    if (status == CallStatus.declined) return '$label ditolak';
+    if (status == CallStatus.missed) return '$label tak terjawab';
+    if (status == CallStatus.calling || status == CallStatus.ringing) {
+      return '$label berlangsung';
+    }
+    if (durationSeconds > 0) return '$label selesai';
+    return '$label berakhir';
   }
 
   static Future<void> _finishCallKitCall(String callId) async {

@@ -57,6 +57,21 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants']);
     }
 
+    function isUpdatingCallMessage() {
+      return resource.data.type == 'call'
+        && request.resource.data.type == 'call'
+        && resource.data.callId == request.resource.data.callId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'text',
+          'callStatus',
+          'callType',
+          'callDurationSeconds',
+          'deliveredTo',
+          'readBy',
+          'deletedFor'
+        ]);
+    }
+
     match /users/{uid} {
       // Public read is kept for the current username-login flow.
       // Move public fields to a separate profile collection before tightening this.
@@ -132,14 +147,19 @@ service cloud.firestore {
           && request.resource.data.senderId == request.auth.uid;
 
         allow update: if isParentRoomParticipant(roomId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'deletedFor']);
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'deletedFor']) ||
+            isUpdatingCallMessage()
+          );
 
         allow delete: if false;
       }
     }
 
     match /calls/{callId} {
-      allow read: if isCallParticipant();
+      allow get: if isCallParticipant();
+
+      allow list: if signedIn();
 
       allow create: if isCreatingCallAsParticipant();
 

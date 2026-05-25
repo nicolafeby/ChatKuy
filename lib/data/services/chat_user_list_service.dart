@@ -200,6 +200,7 @@ class ChatUserListService implements ChatUserListRepository {
   MessageType _messageTypeFromString(dynamic value) {
     if (value == MessageType.image.name) return MessageType.image;
     if (value == MessageType.video.name) return MessageType.video;
+    if (value == MessageType.call.name) return MessageType.call;
     return MessageType.text;
   }
 
@@ -207,6 +208,7 @@ class ChatUserListService implements ChatUserListRepository {
     if (text is String && text.trim().isNotEmpty) return text.trim();
     if (type == MessageType.image) return 'Foto';
     if (type == MessageType.video) return 'Video';
+    if (type == MessageType.call) return 'Panggilan';
     return null;
   }
 
