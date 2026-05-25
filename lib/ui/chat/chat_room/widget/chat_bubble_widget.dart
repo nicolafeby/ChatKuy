@@ -48,8 +48,8 @@ class ChatBubbleWidget extends StatefulWidget {
 }
 
 class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
-  static const double _maxDragOffset = -72;
-  static const double _replyTriggerOffset = -46;
+  static const double _maxDragOffset = 72;
+  static const double _replyTriggerOffset = 46;
 
   double _dragOffset = 0;
   bool _isDragging = false;
@@ -64,16 +64,14 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         : isDarkMode
             ? const Color(0xFF18232C)
             : Colors.grey.shade200;
-    final replyProgress =
-        (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
+    final replyProgress = (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
 
     return Padding(
       padding: EdgeInsets.only(
         top: widget.isSameGroup ? 1.5.h : 8.h,
       ),
       child: Row(
-        mainAxisAlignment:
-            widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
@@ -81,10 +79,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             ),
             child: Stack(
               clipBehavior: Clip.none,
-              alignment: Alignment.centerRight,
+              alignment: Alignment.centerLeft,
               children: [
                 Positioned(
-                  right: 12.w,
+                  left: 12.w,
                   child: Opacity(
                     opacity: replyProgress,
                     child: Transform.scale(
@@ -106,21 +104,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                   ),
                 ),
                 GestureDetector(
-                  onTap: widget.message.status == MessageStatus.failed
-                      ? widget.onRetry
-                      : null,
-                  onHorizontalDragStart:
-                      widget.onReply == null ? null : _onHorizontalDragStart,
-                  onHorizontalDragUpdate:
-                      widget.onReply == null ? null : _onHorizontalDragUpdate,
-                  onHorizontalDragEnd:
-                      widget.onReply == null ? null : _onHorizontalDragEnd,
-                  onHorizontalDragCancel:
-                      widget.onReply == null ? null : _resetDrag,
+                  onTap: widget.message.status == MessageStatus.failed ? widget.onRetry : null,
+                  onHorizontalDragStart: widget.onReply == null ? null : _onHorizontalDragStart,
+                  onHorizontalDragUpdate: widget.onReply == null ? null : _onHorizontalDragUpdate,
+                  onHorizontalDragEnd: widget.onReply == null ? null : _onHorizontalDragEnd,
+                  onHorizontalDragCancel: widget.onReply == null ? null : _resetDrag,
                   child: AnimatedContainer(
-                    duration: _isDragging
-                        ? Duration.zero
-                        : const Duration(milliseconds: 180),
+                    duration: _isDragging ? Duration.zero : const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
                     transform: Matrix4.translationValues(_dragOffset, 0, 0),
                     padding: EdgeInsets.symmetric(
@@ -150,9 +140,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    final nextOffset =
-        (_dragOffset + details.delta.dx).clamp(_maxDragOffset, 0.0).toDouble();
-    final nextIsReplyArmed = nextOffset <= _replyTriggerOffset;
+    final nextOffset = (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
+    final nextIsReplyArmed = nextOffset >= _replyTriggerOffset;
 
     if (nextIsReplyArmed && !_isReplyArmed) {
       HapticFeedback.selectionClick();
@@ -165,8 +154,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragEnd(DragEndDetails details) {
-    final shouldReply = _dragOffset <= _replyTriggerOffset ||
-        (details.primaryVelocity ?? 0) < -480;
+    final shouldReply = _dragOffset >= _replyTriggerOffset || (details.primaryVelocity ?? 0) > 480;
 
     if (shouldReply) {
       widget.onReply?.call();
@@ -200,19 +188,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final type = widget.message.type;
     final imageUrl = widget.message.imageUrl;
     final localImagePath = widget.message.localImagePath;
-    final hasImage = type == MessageType.image &&
-        (localImagePath != null || imageUrl != null);
+    final hasImage = type == MessageType.image && (localImagePath != null || imageUrl != null);
     final videoUrl = widget.message.videoUrl;
     final localVideoPath = widget.message.localVideoPath;
     final playableLocalVideoPath = _existingFilePath(localVideoPath);
-    final hasVideo = type == MessageType.video &&
-        (playableLocalVideoPath != null || videoUrl != null);
-    final messageTextColor = widget.isMe
-        ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
-        : colorScheme.onSurface;
-    final metaTextColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.68)
-        : colorScheme.onSurfaceVariant;
+    final hasVideo = type == MessageType.video && (playableLocalVideoPath != null || videoUrl != null);
+    final messageTextColor = widget.isMe ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1) : colorScheme.onSurface;
+    final metaTextColor = widget.isMe ? Colors.white.withValues(alpha: 0.68) : colorScheme.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -329,9 +311,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: widget.isMe
-            ? Colors.white.withValues(alpha: 0.14)
-            : Colors.black.withValues(alpha: 0.06),
+        color: widget.isMe ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Row(
@@ -388,8 +368,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   String _replySenderName() {
-    if (widget.message.replyToSenderId != null &&
-        widget.message.replyToSenderId == widget.currentUid) {
+    if (widget.message.replyToSenderId != null && widget.message.replyToSenderId == widget.currentUid) {
       return 'Anda';
     }
 
