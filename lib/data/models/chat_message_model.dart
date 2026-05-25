@@ -78,6 +78,21 @@ class ChatMessageModel {
   @HiveField(14)
   final String? localVideoPath;
 
+  @HiveField(15)
+  final String? replyToMessageId;
+
+  @HiveField(16)
+  final String? replyToSenderId;
+
+  @HiveField(17)
+  final String? replyToSenderName;
+
+  @HiveField(18)
+  final String? replyToText;
+
+  @HiveField(19)
+  final MessageType? replyToType;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -94,6 +109,11 @@ class ChatMessageModel {
     this.localImagePath,
     this.videoUrl,
     this.localVideoPath,
+    this.replyToMessageId,
+    this.replyToSenderId,
+    this.replyToSenderName,
+    this.replyToText,
+    this.replyToType,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
@@ -124,6 +144,11 @@ class ChatMessageModel {
       localImagePath: localImagePath ?? this.localImagePath,
       videoUrl: videoUrl ?? this.videoUrl,
       localVideoPath: localVideoPath ?? this.localVideoPath,
+      replyToMessageId: replyToMessageId,
+      replyToSenderId: replyToSenderId,
+      replyToSenderName: replyToSenderName,
+      replyToText: replyToText,
+      replyToType: replyToType,
     );
   }
 
