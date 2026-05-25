@@ -30,6 +30,7 @@ abstract class _ChatRoomStore with Store {
 
   ObservableStream<List<ChatMessageModel>>? _serverMessages;
   ObservableStream<UserModel>? targetUser;
+  ObservableStream<UserModel>? currentUser;
   ObservableStream<Map<String, bool>>? typing;
   final Observable<ChatMessageModel?> replyToMessage =
       Observable<ChatMessageModel?>(null);
@@ -143,6 +144,7 @@ abstract class _ChatRoomStore with Store {
         chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
+    currentUser = userRepository.watchUser(currentUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
 
     _messageStatusDisposer?.call();
@@ -710,6 +712,7 @@ abstract class _ChatRoomStore with Store {
     roomId = null;
     _serverMessages = null;
     targetUser = null;
+    currentUser = null;
     typing = null;
     replyToMessage.value = null;
     searchQuery = '';

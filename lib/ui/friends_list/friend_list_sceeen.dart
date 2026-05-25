@@ -6,6 +6,7 @@ import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/friend_list_store.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
+import 'package:chatkuy/ui/profile/user_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -111,6 +112,10 @@ class _FriendListScreenState extends State<FriendListScreen>
                   final user = friend.user;
 
                   return ListTile(
+                    onTap: () => Get.toNamed(
+                      AppRouteName.USER_PROFILE_SCREEN,
+                      arguments: UserProfileArgument(targetUser: user),
+                    ),
                     leading: ProfileAvatarWidget(
                         base64Image: user.photoUrl, size: 46),
                     title: Text(

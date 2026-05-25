@@ -17,6 +17,7 @@ import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
+import 'package:chatkuy/ui/profile/user_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -109,6 +110,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
         final targetUserFallback = argument?.targetUser;
         final user = store.targetUser?.value ?? targetUserFallback;
+        final currentUser = store.currentUser?.value;
+        final canViewPresence = currentUser?.isOnlineStatusVisible == true &&
+            user?.isOnlineStatusVisible != false;
 
         final messages = _isSearching ? store.visibleMessages : store.messages;
         _scheduleTargetMessageScroll(messages);
@@ -130,6 +134,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+
             if (_selectedMessageIds.isNotEmpty) {
               _clearSelectedMessages();
             } else if (_isSearching) {
@@ -139,7 +145,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
             } else if (ChatFieldV2.isEmojiShowing) {
               ChatFieldV2.setEmojiShowing(false);
             } else {
-              Get.back();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                Get.back();
+              });
             }
           },
           child: Scaffold(
@@ -151,8 +160,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     : ChatAppbarWidget(
                         store: store,
                         userData: user ?? dummy,
-                        isTyping: isTargetTyping(),
+                        isTyping: canViewPresence && isTargetTyping(),
+                        canViewPresence: canViewPresence,
                         onSearchTap: _showSearch,
+                        onProfileTap: user == null || targetId == null
+                            ? null
+                            : () => Get.toNamed(
+                                  AppRouteName.USER_PROFILE_SCREEN,
+                                  arguments: UserProfileArgument(
+                                    targetUser: user,
+                                    roomId: argument!.roomId,
+                                    currentUid: argument!.currentUid,
+                                  ),
+                                ),
                         onCallTap: user == null || targetId == null
                             ? null
                             : () =>

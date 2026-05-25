@@ -7,6 +7,7 @@ import 'package:chatkuy/ui/add_friend/add_friend_screen.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_attach_image_screen.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_attach_video_screen.dart';
 import 'package:chatkuy/ui/friend_request_list/friend_request_list_screen.dart';
+import 'package:chatkuy/ui/profile/user_profile_screen.dart';
 import 'package:get/get_navigation/get_navigation.dart';
 
 class AppRoute {
@@ -51,6 +52,10 @@ class AppRoute {
     GetPage(
       name: AppRouteName.CHANGE_PASSWORD_SCREEN,
       page: () => ChangePasswordScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.USER_PROFILE_SCREEN,
+      page: () => UserProfileScreen(),
     ),
     GetPage(
       name: AppRouteName.IMAGE_VIEWER_SCREEN,

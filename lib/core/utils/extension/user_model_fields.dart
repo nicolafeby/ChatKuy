@@ -10,4 +10,7 @@ extension UserModelFields on UserModel {
   static const isEmailVerified = 'isEmailVerified';
   static const isOnline = 'isOnline';
   static const lastOnlineAt = 'lastOnlineAt';
+  static const isEmailVisible = 'isEmailVisible';
+  static const isBirthDateVisible = 'isBirthDateVisible';
+  static const isOnlineStatusVisible = 'isOnlineStatusVisible';
 }

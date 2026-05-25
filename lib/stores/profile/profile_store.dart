@@ -10,6 +10,7 @@ import 'package:chatkuy/data/repositories/hive_encryption_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
+import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
@@ -28,12 +29,14 @@ abstract class _ProfileStore with Store {
     required this.presenceRepository,
     required this.authRepository,
     required this.storageRepository,
-  }) {
+    UserRepository? userRepository,
+  }) : userRepository = userRepository ?? getIt<UserRepository>() {
     getAppVersion();
   }
   final PresenceRepository presenceRepository;
   final AuthRepository authRepository;
   final SecureStorageRepository storageRepository;
+  final UserRepository userRepository;
 
   @observable
   String? appVersion;
@@ -189,7 +192,8 @@ abstract class _ProfileStore with Store {
     int years = now.year - birthDate.year;
 
     // Adjust if the birthday hasn't occurred yet this year
-    if (now.month < birthDate.month || (now.month == birthDate.month && now.day < birthDate.day)) {
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
       years--;
     }
     return years;
@@ -209,7 +213,8 @@ abstract class _ProfileStore with Store {
     error.username = null;
 
     try {
-      final available = await authRepository.checkUsernameAvailable(username ?? '');
+      final available =
+          await authRepository.checkUsernameAvailable(username ?? '');
 
       isUsernameAvailable = available;
 
@@ -258,7 +263,8 @@ abstract class _ProfileStore with Store {
       final id = await storageRepository.getUserId();
 
       if (id == null || editProfileData == null) return;
-      final future = authRepository.editUserProfile(uid: id, data: editProfileData!);
+      final future =
+          authRepository.editUserProfile(uid: id, data: editProfileData!);
 
       editProfileFuture = ObservableFuture(future);
       await editProfileFuture;
@@ -477,8 +483,49 @@ abstract class _ProfileStore with Store {
     }
   }
 
+  @action
+  Future<void> updateEmailVisibility(bool value) async {
+    await _updatePrivacy(isEmailVisible: value);
+  }
+
+  @action
+  Future<void> updateBirthDateVisibility(bool value) async {
+    await _updatePrivacy(isBirthDateVisible: value);
+  }
+
+  @action
+  Future<void> updateOnlineStatusVisibility(bool value) async {
+    await _updatePrivacy(isOnlineStatusVisible: value);
+
+    if (value) {
+      await presenceRepository.setOnline();
+    } else {
+      await presenceRepository.setOffline();
+    }
+  }
+
+  Future<void> _updatePrivacy({
+    bool? isEmailVisible,
+    bool? isBirthDateVisible,
+    bool? isOnlineStatusVisible,
+  }) async {
+    final currentUser = user;
+    if (currentUser == null) return;
+
+    final updatedUser = currentUser.copyWith(
+      isEmailVisible: isEmailVisible,
+      isBirthDateVisible: isBirthDateVisible,
+      isOnlineStatusVisible: isOnlineStatusVisible,
+    );
+
+    final future = userRepository.updateUser(updatedUser);
+    userFuture = ObservableFuture(Future.value(updatedUser));
+    await future;
+  }
+
   @computed
-  bool get canChangeEmail => error.email == null && email != null && password != null;
+  bool get canChangeEmail =>
+      error.email == null && email != null && password != null;
 
   Future<bool> requestEmailChange() async {
     error.general = null;
@@ -591,10 +638,14 @@ abstract class _ProfileStore with Store {
   }
 
   @computed
-  bool get canSaveProfileChanged => !error.hasErrorForm && argument?.userData != editProfileData;
+  bool get canSaveProfileChanged =>
+      !error.hasErrorForm && argument?.userData != editProfileData;
 
   @computed
-  bool get canChangePassword => newPassword != currentPassword && currentPassword != null && newPassword != null;
+  bool get canChangePassword =>
+      newPassword != currentPassword &&
+      currentPassword != null &&
+      newPassword != null;
 }
 
 class ProfileErrorStore = _ProfileErrorStore with _$ProfileErrorStore;
