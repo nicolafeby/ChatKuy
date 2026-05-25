@@ -6,6 +6,7 @@ import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/routes/app_routes.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:chatkuy/ui/update/update_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -26,11 +27,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     InitialRouteArgument.call = initialCallArgument;
-    final fallbackInitialRoute = initialCallArgument == null
-        ? AppRouteName.BASE_SCREEN
-        : AppRouteName.CALL_SCREEN;
-    final shouldShowUpdate = initialUpdateInfo?.shouldShowUpdate == true;
-    if (shouldShowUpdate) {
+    final fallbackInitialRoute = initialCallArgument == null ? AppRouteName.BASE_SCREEN : AppRouteName.CALL_SCREEN;
+    var shouldShowUpdate = initialUpdateInfo?.shouldShowUpdate == true;
+
+    if (kDebugMode) {
+      shouldShowUpdate = false;
+    } else if (shouldShowUpdate) {
       InitialRouteArgument.appUpdate = AppUpdateScreenArgument(
         updateInfo: initialUpdateInfo!,
         nextRouteName: fallbackInitialRoute,
@@ -50,9 +52,7 @@ class MyApp extends StatelessWidget {
             themeMode: themeController.themeMode,
             title: AppStrings.appName,
             debugShowCheckedModeBanner: false,
-            initialRoute: shouldShowUpdate
-                ? AppRouteName.APP_UPDATE_SCREEN
-                : fallbackInitialRoute,
+            initialRoute: shouldShowUpdate ? AppRouteName.APP_UPDATE_SCREEN : fallbackInitialRoute,
             getPages: AppRoute.pages,
             home: screenUtilChild,
             builder: (_, getChild) => SafeArea(
