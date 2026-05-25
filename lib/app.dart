@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
             darkTheme: getDarkAppTheme(),
             themeMode: themeController.themeMode,
             title: AppStrings.appName,
-            debugShowCheckedModeBanner: false,
+            debugShowCheckedModeBanner: kDebugMode ? true : false,
             initialRoute: shouldShowUpdate ? AppRouteName.APP_UPDATE_SCREEN : fallbackInitialRoute,
             getPages: AppRoute.pages,
             home: screenUtilChild,
