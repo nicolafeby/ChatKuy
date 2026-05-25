@@ -138,17 +138,14 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage =
-                        await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 =
-                        await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id =
-                            await getIt<SecureStorageRepository>().getUserId();
+                        final id = await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -159,8 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message:
-                          'Kami tidak mendapatkan akses galeri untuk action ini',
+                      message: 'Kami tidak mendapatkan akses galeri untuk action ini',
                     ));
                   },
                 );
@@ -188,17 +184,14 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage =
-                        await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 =
-                        await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id =
-                            await getIt<SecureStorageRepository>().getUserId();
+                        final id = await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -209,8 +202,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message:
-                          'Kami tidak mendapatkan akses kamera untuk action ini',
+                      message: 'Kami tidak mendapatkan akses kamera untuk action ini',
                     ));
                   },
                 );
@@ -226,15 +218,13 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
+                  padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: () {
                   store.changeProfilePicture(imageUrl: null).then(
                     (value) async {
-                      final id =
-                          await getIt<SecureStorageRepository>().getUserId();
+                      final id = await getIt<SecureStorageRepository>().getUserId();
 
                       if (id == null) return;
                       return store.getUserProfile(id);
@@ -278,9 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 centerTitle: true,
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
-                    final percent = ((constraints.maxHeight - kToolbarHeight) /
-                            (260 - kToolbarHeight))
-                        .clamp(0.0, 1.0);
+                    final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
                     final gender = store.user?.gender;
 
                     return FlexibleSpaceBar(
@@ -313,9 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               children: [
                                 Container(
                                   padding: EdgeInsets.all(4.r),
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: colorScheme.surface),
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.surface),
                                   child: ProfileAvatarWidget(
                                     base64Image: store.user?.photoUrl,
                                     size: 80,
@@ -368,65 +354,6 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 child: Column(
                   children: [
                     Row(
-                      children: [
-                        Text(
-                          'Informasi Personal',
-                          style: TextStyle(fontSize: 18.sp),
-                        ),
-                        Spacer(),
-                        GestureDetector(
-                          onTap: () async {
-                            final userData = store.user;
-
-                            if (userData == null) return;
-                            Get.toNamed(
-                              AppRouteName.EDIT_PROFILE_SCREEN,
-                              arguments: EditProfileArgument(
-                                userData: EditProfileModel(
-                                  email: userData.email,
-                                  gender: userData.gender ?? Gender.secret,
-                                  name: userData.name,
-                                  username: userData.username ?? '',
-                                ),
-                              ),
-                            )?.then(
-                              (value) async {
-                                if (value != true) return;
-
-                                final id =
-                                    await getIt<SecureStorageRepository>()
-                                        .getUserId();
-
-                                if (id == null) return;
-                                store.getUserProfile(id);
-                                showSnackbar(
-                                    title: 'Sukses',
-                                    message: 'Berhasil Mengubah Profile');
-                              },
-                            );
-                          },
-                          child: Row(
-                            children: [
-                              Text(
-                                'Ubah',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: AppColor.primaryColor,
-                                ),
-                              ),
-                              4.horizontalSpace,
-                              Icon(
-                                Icons.edit_outlined,
-                                size: 16.r,
-                                color: AppColor.primaryColor,
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                    16.verticalSpace,
-                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         ProfilePreferencesWidget(
@@ -460,6 +387,61 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                       ],
                     ),
                     24.verticalSpace,
+                    Row(
+                      children: [
+                        Text(
+                          'Informasi Personal',
+                          style: TextStyle(fontSize: 18.sp),
+                        ),
+                        Spacer(),
+                        GestureDetector(
+                          onTap: () async {
+                            final userData = store.user;
+
+                            if (userData == null) return;
+                            Get.toNamed(
+                              AppRouteName.EDIT_PROFILE_SCREEN,
+                              arguments: EditProfileArgument(
+                                userData: EditProfileModel(
+                                  email: userData.email,
+                                  gender: userData.gender ?? Gender.secret,
+                                  name: userData.name,
+                                  username: userData.username ?? '',
+                                ),
+                              ),
+                            )?.then(
+                              (value) async {
+                                if (value != true) return;
+
+                                final id = await getIt<SecureStorageRepository>().getUserId();
+
+                                if (id == null) return;
+                                store.getUserProfile(id);
+                                showSnackbar(title: 'Sukses', message: 'Berhasil Mengubah Profile');
+                              },
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                'Ubah',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: AppColor.primaryColor,
+                                ),
+                              ),
+                              4.horizontalSpace,
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 16.r,
+                                color: AppColor.primaryColor,
+                              ),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                    16.verticalSpace,
                     ProfileInformationBoxWidget(
                       title: 'Jenis kelamin',
                       icon: Icon(
@@ -501,8 +483,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     TextButton(
                       onPressed: () {
                         store.logout(
-                          onSuccess: () =>
-                              Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
+                          onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
                         );
                       },
                       child: Text(

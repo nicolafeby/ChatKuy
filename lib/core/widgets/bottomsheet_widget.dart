@@ -27,6 +27,7 @@ class BottomsheetWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedErrorTicketId = errorTicketId;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return PopScope(
       canPop: !restricBackNative!,
@@ -34,7 +35,7 @@ class BottomsheetWidget extends StatelessWidget {
         width: double.infinity,
         padding: EdgeInsets.all(20.r),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         child: Column(
@@ -49,13 +50,21 @@ class BottomsheetWidget extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
             16.verticalSpace,
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w300),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w300,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             Visibility(
               visible: resolvedErrorTicketId != null,
@@ -66,9 +75,10 @@ class BottomsheetWidget extends StatelessWidget {
                     padding:
                         EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                     decoration: BoxDecoration(
-                      color: AppColor.whiteBlue,
+                      color:
+                          colorScheme.primaryContainer.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: AppColor.primaryDisabled),
+                      border: Border.all(color: colorScheme.outlineVariant),
                     ),
                     child: Row(
                       children: [
@@ -80,7 +90,7 @@ class BottomsheetWidget extends StatelessWidget {
                                 'ID tiket error',
                                 style: TextStyle(
                                   fontSize: 12.sp,
-                                  color: Colors.black54,
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               4.verticalSpace,
@@ -89,6 +99,7 @@ class BottomsheetWidget extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -118,7 +129,10 @@ class BottomsheetWidget extends StatelessWidget {
                   Text(
                     'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12.sp, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

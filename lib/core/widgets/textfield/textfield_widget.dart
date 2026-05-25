@@ -25,6 +25,8 @@ class TextfieldWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return TextFormField(
       onChanged: onChanged,
       textInputAction: textInputAction,
@@ -34,10 +36,12 @@ class TextfieldWidget extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         errorText: errorText,
+        errorStyle: TextStyle(color: colorScheme.error),
         floatingLabelStyle: TextStyle(
-          color: errorText != null ? Colors.red : AppColor.primaryColor,
+          color: errorText != null ? colorScheme.error : AppColor.primaryColor,
         ),
-        floatingLabelBehavior: floatingLabelBehavior ?? FloatingLabelBehavior.auto,
+        floatingLabelBehavior:
+            floatingLabelBehavior ?? FloatingLabelBehavior.auto,
         hintText: hintText,
       ),
     );

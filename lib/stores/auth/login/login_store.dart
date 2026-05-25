@@ -86,12 +86,15 @@ abstract class _LoginStore with Store {
           await storageService.setFcmToken(token);
           await service.updateFcmToken(token: token, currentUid: resp.id);
         }
-      } catch (e, stackTrace) {
-        AppErrorLogger.recordError(
-          e,
-          stackTrace,
-          reason: 'Update FCM token after login failed',
-          context: {'uid': resp.id},
+      } catch (e) {
+        await AppErrorLogger.logMessage(
+          'Update FCM token after login skipped',
+          context: {
+            'uid': resp.id,
+            'error_type': e.runtimeType.toString(),
+            if (e is FirebaseException) 'firebase_code': e.code,
+            if (e is FirebaseException) 'firebase_plugin': e.plugin,
+          },
         );
       }
 

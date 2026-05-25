@@ -17,11 +17,13 @@ class ErrorBottomsheetWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: SafeArea(
@@ -40,21 +42,29 @@ class ErrorBottomsheetWidget extends StatelessWidget {
             Text(
               'Ooops!! Terjadi Kesalahan',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
             12.verticalSpace,
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w300),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w300,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             20.verticalSpace,
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
               decoration: BoxDecoration(
-                color: AppColor.whiteBlue,
+                color: colorScheme.primaryContainer.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: AppColor.primaryDisabled),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Row(
                 children: [
@@ -66,7 +76,7 @@ class ErrorBottomsheetWidget extends StatelessWidget {
                           'ID tiket error',
                           style: TextStyle(
                             fontSize: 12.sp,
-                            color: Colors.black54,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                         4.verticalSpace,
@@ -75,6 +85,7 @@ class ErrorBottomsheetWidget extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 13.sp,
                             fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -102,7 +113,10 @@ class ErrorBottomsheetWidget extends StatelessWidget {
             Text(
               'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.sp, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             24.verticalSpace,
             ButtonWidget(

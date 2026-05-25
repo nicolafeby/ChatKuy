@@ -192,7 +192,8 @@ abstract class _ProfileStore with Store {
     error.username = null;
 
     try {
-      final available = await authRepository.checkUsernameAvailable(username ?? '');
+      final available =
+          await authRepository.checkUsernameAvailable(username ?? '');
 
       isUsernameAvailable = available;
 
@@ -241,7 +242,8 @@ abstract class _ProfileStore with Store {
       final id = await storageRepository.getUserId();
 
       if (id == null || editProfileData == null) return;
-      final future = authRepository.editUserProfile(uid: id, data: editProfileData!);
+      final future =
+          authRepository.editUserProfile(uid: id, data: editProfileData!);
 
       editProfileFuture = ObservableFuture(future);
       await editProfileFuture;
@@ -271,13 +273,46 @@ abstract class _ProfileStore with Store {
 
   @action
   void validateEmail(String value) {
-    email = value;
-    if (!GetUtils.isEmail(email!)) {
+    email = value.trim().toLowerCase();
+    final validatedEmail = email;
+
+    if (email?.isEmpty == true) {
+      error.email = 'Email tidak boleh kosong';
+    } else if (!GetUtils.isEmail(email!)) {
       error.email = 'Format email tidak valid';
-    } else if (email == currentEmail) {
+    } else if (email == currentEmail?.trim().toLowerCase()) {
       error.email = 'Email tidak boleh sama';
     } else {
       error.email = null;
+      checkEmailAvailability(validatedEmail ?? '');
+    }
+  }
+
+  @action
+  Future<void> checkEmailAvailability(String value) async {
+    try {
+      final currentUid = await storageRepository.getUserId();
+      final available = await authRepository.checkEmailAvailable(
+        email: value,
+        currentUid: currentUid,
+      );
+
+      if (email != value) return;
+
+      if (!available) {
+        error.email = 'Email sudah digunakan';
+      }
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Check email availability failed',
+        context: {'email_length': value.length},
+      );
+
+      if (email == value) {
+        error.email = 'Gagal mengecek email';
+      }
     }
   }
 
@@ -428,13 +463,128 @@ abstract class _ProfileStore with Store {
   }
 
   @computed
-  bool get canChangeEmail => error.email == null && password != null;
+  bool get canChangeEmail =>
+      error.email == null && email != null && password != null;
+
+  Future<bool> requestEmailChange() async {
+    error.general = null;
+
+    if (currentEmail == null || email == null || password == null) {
+      return false;
+    }
+
+    try {
+      await validateEmailForSubmit(email!);
+      if (error.email != null) return false;
+
+      await authRepository.reauthenticate(
+        email: currentEmail!,
+        password: password!,
+      );
+      await authRepository.sendVerificationForChange(newEmail: email!);
+      return true;
+    } on FirebaseAuthException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Request email change failed with FirebaseAuthException',
+        context: {'auth_code': e.code},
+      );
+      if (e.code == 'email-already-in-use') {
+        error.email = 'Email sudah digunakan';
+      } else {
+        _handleFirebaseAuthError(e);
+      }
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Request email change failed with FirebaseException',
+      );
+      error.general = e;
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Request email change failed with unknown error',
+      );
+      error.general = FirebaseException(
+        plugin: e.toString(),
+        message: 'Gagal mengganti email',
+      );
+    }
+
+    return false;
+  }
+
+  Future<void> validateEmailForSubmit(String value) async {
+    email = value.trim().toLowerCase();
+
+    if (email?.isEmpty == true) {
+      error.email = 'Email tidak boleh kosong';
+    } else if (!GetUtils.isEmail(email!)) {
+      error.email = 'Format email tidak valid';
+    } else if (email == currentEmail?.trim().toLowerCase()) {
+      error.email = 'Email tidak boleh sama';
+    } else {
+      error.email = null;
+      await checkEmailAvailability(email ?? '');
+    }
+  }
+
+  Future<bool> syncChangedEmail(String expectedEmail) async {
+    error.general = null;
+
+    try {
+      return await authRepository.syncChangedEmail(
+        expectedEmail: expectedEmail,
+      );
+    } on FirebaseAuthException catch (e, stackTrace) {
+      if (e.code == 'user-token-expired') {
+        error.general = FirebaseException(
+          plugin: e.plugin,
+          code: e.code,
+          message: 'Email berhasil diverifikasi. Silakan login ulang.',
+        );
+        return false;
+      }
+
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Sync changed email failed with FirebaseAuthException',
+        context: {'auth_code': e.code},
+      );
+      error.general = e;
+      return false;
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Sync changed email failed with FirebaseException',
+      );
+      error.general = e;
+      return false;
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Sync changed email failed with unknown error',
+      );
+      error.general = FirebaseException(plugin: e.toString());
+      return false;
+    }
+  }
 
   @computed
-  bool get canSaveProfileChanged => !error.hasErrorForm && argument?.userData != editProfileData;
+  bool get canSaveProfileChanged =>
+      !error.hasErrorForm && argument?.userData != editProfileData;
 
   @computed
-  bool get canChangePassword => newPassword != currentPassword && currentPassword != null && newPassword != null;
+  bool get canChangePassword =>
+      newPassword != currentPassword &&
+      currentPassword != null &&
+      newPassword != null;
 }
 
 class ProfileErrorStore = _ProfileErrorStore with _$ProfileErrorStore;
