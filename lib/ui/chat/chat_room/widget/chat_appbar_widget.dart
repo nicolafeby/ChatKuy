@@ -11,6 +11,7 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final bool isTyping;
   final VoidCallback? onCallTap;
   final VoidCallback? onVideoCallTap;
+  final VoidCallback? onSearchTap;
   const ChatAppbarWidget({
     super.key,
     required this.store,
@@ -18,6 +19,7 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     required this.isTyping,
     this.onCallTap,
     this.onVideoCallTap,
+    this.onSearchTap,
   });
 
   @override
@@ -34,6 +36,11 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        IconButton(
+          onPressed: onSearchTap,
+          icon: const Icon(Icons.search),
+          tooltip: 'Cari pesan',
+        ),
         IconButton(
           onPressed: onVideoCallTap,
           icon: const Icon(Icons.videocam),
