@@ -20,16 +20,27 @@ abstract class AuthRepository {
 
   Future<bool> checkUsernameAvailable(String username);
 
+  Future<bool> checkEmailAvailable({
+    required String email,
+    String? currentUid,
+  });
+
   Future<void> logout();
 
-  Future<void> updateFcmToken({required String token, required String currentUid});
+  Future<void> updateFcmToken(
+      {required String token, required String currentUid});
 
   Future<UserModel> getUserProfile(String uid);
 
-  Future<void> editUserProfile({required String uid, required EditProfileModel data});
+  Future<void> editUserProfile(
+      {required String uid, required EditProfileModel data});
 
   Future<void> sendVerificationForChange({
     required String newEmail,
+  });
+
+  Future<bool> syncChangedEmail({
+    required String expectedEmail,
   });
 
   /// Reload user setelah verifikasi berhasil

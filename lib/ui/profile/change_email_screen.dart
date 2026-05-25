@@ -3,11 +3,13 @@ import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/core/widgets/textfield/textfield_widget.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/ui/auth/verify/verify_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -73,13 +75,50 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
           Expanded(
             flex: 0,
             child: ButtonWidget(
-              onPressed: store.canChangeEmail ? () => showComingSoonSnackbar() : null,
+              onPressed: store.canChangeEmail ? _requestEmailChange : null,
               title: 'Konfirmasi',
             ),
           ),
         ],
       ).paddingAll(20.r),
     );
+  }
+
+  Future<void> _requestEmailChange() async {
+    showLoading(text: 'Mengirim link verifikasi...');
+    final requested = await store.requestEmailChange();
+    dismissLoading();
+
+    if (!requested) {
+      final error = store.error.general;
+      if (error != null) {
+        showSnackbar(
+          title: 'Gagal mengganti email',
+          message: error.message,
+        );
+      }
+      return;
+    }
+
+    final verified = await Get.toNamed(
+      AppRouteName.VERIFY_SCREEN,
+      arguments: VerifyArgument(
+        email: store.email ?? '',
+        type: VerificationType.editEmail,
+      ),
+    );
+
+    if (verified == true) {
+      Get.back(result: true);
+    }
+
+    final error = store.error.general;
+    if (error != null) {
+      showSnackbar(
+        title: 'Gagal mengganti email',
+        message: error.message,
+      );
+    }
   }
 
   @override

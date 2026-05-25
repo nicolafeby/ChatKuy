@@ -55,12 +55,14 @@ class UserModel {
     this.gender,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
+  factory UserModel.fromJson(Map<String, dynamic> json) =>
+      _$UserModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   UserModel copyWith({
     String? id,
+    String? email,
     bool? isEmailVerified,
     bool? isOnline,
     DateTime? lastOnlineAt,
@@ -69,7 +71,7 @@ class UserModel {
     return UserModel(
       id: id ?? this.id,
       name: name,
-      email: email,
+      email: email ?? this.email,
       photoUrl: photoUrl,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       isOnline: isOnline ?? this.isOnline,

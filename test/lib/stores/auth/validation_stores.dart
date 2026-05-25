@@ -113,6 +113,14 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<bool> checkEmailAvailable({
+    required String email,
+    String? currentUid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Stream<UserModel?> authStateChanges() => const Stream.empty();
 
   @override
@@ -192,6 +200,11 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> sendVerificationForChange({required String newEmail}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> syncChangedEmail({required String expectedEmail}) {
     throw UnimplementedError();
   }
 

@@ -18,7 +18,10 @@ class AuthService implements AuthRepository {
     return auth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
 
-      final doc = await firestore.collection(FirebaseCollections.users).doc(user.uid).get();
+      final doc = await firestore
+          .collection(FirebaseCollections.users)
+          .doc(user.uid)
+          .get();
 
       return UserModel.fromJson(doc.data()!).copyWith(id: doc.id);
     });
@@ -44,26 +47,47 @@ class AuthService implements AuthRepository {
 
     final userDoc = query.docs.first;
     final userData = UserModel.fromJson(userDoc.data());
+    final pendingEmail =
+        userDoc.data()[UserModelFields.pendingEmail] as String?;
 
-    final cred = await auth.signInWithEmailAndPassword(
-      email: userData.email,
-      password: password,
-    );
+    UserCredential cred;
+    String emailUsed = userData.email;
+
+    try {
+      cred = await auth.signInWithEmailAndPassword(
+        email: userData.email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (_) {
+      if (pendingEmail == null || pendingEmail.isEmpty) rethrow;
+
+      cred = await auth.signInWithEmailAndPassword(
+        email: pendingEmail,
+        password: password,
+      );
+      emailUsed = pendingEmail;
+    }
 
     final firebaseUser = cred.user!;
 
     if (!firebaseUser.emailVerified) {
-      throw FirebaseAuthException(code: AppStrings.emailNotVerified, email: userData.email);
+      throw FirebaseAuthException(
+          code: AppStrings.emailNotVerified, email: emailUsed);
     }
 
-    final userRef = firestore.collection(FirebaseCollections.users).doc(userDoc.id);
+    final userRef =
+        firestore.collection(FirebaseCollections.users).doc(userDoc.id);
 
     final updatedUser = userData.copyWith(
+      email: emailUsed,
       isOnline: true,
       lastOnlineAt: DateTime.now(),
     );
 
-    await userRef.update(updatedUser.toJson());
+    await userRef.update({
+      ...updatedUser.toJson(),
+      UserModelFields.pendingEmail: FieldValue.delete(),
+    });
 
     return updatedUser.copyWith(id: userDoc.id);
   }
@@ -96,7 +120,10 @@ class AuthService implements AuthRepository {
       fcmToken: '',
     );
 
-    await firestore.collection(FirebaseCollections.users).doc(user.id).set(user.toJson());
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(user.id)
+        .set(user.toJson());
 
     return user;
   }
@@ -112,15 +139,25 @@ class AuthService implements AuthRepository {
       return false;
     }
 
-    final doc = await firestore.collection(FirebaseCollections.users).doc(firebaseUser.uid).get();
+    final doc = await firestore
+        .collection(FirebaseCollections.users)
+        .doc(firebaseUser.uid)
+        .get();
 
     final currentUser = UserModel.fromJson(doc.data()!);
 
     final updatedUser = currentUser.copyWith(
+      email: firebaseUser.email,
       isEmailVerified: true,
     );
 
-    await firestore.collection(FirebaseCollections.users).doc(firebaseUser.uid).update(updatedUser.toJson());
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(firebaseUser.uid)
+        .update({
+      ...updatedUser.toJson(),
+      UserModelFields.pendingEmail: FieldValue.delete(),
+    });
 
     return true;
   }
@@ -148,20 +185,57 @@ class AuthService implements AuthRepository {
   }
 
   @override
+  Future<bool> checkEmailAvailable({
+    required String email,
+    String? currentUid,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final emailsToCheck = {
+      email.trim(),
+      normalizedEmail,
+    };
+
+    for (final emailToCheck in emailsToCheck) {
+      final query = await firestore
+          .collection(FirebaseCollections.users)
+          .where(
+            UserModelFields.email,
+            isEqualTo: emailToCheck,
+          )
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) continue;
+
+      final matchedDoc = query.docs.first;
+      if (currentUid != null && matchedDoc.id == currentUid) continue;
+
+      return false;
+    }
+
+    return true;
+  }
+
+  @override
   Future<void> logout() {
     return auth.signOut();
   }
 
   @override
-  Future<void> updateFcmToken({required String token, required String currentUid}) async {
-    await firestore.collection(FirebaseCollections.users).doc(currentUid).update(
+  Future<void> updateFcmToken(
+      {required String token, required String currentUid}) async {
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(currentUid)
+        .update(
       {AppStrings.fcmToken: token},
     );
   }
 
   @override
   Future<UserModel> getUserProfile(String uid) async {
-    final doc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
+    final doc =
+        await firestore.collection(FirebaseCollections.users).doc(uid).get();
 
     if (!doc.exists) {
       throw Exception('User profile not found');
@@ -172,8 +246,12 @@ class AuthService implements AuthRepository {
   }
 
   @override
-  Future<void> editUserProfile({required String uid, required EditProfileModel data}) async {
-    await firestore.collection(FirebaseCollections.users).doc(uid).update(data.toJson());
+  Future<void> editUserProfile(
+      {required String uid, required EditProfileModel data}) async {
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(uid)
+        .update(data.toJson());
   }
 
   @override
@@ -186,7 +264,41 @@ class AuthService implements AuthRepository {
       throw Exception('User belum login');
     }
 
+    await firestore.collection(FirebaseCollections.users).doc(user.uid).update({
+      UserModelFields.pendingEmail: newEmail,
+    });
+
     await user.verifyBeforeUpdateEmail(newEmail);
+  }
+
+  @override
+  Future<bool> syncChangedEmail({
+    required String expectedEmail,
+  }) async {
+    final user = auth.currentUser;
+
+    if (user == null) return false;
+
+    await user.reload();
+
+    final reloadedUser = auth.currentUser;
+    final verifiedEmail = reloadedUser?.email;
+
+    if (verifiedEmail == null ||
+        verifiedEmail.toLowerCase() != expectedEmail.toLowerCase()) {
+      return false;
+    }
+
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(reloadedUser!.uid)
+        .update({
+      UserModelFields.email: verifiedEmail,
+      UserModelFields.pendingEmail: FieldValue.delete(),
+      UserModelFields.isEmailVerified: true,
+    });
+
+    return true;
   }
 
   @override
@@ -246,7 +358,10 @@ class AuthService implements AuthRepository {
 
   @override
   Future<void> changeProfilePicture({String? imageUrl}) async {
-    await firestore.collection(FirebaseCollections.users).doc(currentUid).update({FriendField.photoUrl: imageUrl});
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(currentUid)
+        .update({FriendField.photoUrl: imageUrl});
   }
 
   @override

@@ -104,7 +104,12 @@ class _CountdownButtonState extends State<_CountdownButton> {
   @override
   void initState() {
     super.initState();
-    if (widget.initCountdown == true) _handlePressed();
+    if (widget.initCountdown == true) {
+      store.startCountdown(
+        value: widget.value,
+        unit: widget.unit,
+      );
+    }
   }
 
   void _handlePressed() {
@@ -136,7 +141,9 @@ class _CountdownButtonState extends State<_CountdownButton> {
               children: [
                 if (widget.title != null)
                   Text(
-                    store.isButtonClicked ? (widget.titleAfterButtonClicked ?? widget.title!) : widget.title!,
+                    store.isButtonClicked
+                        ? (widget.titleAfterButtonClicked ?? widget.title!)
+                        : widget.title!,
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
