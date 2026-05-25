@@ -64,7 +64,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     final isDark = isDarkModeOf(context);
     return Column(
       children: [
-        ChatListSearchWidget().paddingSymmetric(horizontal: 20.r).paddingOnly(bottom: 8.h),
+        ChatListSearchWidget()
+            .paddingSymmetric(horizontal: 20.r)
+            .paddingOnly(bottom: 8.h),
 
         /// REALTIME CHAT LIST
         Expanded(
@@ -94,14 +96,17 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                   final user = item.user;
 
                   return ListTile(
-                    leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 48),
+                    leading: ProfileAvatarWidget(
+                        base64Image: user.photoUrl, size: 48),
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(user.name),
                         Text(
                           item.lastMessageAt?.hhmm ?? '',
-                          style: TextStyle(fontSize: 11.sp, color: isDark ? null : Colors.black54),
+                          style: TextStyle(
+                              fontSize: 11.sp,
+                              color: isDark ? null : Colors.black54),
                         ),
                       ],
                     ),
@@ -109,11 +114,18 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                       children: [
                         Visibility(
                           visible: item.type == MessageType.image,
-                          child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.image_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.video,
-                          child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.videocam_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
+                        ),
+                        Visibility(
+                          visible: item.type == MessageType.call,
+                          child: Icon(Icons.call_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Flexible(
                           child: Text(

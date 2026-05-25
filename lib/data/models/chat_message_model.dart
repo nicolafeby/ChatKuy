@@ -25,6 +25,9 @@ enum MessageType {
 
   @HiveField(2)
   video,
+
+  @HiveField(3)
+  call,
 }
 
 @HiveType(typeId: 0)
@@ -97,6 +100,18 @@ class ChatMessageModel {
   @JsonKey(defaultValue: <String, bool>{})
   final Map<String, bool> deletedFor;
 
+  @HiveField(21)
+  final String? callId;
+
+  @HiveField(22)
+  final String? callStatus;
+
+  @HiveField(23)
+  final String? callType;
+
+  @HiveField(24)
+  final int? callDurationSeconds;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -119,6 +134,10 @@ class ChatMessageModel {
     this.replyToText,
     this.replyToType,
     this.deletedFor = const {},
+    this.callId,
+    this.callStatus,
+    this.callType,
+    this.callDurationSeconds,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
@@ -133,6 +152,8 @@ class ChatMessageModel {
     String? localVideoPath,
     String? videoUrl,
     Map<String, bool>? deletedFor,
+    String? callStatus,
+    int? callDurationSeconds,
   }) {
     return ChatMessageModel(
       id: id,
@@ -156,6 +177,10 @@ class ChatMessageModel {
       replyToText: replyToText,
       replyToType: replyToType,
       deletedFor: deletedFor ?? this.deletedFor,
+      callId: callId,
+      callStatus: callStatus ?? this.callStatus,
+      callType: callType,
+      callDurationSeconds: callDurationSeconds ?? this.callDurationSeconds,
     );
   }
 

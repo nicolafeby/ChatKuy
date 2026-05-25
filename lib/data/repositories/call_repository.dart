@@ -10,6 +10,10 @@ abstract class CallRepository {
     String callType = 'voice',
   });
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchCallHistory({
+    required String uid,
+  });
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchCall(String callId);
 
   Future<void> setOffer({

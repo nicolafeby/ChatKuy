@@ -393,6 +393,7 @@ abstract class _ChatRoomStore with Store {
     if (messageText != null && messageText.isNotEmpty) return messageText;
     if (message.type == MessageType.image) return 'Foto';
     if (message.type == MessageType.video) return 'Video';
+    if (message.type == MessageType.call) return 'Panggilan';
     return null;
   }
 

@@ -308,7 +308,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           _buildReplyPreview(messageTextColor, metaTextColor),
           6.verticalSpace,
         ],
-        if (hasImage) ...[
+        if (type == MessageType.call) ...[
+          _buildCallContent(messageTextColor, metaTextColor),
+        ] else if (hasImage) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -408,6 +410,76 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         ),
       ],
     );
+  }
+
+  Widget _buildCallContent(Color messageTextColor, Color metaTextColor) {
+    final isVideo = widget.message.callType == 'video';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32.r,
+          height: 32.r,
+          decoration: BoxDecoration(
+            color: widget.isMe
+                ? Colors.white.withValues(alpha: 0.16)
+                : AppColor.primaryColor.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isVideo ? Icons.videocam_outlined : Icons.call_outlined,
+            size: 18.r,
+            color: widget.isMe ? Colors.white : AppColor.primaryColor,
+          ),
+        ),
+        8.horizontalSpace,
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isVideo ? 'Panggilan video' : 'Panggilan suara',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: messageTextColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              2.verticalSpace,
+              Text(
+                _callSubtitle(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: metaTextColor,
+                  fontSize: 12.sp,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _callSubtitle() {
+    final status = widget.message.callStatus;
+    if (status == 'declined') return 'Ditolak';
+    if (status == 'missed') return 'Tak terjawab';
+    if (status == 'calling' || status == 'ringing') return 'Berlangsung';
+
+    final seconds = widget.message.callDurationSeconds ?? 0;
+    if (seconds <= 0) return 'Berakhir';
+
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    if (minutes <= 0) return '$remainingSeconds detik';
+    return '$minutes menit ${remainingSeconds.toString().padLeft(2, '0')} detik';
   }
 
   Widget _buildReplyPreview(Color messageTextColor, Color metaTextColor) {

@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/stores/base/base_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
+import 'package:chatkuy/ui/chat/call/call_history_screen.dart';
 import 'package:chatkuy/ui/friends_list/friend_list_sceeen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -15,10 +16,11 @@ class BaseScreen extends StatefulWidget {
 class _BaseScreenState extends State<BaseScreen> {
   BaseStore store = BaseStore();
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    FriendListScreen(),
-    ChatListScreen(),
-    ProfileScreen(),
+  static final List<Widget> _widgetOptions = <Widget>[
+    const FriendListScreen(),
+    const ChatListScreen(),
+    CallHistoryScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -39,7 +41,9 @@ class _BaseScreenState extends State<BaseScreen> {
           type: BottomNavigationBarType.fixed,
           items: [
             BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Teman'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Percakapan'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.chat), label: 'Percakapan'),
+            BottomNavigationBarItem(icon: Icon(Icons.call), label: 'Telepon'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
           ],
         ),
