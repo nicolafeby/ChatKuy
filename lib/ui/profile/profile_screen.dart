@@ -138,14 +138,17 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage =
+                        await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 =
+                        await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id = await getIt<SecureStorageRepository>().getUserId();
+                        final id =
+                            await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -156,7 +159,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+                      message:
+                          'Kami tidak mendapatkan akses galeri untuk action ini',
                     ));
                   },
                 );
@@ -184,14 +188,17 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage =
+                        await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 =
+                        await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id = await getIt<SecureStorageRepository>().getUserId();
+                        final id =
+                            await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -202,7 +209,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message: 'Kami tidak mendapatkan akses kamera untuk action ini',
+                      message:
+                          'Kami tidak mendapatkan akses kamera untuk action ini',
                     ));
                   },
                 );
@@ -218,13 +226,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
-                  padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: () {
                   store.changeProfilePicture(imageUrl: null).then(
                     (value) async {
-                      final id = await getIt<SecureStorageRepository>().getUserId();
+                      final id =
+                          await getIt<SecureStorageRepository>().getUserId();
 
                       if (id == null) return;
                       return store.getUserProfile(id);
@@ -268,7 +278,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 centerTitle: true,
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
-                    final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
+                    final percent = ((constraints.maxHeight - kToolbarHeight) /
+                            (260 - kToolbarHeight))
+                        .clamp(0.0, 1.0);
                     final gender = store.user?.gender;
                     int? age;
 
@@ -306,7 +318,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               children: [
                                 Container(
                                   padding: EdgeInsets.all(4.r),
-                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.surface),
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colorScheme.surface),
                                   child: ProfileAvatarWidget(
                                     base64Image: store.user?.photoUrl,
                                     size: 80,
@@ -376,10 +390,20 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             Icons.online_prediction_outlined,
                             color: Colors.white,
                           ),
-                          onTap: () {
-                            showComingSoonSnackbar();
+                          onTap: () async {
+                            final nextValue =
+                                !(store.user?.isOnlineStatusVisible ?? true);
+                            await store.updateOnlineStatusVisibility(nextValue);
+                            showSnackbar(
+                              title: 'Privasi Online',
+                              message: nextValue
+                                  ? 'Status online kamu bisa dilihat teman.'
+                                  : 'Status online kamu disembunyikan. Kamu juga tidak bisa melihat status online teman.',
+                            );
                           },
-                          title: 'Online',
+                          title: store.user?.isOnlineStatusVisible == false
+                              ? 'Offline'
+                              : 'Online',
                         ),
                         ProfilePreferencesWidget(
                           icon: Icon(
@@ -429,11 +453,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               (value) async {
                                 if (value != true) return;
 
-                                final id = await getIt<SecureStorageRepository>().getUserId();
+                                final id =
+                                    await getIt<SecureStorageRepository>()
+                                        .getUserId();
 
                                 if (id == null) return;
                                 store.getUserProfile(id);
-                                showSnackbar(title: 'Sukses', message: 'Berhasil Mengubah Profile');
+                                showSnackbar(
+                                    title: 'Sukses',
+                                    message: 'Berhasil Mengubah Profile');
                               },
                             );
                           },
@@ -503,12 +531,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                       value: store.user?.email ?? '',
                     ),
                     16.verticalSpace,
+                    _buildPrivacySections(),
+                    16.verticalSpace,
                     _buildAccoungSettingSections(),
                     80.verticalSpace,
                     TextButton(
                       onPressed: () {
                         store.logout(
-                          onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
+                          onSuccess: () =>
+                              Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
                         );
                       },
                       child: Text(
@@ -551,5 +582,82 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     ];
 
     return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  Widget _buildPrivacySections() {
+    final colorScheme = colorSchemeOf(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Privasi Profil',
+          style: TextStyle(fontSize: 18.sp),
+        ),
+        8.verticalSpace,
+        _PrivacySwitchTile(
+          icon: Icons.email_outlined,
+          title: 'Tampilkan email',
+          subtitle: 'Izinkan teman melihat alamat email kamu',
+          value: store.user?.isEmailVisible ?? true,
+          colorScheme: colorScheme,
+          onChanged: store.updateEmailVisibility,
+        ),
+        8.verticalSpace,
+        _PrivacySwitchTile(
+          icon: Icons.cake_outlined,
+          title: 'Tampilkan tanggal lahir',
+          subtitle: 'Izinkan teman melihat tanggal lahir kamu',
+          value: store.user?.isBirthDateVisible ?? true,
+          colorScheme: colorScheme,
+          onChanged: store.updateBirthDateVisibility,
+        ),
+        8.verticalSpace,
+        _PrivacySwitchTile(
+          icon: Icons.online_prediction_outlined,
+          title: 'Tampilkan status online',
+          subtitle:
+              'Jika dimatikan, kamu juga tidak bisa melihat status online teman',
+          value: store.user?.isOnlineStatusVisible ?? true,
+          colorScheme: colorScheme,
+          onChanged: store.updateOnlineStatusVisibility,
+        ),
+      ],
+    );
+  }
+}
+
+class _PrivacySwitchTile extends StatelessWidget {
+  const _PrivacySwitchTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.colorScheme,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ColorScheme colorScheme;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        secondary: Icon(icon, color: Colors.grey),
+        title: Text(title),
+        subtitle: Text(subtitle),
+      ),
+    );
   }
 }

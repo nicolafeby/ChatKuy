@@ -43,6 +43,12 @@ class UserModel {
   final Gender? gender;
   @HiveField(11)
   final DateTime? birthDate;
+  @HiveField(12, defaultValue: true)
+  final bool isEmailVisible;
+  @HiveField(13, defaultValue: true)
+  final bool isBirthDateVisible;
+  @HiveField(14, defaultValue: true)
+  final bool isOnlineStatusVisible;
 
   UserModel({
     this.id = '',
@@ -56,6 +62,9 @@ class UserModel {
     required this.fcmToken,
     this.gender,
     this.birthDate,
+    this.isEmailVisible = true,
+    this.isBirthDateVisible = true,
+    this.isOnlineStatusVisible = true,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -71,6 +80,9 @@ class UserModel {
     DateTime? lastOnlineAt,
     String? fcmToken,
     DateTime? birthDate,
+    bool? isEmailVisible,
+    bool? isBirthDateVisible,
+    bool? isOnlineStatusVisible,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -84,6 +96,10 @@ class UserModel {
       fcmToken: fcmToken ?? this.fcmToken,
       gender: gender,
       birthDate: birthDate ?? this.birthDate,
+      isEmailVisible: isEmailVisible ?? this.isEmailVisible,
+      isBirthDateVisible: isBirthDateVisible ?? this.isBirthDateVisible,
+      isOnlineStatusVisible:
+          isOnlineStatusVisible ?? this.isOnlineStatusVisible,
     );
   }
 }

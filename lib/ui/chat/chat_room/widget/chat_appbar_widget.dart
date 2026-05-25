@@ -12,6 +12,8 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onCallTap;
   final VoidCallback? onVideoCallTap;
   final VoidCallback? onSearchTap;
+  final VoidCallback? onProfileTap;
+  final bool canViewPresence;
   const ChatAppbarWidget({
     super.key,
     required this.store,
@@ -20,20 +22,29 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     this.onCallTap,
     this.onVideoCallTap,
     this.onSearchTap,
+    this.onProfileTap,
+    this.canViewPresence = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
       titleSpacing: 0,
-      title: Row(
-        children: [
-          _buildAvatarSection(userData),
-          12.horizontalSpace,
-          Expanded(
-            child: _buildDisplayNameSections(userData, isTyping: isTyping),
-          ),
-        ],
+      title: InkWell(
+        onTap: onProfileTap,
+        child: Row(
+          children: [
+            _buildAvatarSection(userData),
+            12.horizontalSpace,
+            Expanded(
+              child: _buildDisplayNameSections(
+                userData,
+                isTyping: isTyping,
+                canViewPresence: canViewPresence,
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         IconButton(
@@ -59,7 +70,19 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   Widget _buildAvatarSection(UserModel user) =>
       ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
 
-  Widget _buildDisplayNameSections(UserModel user, {required bool isTyping}) {
+  Widget _buildDisplayNameSections(
+    UserModel user, {
+    required bool isTyping,
+    required bool canViewPresence,
+  }) {
+    final statusText = canViewPresence
+        ? (isTyping
+            ? 'Sedang mengetik ...'
+            : user.isOnline == true
+                ? 'Online'
+                : (user.lastOnlineAt?.daysAndTime ?? ''))
+        : 'Status online disembunyikan';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -69,11 +92,7 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
         ),
         4.verticalSpace,
         Text(
-          isTyping
-              ? 'Sedang mengetik ...'
-              : user.isOnline == true
-                  ? 'Online'
-                  : (user.lastOnlineAt?.daysAndTime ?? ''),
+          statusText,
           style: TextStyle(
             fontSize: 11.sp,
             color: Colors.grey,
