@@ -3,9 +3,11 @@ import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
@@ -28,14 +30,12 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     repository: getIt<ChatUserListRepository>(),
   );
   final TextEditingController _searchController = TextEditingController();
+  bool _isResolvingChatUsers = true;
 
   @override
   void initState() {
     super.initState();
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-
-    if (currentUid == null) return;
-    store.watchChatUsers(currentUid);
+    _watchInitialChatUsers();
   }
 
   @override
@@ -43,6 +43,29 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     _searchController.dispose();
     store.dispose();
     super.dispose();
+  }
+
+  Future<void> _watchInitialChatUsers() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final user = auth.currentUser ??
+          await auth.idTokenChanges().first.timeout(
+                const Duration(seconds: 2),
+                onTimeout: () => null,
+              );
+      final currentUid =
+          user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
+
+      if (currentUid != null) {
+        store.watchChatUsers(currentUid);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResolvingChatUsers = false;
+        });
+      }
+    }
   }
 
   PreferredSizeWidget _buildAppbar() {
@@ -80,8 +103,8 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         Expanded(
           child: Observer(
             builder: (_) {
-              if (store.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+              if (_isResolvingChatUsers || store.isLoading) {
+                return const ListTileSkeletonList();
               }
 
               if (store.errorMessage != null) {

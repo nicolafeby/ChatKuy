@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
+import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/friend_request/friend_request_store.dart';
@@ -15,7 +16,8 @@ class FriendRequestScreen extends StatefulWidget {
   State<FriendRequestScreen> createState() => _FriendRequestPageState();
 }
 
-class _FriendRequestPageState extends State<FriendRequestScreen> with SingleTickerProviderStateMixin, BaseLayout {
+class _FriendRequestPageState extends State<FriendRequestScreen>
+    with SingleTickerProviderStateMixin, BaseLayout {
   FriendRequestStore store = FriendRequestStore(
     repository: getIt<FriendRequestRepository>(),
   );
@@ -90,9 +92,7 @@ class _IncomingRequestTab extends StatelessWidget {
         final data = store.incomingRequests?.value;
 
         if (data == null) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const CardListTileSkeletonList();
         }
 
         if (data.isEmpty) {
@@ -111,8 +111,12 @@ class _IncomingRequestTab extends StatelessWidget {
             return Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundImage: request.photoUrl != null ? NetworkImage(request.photoUrl!) : null,
-                  child: request.photoUrl == null ? const Icon(Icons.person) : null,
+                  backgroundImage: request.photoUrl != null
+                      ? NetworkImage(request.photoUrl!)
+                      : null,
+                  child: request.photoUrl == null
+                      ? const Icon(Icons.person)
+                      : null,
                 ),
                 title: Text(request.displayName),
                 subtitle: Text('@${request.username}'),
@@ -124,7 +128,8 @@ class _IncomingRequestTab extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.red),
                           onPressed: () async {
-                            await store.rejectFriendRequest(senderUid: request.fromUid);
+                            await store.rejectFriendRequest(
+                                senderUid: request.fromUid);
                           },
                         ),
                         IconButton(
@@ -166,7 +171,7 @@ class _OutgoingRequestTab extends StatelessWidget {
         final data = store.outgoingRequests?.value;
 
         if (data == null) {
-          return const Center(child: CircularProgressIndicator());
+          return const CardListTileSkeletonList(showActions: false);
         }
 
         if (data.isEmpty) {
@@ -185,8 +190,12 @@ class _OutgoingRequestTab extends StatelessWidget {
             return Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundImage: request.photoUrl != null ? NetworkImage(request.photoUrl!) : null,
-                  child: request.photoUrl == null ? const Icon(Icons.person) : null,
+                  backgroundImage: request.photoUrl != null
+                      ? NetworkImage(request.photoUrl!)
+                      : null,
+                  child: request.photoUrl == null
+                      ? const Icon(Icons.person)
+                      : null,
                 ),
                 title: Text(request.displayName),
                 subtitle: Row(
@@ -215,7 +224,8 @@ class _OutgoingRequestTab extends StatelessWidget {
                       ],
                     ),
                     GestureDetector(
-                      onTap: () async => await store.cancelFriendRequest(targetUid: request.toUid),
+                      onTap: () async => await store.cancelFriendRequest(
+                          targetUid: request.toUid),
                       child: Text(
                         'Batalkan',
                         style: TextStyle(color: Colors.red),

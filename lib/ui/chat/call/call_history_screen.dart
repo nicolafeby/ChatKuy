@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
@@ -24,7 +25,8 @@ class CallHistoryScreen extends StatefulWidget {
 class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
   final CallRepository repository = getIt<CallRepository>();
   final UserRepository userRepository = getIt<UserRepository>();
-  late final CallHistoryStore store = CallHistoryStore(userRepository: userRepository);
+  late final CallHistoryStore store =
+      CallHistoryStore(userRepository: userRepository);
   final TextEditingController _searchController = TextEditingController();
   Future<String?>? _uidFuture;
 
@@ -44,12 +46,13 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) => Scaffold(
-        appBar: store.isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
+        appBar:
+            store.isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
         body: FutureBuilder<String?>(
           future: _uidFuture,
           builder: (context, authSnapshot) {
             if (authSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const ListTileSkeletonList();
             }
 
             final currentUid = authSnapshot.data;
@@ -61,7 +64,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
               stream: repository.watchCallHistory(uid: currentUid),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const ListTileSkeletonList();
                 }
 
                 if (snapshot.hasError) {
@@ -455,7 +458,9 @@ class _CallHistoryTile extends StatelessWidget {
             tooltip: latest.isVideoCall ? 'Panggilan video' : 'Panggilan suara',
             onPressed: onCallTap,
             icon: Icon(
-              latest.isVideoCall ? Icons.videocam_outlined : Icons.call_outlined,
+              latest.isVideoCall
+                  ? Icons.videocam_outlined
+                  : Icons.call_outlined,
             ),
           ),
         );
