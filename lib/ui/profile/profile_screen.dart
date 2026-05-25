@@ -270,6 +270,11 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                   builder: (context, constraints) {
                     final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
                     final gender = store.user?.gender;
+                    int? age;
+
+                    if (store.user?.birthDate != null) {
+                      age = store.getAge(store.user!.birthDate!);
+                    }
 
                     return FlexibleSpaceBar(
                       title: Opacity(
@@ -336,13 +341,23 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               ),
                             ),
                             4.verticalSpace,
-                            Text(
-                              "${gender?.value ?? Gender.secret.value}, 25 tahun",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: colorScheme.onSurfaceVariant,
+                            if (age == null) ...[
+                              Text(
+                                gender?.value ?? Gender.secret.value,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
+                            ] else ...[
+                              Text(
+                                "${gender?.value ?? Gender.secret.value}, $age tahun",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ]
                           ],
                         ),
                       ),
@@ -407,6 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                                   gender: userData.gender ?? Gender.secret,
                                   name: userData.name,
                                   username: userData.username ?? '',
+                                  birthDate: userData.birthDate,
                                 ),
                               ),
                             )?.then(
@@ -461,6 +477,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
+                      title: 'Tanggal lahir',
+                      icon: Icon(
+                        Icons.cake_outlined,
+                        color: Colors.grey,
+                      ),
+                      value: _formatBirthDate(store.user?.birthDate),
+                    ),
+                    16.verticalSpace,
+                    ProfileInformationBoxWidget(
                       title: 'Nomor HP',
                       icon: Icon(
                         Icons.phone_android_sharp,
@@ -505,5 +530,26 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
         },
       ),
     );
+  }
+
+  String _formatBirthDate(DateTime? date) {
+    if (date == null) return '-';
+
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

@@ -9,15 +9,18 @@ class EditProfileModel {
   final String email;
   final Gender gender;
   final String username;
+  final DateTime? birthDate;
 
   const EditProfileModel({
     required this.email,
     required this.gender,
     required this.name,
     required this.username,
+    this.birthDate,
   });
 
-  factory EditProfileModel.fromJson(Map<String, dynamic> json) => _$EditProfileModelFromJson(json);
+  factory EditProfileModel.fromJson(Map<String, dynamic> json) =>
+      _$EditProfileModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$EditProfileModelToJson(this);
 
@@ -26,12 +29,14 @@ class EditProfileModel {
     String? email,
     Gender? gender,
     String? username,
+    DateTime? birthDate,
   }) {
     return EditProfileModel(
       email: email ?? this.email,
       gender: gender ?? this.gender,
       name: name ?? this.name,
       username: username ?? this.username,
+      birthDate: birthDate ?? this.birthDate,
     );
   }
 }

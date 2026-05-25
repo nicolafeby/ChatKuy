@@ -41,6 +41,8 @@ class UserModel {
   final String fcmToken;
   @HiveField(10)
   final Gender? gender;
+  @HiveField(11)
+  final DateTime? birthDate;
 
   UserModel({
     this.id = '',
@@ -53,6 +55,7 @@ class UserModel {
     this.lastOnlineAt,
     required this.fcmToken,
     this.gender,
+    this.birthDate,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -67,6 +70,7 @@ class UserModel {
     bool? isOnline,
     DateTime? lastOnlineAt,
     String? fcmToken,
+    DateTime? birthDate,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -79,6 +83,7 @@ class UserModel {
       lastOnlineAt: lastOnlineAt ?? this.lastOnlineAt,
       fcmToken: fcmToken ?? this.fcmToken,
       gender: gender,
+      birthDate: birthDate ?? this.birthDate,
     );
   }
 }

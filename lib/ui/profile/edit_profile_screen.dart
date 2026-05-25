@@ -82,6 +82,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
                   _buildUsernameSections(),
                   12.verticalSpace,
                   _buildGenderSections(),
+                  12.verticalSpace,
+                  _buildBirthDateSections(context),
                 ],
               ),
             ),
@@ -89,7 +91,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
           Expanded(
             flex: 0,
             child: ButtonWidget(
-              onPressed: store.canSaveProfileChanged ? () => store.editProfile() : null,
+              onPressed: store.canSaveProfileChanged
+                  ? () => store.editProfile()
+                  : null,
               title: 'Simpan Perubahan',
             ).paddingAll(20.r),
           ),
@@ -135,7 +139,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
           onChanged: (value) {
             store.validateEditUsername(value);
           },
-          inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)
+          ],
         ),
       ],
     );
@@ -192,6 +198,87 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
         ),
       ],
     );
+  }
+
+  Widget _buildBirthDateSections(BuildContext context) {
+    final birthDate = store.editProfileData?.birthDate;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tanggal Lahir',
+          style: TextStyle(fontSize: 16.sp),
+        ),
+        4.verticalSpace,
+        InkWell(
+          borderRadius: BorderRadius.circular(10.r),
+          onTap: () => _showBirthDatePicker(context),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Colors.grey),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Colors.blue, width: 2),
+              ),
+              suffixIcon: const Icon(Icons.calendar_today_outlined),
+            ),
+            child: Text(
+              birthDate == null
+                  ? 'Pilih tanggal lahir'
+                  : _formatBirthDate(birthDate),
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: birthDate == null ? Colors.grey : null,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showBirthDatePicker(BuildContext context) async {
+    final now = DateTime.now();
+    final selectedDate = store.editProfileData?.birthDate;
+    final initialDate =
+        selectedDate ?? DateTime(now.year - 17, now.month, now.day);
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isAfter(now) ? now : initialDate,
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+
+    if (pickedDate == null) return;
+    store.onChangeBirthDate(
+      DateTime(pickedDate.year, pickedDate.month, pickedDate.day),
+    );
+  }
+
+  String _formatBirthDate(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   @override
