@@ -1,12 +1,18 @@
-import 'package:chatkuy/core/constants/firestore.dart';
-import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
+import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
+import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/di/injection.dart';
+import 'package:chatkuy/stores/chat/call/call_history_store.dart';
+import 'package:chatkuy/ui/chat/call/call_argument.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class CallHistoryScreen extends StatefulWidget {
   const CallHistoryScreen({super.key});
@@ -17,76 +23,363 @@ class CallHistoryScreen extends StatefulWidget {
 
 class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
   final CallRepository repository = getIt<CallRepository>();
+  final UserRepository userRepository = getIt<UserRepository>();
+  late final CallHistoryStore store = CallHistoryStore(userRepository: userRepository);
+  final TextEditingController _searchController = TextEditingController();
   Future<String?>? _uidFuture;
 
   @override
   void initState() {
     super.initState();
-    _uidFuture = _resolveAuthenticatedUid();
+    _uidFuture = store.resolveAuthenticatedUid();
   }
 
-  Future<String?> _resolveAuthenticatedUid() async {
-    final user = FirebaseAuth.instance.currentUser ??
-        await FirebaseAuth.instance.idTokenChanges().first;
-    if (user == null) return null;
-
-    await user.getIdToken(true);
-    return user.uid;
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Observer(
+      builder: (_) => Scaffold(
+        appBar: store.isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
+        body: FutureBuilder<String?>(
+          future: _uidFuture,
+          builder: (context, authSnapshot) {
+            if (authSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final currentUid = authSnapshot.data;
+            if (currentUid == null) {
+              return const Center(child: Text('Silakan masuk kembali'));
+            }
+
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: repository.watchCallHistory(uid: currentUid),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(child: Text(snapshot.error.toString()));
+                }
+
+                store.setCallDocs(
+                  docs: snapshot.data?.docs ?? const [],
+                  currentUid: currentUid,
+                );
+
+                return Observer(
+                  builder: (_) {
+                    final groups = store.filteredGroups;
+                    if (groups.isEmpty) {
+                      return Center(child: Text(store.emptyMessage));
+                    }
+
+                    return ListView.separated(
+                      padding: EdgeInsets.only(top: 8.h, bottom: 16.h),
+                      itemCount: groups.length,
+                      separatorBuilder: (_, __) => SizedBox(height: 2.h),
+                      itemBuilder: (context, index) {
+                        final group = groups[index];
+                        return _CallHistoryTile(
+                          group: group,
+                          currentUid: currentUid,
+                          userRepository: userRepository,
+                          onUserResolved: (user) => store.cachePeerName(
+                            uid: group.peerUid,
+                            name: user.name,
+                          ),
+                          onTap: () => Get.to(
+                            () => CallInfoScreen(
+                              group: group,
+                              currentUid: currentUid,
+                            ),
+                          ),
+                          onCallTap: () => _startCall(
+                            group: group,
+                            currentUid: currentUid,
+                            isVideoCall: group.latest.isVideoCall,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildDefaultAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      title: Text(
+        'Telepon',
+        style: TextStyle(fontSize: 28.sp),
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'Cari',
+          onPressed: store.showSearch,
+          icon: const Icon(Icons.search),
+        ),
+      ],
+    );
+  }
+
+  PreferredSizeWidget _buildSearchAppBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppBar(
+      leading: IconButton(
+        tooltip: 'Tutup pencarian',
+        onPressed: _hideSearch,
+        icon: const Icon(Icons.arrow_back),
+      ),
+      titleSpacing: 0,
+      title: SizedBox(
+        height: 38.h,
+        child: TextField(
+          controller: _searchController,
+          autofocus: true,
+          cursorHeight: 18.h,
+          textInputAction: TextInputAction.search,
+          style: TextStyle(fontSize: 14.sp),
+          onChanged: store.setSearchQuery,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.72,
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12.w,
+              vertical: 8.h,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20.r),
+              borderSide: BorderSide.none,
+            ),
+            hintText: 'Cari riwayat panggilan',
+            hintStyle: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 14.sp,
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _searchController,
+          builder: (context, value, _) {
+            if (value.text.isEmpty) return const SizedBox.shrink();
+
+            return IconButton(
+              tooltip: 'Bersihkan pencarian',
+              onPressed: () {
+                _searchController.clear();
+                store.clearSearch();
+              },
+              icon: const Icon(Icons.close),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _hideSearch() {
+    store.hideSearch();
+    _searchController.clear();
+  }
+
+  void _startCall({
+    required CallHistoryGroup group,
+    required String currentUid,
+    required bool isVideoCall,
+  }) {
+    Get.toNamed(
+      AppRouteName.CALL_SCREEN,
+      arguments: CallArgument(
+        roomId: group.latest.roomId,
+        currentUid: currentUid,
+        targetUid: group.peerUid,
+        targetName: group.peerName,
+        currentUserName: 'ChatKuy',
+        isCaller: true,
+        isVideoCall: isVideoCall,
+      ),
+    );
+  }
+}
+
+class CallInfoScreen extends StatelessWidget with BaseLayout {
+  CallInfoScreen({
+    super.key,
+    required this.group,
+    required this.currentUid,
+  });
+
+  final CallHistoryGroup group;
+  final String currentUid;
+  final UserRepository userRepository = getIt<UserRepository>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text(
-          'Telepon',
-          style: TextStyle(fontSize: 28.sp),
-        ),
+        title: const Text('Info panggilan'),
       ),
-      body: FutureBuilder<String?>(
-        future: _uidFuture,
-        builder: (context, authSnapshot) {
-          if (authSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: FutureBuilder<UserModel?>(
+        future: _resolvePeerUser(),
+        builder: (context, snapshot) {
+          final user = snapshot.data;
 
-          final currentUid = authSnapshot.data;
-          if (currentUid == null) {
-            return const Center(child: Text('Silakan masuk kembali'));
-          }
-
-          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: repository.watchCallHistory(uid: currentUid),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(child: Text(snapshot.error.toString()));
-              }
-
-              final calls = snapshot.data?.docs ?? const [];
-              if (calls.isEmpty) {
-                return const Center(child: Text('Belum ada riwayat telepon'));
-              }
-
-              return ListView.separated(
-                padding: EdgeInsets.only(top: 8.h, bottom: 16.h),
-                itemCount: calls.length,
-                separatorBuilder: (_, __) => SizedBox(height: 2.h),
-                itemBuilder: (context, index) {
-                  final data = calls[index].data();
-                  return _CallHistoryTile(
-                    data: data,
-                    currentUid: currentUid,
-                  );
-                },
-              );
-            },
+          return ListView(
+            padding: EdgeInsets.only(bottom: 24.h),
+            children: [
+              18.verticalSpace,
+              Center(
+                child: ProfileAvatarWidget(
+                  base64Image: user?.photoUrl,
+                  size: 112,
+                ),
+              ),
+              14.verticalSpace,
+              Text(
+                user?.name ?? group.peerName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 26.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (user?.username?.isNotEmpty == true) ...[
+                4.verticalSpace,
+                Text(
+                  '@${user!.username}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              24.verticalSpace,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _CallInfoAction(
+                        icon: Icons.chat_outlined,
+                        label: 'Pesan',
+                        onTap: () => _openMessage(user),
+                      ),
+                    ),
+                    12.horizontalSpace,
+                    Expanded(
+                      child: _CallInfoAction(
+                        icon: Icons.call_outlined,
+                        label: 'Audio',
+                        onTap: () => _startCall(isVideoCall: false),
+                      ),
+                    ),
+                    12.horizontalSpace,
+                    Expanded(
+                      child: _CallInfoAction(
+                        icon: Icons.videocam_outlined,
+                        label: 'Video',
+                        onTap: () => _startCall(isVideoCall: true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              28.verticalSpace,
+              Divider(height: 1.h),
+              ..._buildCallRows(context),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Future<UserModel?> _resolvePeerUser() async {
+    try {
+      return await userRepository.getUser(group.peerUid);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<Widget> _buildCallRows(BuildContext context) {
+    final rows = <Widget>[];
+    String? lastHeader;
+
+    for (final entry in group.entries) {
+      final header = entry.dayHeaderLabel;
+      if (header != lastHeader) {
+        rows.add(
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 8.h),
+            child: Text(
+              header,
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        );
+        lastHeader = header;
+      }
+
+      rows.add(_CallInfoRow(entry: entry));
+    }
+
+    return rows;
+  }
+
+  void _openMessage(UserModel? user) {
+    Get.toNamed(
+      AppRouteName.CHAT_ROOM_SCREEN,
+      arguments: ChatRoomArgument(
+        roomId: group.latest.roomId,
+        currentUid: currentUid,
+        targetUser: user ??
+            UserModel(
+              id: group.peerUid,
+              name: group.peerName,
+              email: '',
+              isEmailVerified: false,
+              fcmToken: '',
+            ),
+      ),
+    );
+  }
+
+  void _startCall({required bool isVideoCall}) {
+    Get.toNamed(
+      AppRouteName.CALL_SCREEN,
+      arguments: CallArgument(
+        roomId: group.latest.roomId,
+        currentUid: currentUid,
+        targetUid: group.peerUid,
+        targetName: group.peerName,
+        currentUserName: 'ChatKuy',
+        isCaller: true,
+        isVideoCall: isVideoCall,
       ),
     );
   }
@@ -94,106 +387,149 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
 
 class _CallHistoryTile extends StatelessWidget {
   const _CallHistoryTile({
-    required this.data,
+    required this.group,
     required this.currentUid,
+    required this.userRepository,
+    required this.onUserResolved,
+    required this.onTap,
+    required this.onCallTap,
   });
 
-  final Map<String, dynamic> data;
+  final CallHistoryGroup group;
   final String currentUid;
+  final UserRepository userRepository;
+  final ValueChanged<UserModel> onUserResolved;
+  final VoidCallback onTap;
+  final VoidCallback onCallTap;
 
   @override
   Widget build(BuildContext context) {
-    final isOutgoing = data[CallField.callerId] == currentUid;
-    final callType = data[CallField.type] == 'video' ? 'video' : 'voice';
-    final status = data[CallField.status] as String?;
-    final createdAt = _dateFromTimestamp(data[CallField.createdAt]);
-    final answeredAt = _dateFromTimestamp(data[CallField.answeredAt]);
-    final endedAt = _dateFromTimestamp(data[CallField.endedAt]);
-    final name = isOutgoing
-        ? data[CallField.calleeName]?.toString()
-        : data[CallField.callerName]?.toString();
-    final isMissed = !isOutgoing &&
-        (status == CallStatus.declined || status == CallStatus.missed);
+    final latest = group.latest;
+    final isMissed = latest.isMissedIncoming;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return ListTile(
-      leading: CircleAvatar(
-        radius: 24.r,
-        backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
-        child: Icon(
-          callType == 'video' ? Icons.videocam_outlined : Icons.call_outlined,
-          color: colorScheme.primary,
-        ),
-      ),
-      title: Text(
-        name?.isNotEmpty == true ? name! : 'Kontak',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Row(
-        children: [
-          Icon(
-            isOutgoing ? Icons.call_made : Icons.call_received,
-            size: 16.r,
-            color: isMissed ? Colors.redAccent : colorScheme.onSurfaceVariant,
+    return FutureBuilder<UserModel?>(
+      future: _resolvePeerUser(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        if (user != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            onUserResolved(user);
+          });
+        }
+
+        return ListTile(
+          onTap: onTap,
+          leading: ProfileAvatarWidget(
+            base64Image: user?.photoUrl,
+            size: 48,
           ),
-          4.horizontalSpace,
-          Flexible(
-            child: Text(
-              _subtitle(
-                status: status,
-                callType: callType,
-                answeredAt: answeredAt,
-                endedAt: endedAt,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isMissed ? Colors.redAccent : null,
-              ),
+          title: Text(
+            group.displayTitle(user?.name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isMissed ? Colors.redAccent : null,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ],
-      ),
-      trailing: Text(
-        createdAt?.daysAndTime ?? '',
-        textAlign: TextAlign.right,
-        style: TextStyle(fontSize: 11.sp, color: colorScheme.onSurfaceVariant),
-      ),
+          subtitle: Row(
+            children: [
+              Icon(
+                latest.isOutgoing ? Icons.call_made : Icons.call_received,
+                size: 16.r,
+                color: isMissed ? Colors.redAccent : Colors.green,
+              ),
+              4.horizontalSpace,
+              Flexible(
+                child: Text(
+                  latest.listDateLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+          trailing: IconButton(
+            tooltip: latest.isVideoCall ? 'Panggilan video' : 'Panggilan suara',
+            onPressed: onCallTap,
+            icon: Icon(
+              latest.isVideoCall ? Icons.videocam_outlined : Icons.call_outlined,
+            ),
+          ),
+        );
+      },
     );
   }
 
-  String _subtitle({
-    required String? status,
-    required String callType,
-    required DateTime? answeredAt,
-    required DateTime? endedAt,
-  }) {
-    final typeLabel = callType == 'video' ? 'Video' : 'Suara';
-    if (status == CallStatus.declined) return 'Panggilan $typeLabel ditolak';
-    if (status == CallStatus.missed) return 'Panggilan $typeLabel tak terjawab';
-    if (status == CallStatus.calling || status == CallStatus.ringing) {
-      return 'Panggilan $typeLabel berlangsung';
+  Future<UserModel?> _resolvePeerUser() async {
+    try {
+      return await userRepository.getUser(group.peerUid);
+    } catch (_) {
+      return null;
     }
-
-    final duration = _durationText(answeredAt, endedAt);
-    if (duration == null) return 'Panggilan $typeLabel berakhir';
-    return 'Panggilan $typeLabel - $duration';
   }
+}
 
-  String? _durationText(DateTime? startedAt, DateTime? endedAt) {
-    if (startedAt == null || endedAt == null) return null;
-    final seconds = endedAt.difference(startedAt).inSeconds;
-    if (seconds <= 0) return null;
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    if (minutes <= 0) return '$remainingSeconds detik';
-    return '$minutes menit ${remainingSeconds.toString().padLeft(2, '0')} detik';
+class _CallInfoAction extends StatelessWidget {
+  const _CallInfoAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.r),
+      child: Container(
+        height: 82.h,
+        decoration: BoxDecoration(
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.green, size: 24.r),
+            8.verticalSpace,
+            Text(label, style: TextStyle(fontSize: 14.sp)),
+          ],
+        ),
+      ),
+    );
   }
+}
 
-  DateTime? _dateFromTimestamp(dynamic value) {
-    if (value is Timestamp) return value.toDate();
-    if (value is DateTime) return value;
-    return null;
+class _CallInfoRow extends StatelessWidget {
+  const _CallInfoRow({required this.entry});
+
+  final CallHistoryEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMissed = entry.isMissedIncoming;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      leading: Icon(
+        entry.isOutgoing ? Icons.call_made : Icons.call_received,
+        color: isMissed ? Colors.redAccent : Colors.green,
+      ),
+      title: Text(entry.directionLabel),
+      subtitle: Text(entry.timeLabel),
+      trailing: Text(
+        entry.resultLabel,
+        style: TextStyle(color: colorScheme.onSurfaceVariant),
+      ),
+    );
   }
 }
