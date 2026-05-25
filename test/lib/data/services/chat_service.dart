@@ -288,6 +288,7 @@ Future<void> chatServiceTest() async {
         .thenReturn(messagesCollection);
     when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
     when(messageDocRef.update(any)).thenAnswer((_) async {});
+    when(roomDoc.update(any)).thenAnswer((_) async {});
 
     await service.deleteMessageForMe(
       roomId: 'room-1',
@@ -298,6 +299,9 @@ Future<void> chatServiceTest() async {
     expect(box.get('msg-1')!.deletedFor['user-1'], isTrue);
     verify(messageDocRef.update({
       '${MessageField.deletedFor}.user-1': true,
+    })).called(1);
+    verify(roomDoc.update({
+      '${ChatRoomField.deletedMessagesFor}.user-1.msg-1': true,
     })).called(1);
   });
 

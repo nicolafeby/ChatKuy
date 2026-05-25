@@ -543,16 +543,16 @@ class ChatService implements ChatRepository {
     if (existing != null && existing.status != MessageStatus.sent) return;
 
     try {
-      return await _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
+      await _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
         '${MessageField.deletedFor}.$uid': true,
       });
     } on FirebaseException catch (e) {
       if (e.code != 'permission-denied') rethrow;
-
-      return _chatRoomsRef.doc(roomId).update({
-        '${ChatRoomField.deletedMessagesFor}.$uid.$messageId': true,
-      });
     }
+
+    return _chatRoomsRef.doc(roomId).update({
+      '${ChatRoomField.deletedMessagesFor}.$uid.$messageId': true,
+    });
   }
 
   @override
