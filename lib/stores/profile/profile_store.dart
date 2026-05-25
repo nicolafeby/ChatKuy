@@ -178,6 +178,23 @@ abstract class _ProfileStore with Store {
     editProfileData = editProfileData?.copyWith(gender: gender);
   }
 
+  @action
+  void onChangeBirthDate(DateTime birthDate) {
+    editProfileData = editProfileData?.copyWith(birthDate: birthDate);
+  }
+
+  @action
+  int getAge(DateTime birthDate) {
+    DateTime now = DateTime.now();
+    int years = now.year - birthDate.year;
+
+    // Adjust if the birthday hasn't occurred yet this year
+    if (now.month < birthDate.month || (now.month == birthDate.month && now.day < birthDate.day)) {
+      years--;
+    }
+    return years;
+  }
+
   @observable
   bool? isUsernameAvailable;
 
@@ -192,8 +209,7 @@ abstract class _ProfileStore with Store {
     error.username = null;
 
     try {
-      final available =
-          await authRepository.checkUsernameAvailable(username ?? '');
+      final available = await authRepository.checkUsernameAvailable(username ?? '');
 
       isUsernameAvailable = available;
 
@@ -242,8 +258,7 @@ abstract class _ProfileStore with Store {
       final id = await storageRepository.getUserId();
 
       if (id == null || editProfileData == null) return;
-      final future =
-          authRepository.editUserProfile(uid: id, data: editProfileData!);
+      final future = authRepository.editUserProfile(uid: id, data: editProfileData!);
 
       editProfileFuture = ObservableFuture(future);
       await editProfileFuture;
@@ -463,8 +478,7 @@ abstract class _ProfileStore with Store {
   }
 
   @computed
-  bool get canChangeEmail =>
-      error.email == null && email != null && password != null;
+  bool get canChangeEmail => error.email == null && email != null && password != null;
 
   Future<bool> requestEmailChange() async {
     error.general = null;
@@ -577,14 +591,10 @@ abstract class _ProfileStore with Store {
   }
 
   @computed
-  bool get canSaveProfileChanged =>
-      !error.hasErrorForm && argument?.userData != editProfileData;
+  bool get canSaveProfileChanged => !error.hasErrorForm && argument?.userData != editProfileData;
 
   @computed
-  bool get canChangePassword =>
-      newPassword != currentPassword &&
-      currentPassword != null &&
-      newPassword != null;
+  bool get canChangePassword => newPassword != currentPassword && currentPassword != null && newPassword != null;
 }
 
 class ProfileErrorStore = _ProfileErrorStore with _$ProfileErrorStore;
