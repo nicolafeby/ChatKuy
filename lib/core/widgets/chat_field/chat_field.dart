@@ -31,24 +31,33 @@ class ChatField extends StatelessWidget with BaseLayout {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = colorSchemeOf(context);
+    final isDarkMode = isDarkModeOf(context);
+    final fieldColor =
+        isDarkMode ? const Color(0xFF18232C) : Colors.grey.shade200;
+
     return SafeArea(
       top: false,
       bottom: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6).r,
-        color: Colors.white,
+        color: colorScheme.surface,
         child: Row(
           children: [
             Expanded(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.h),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: fieldColor,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.emoji_emotions_outlined, size: 22.r),
+                    Icon(
+                      Icons.emoji_emotions_outlined,
+                      size: 22.r,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                     8.horizontalSpace,
                     Expanded(
                       child: TextField(
@@ -56,8 +65,11 @@ class ChatField extends StatelessWidget with BaseLayout {
                         onChanged: store.onTypingChanged,
                         minLines: 1,
                         maxLines: 5,
+                        style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
                           hintText: "Message",
+                          hintStyle:
+                              TextStyle(color: colorScheme.onSurfaceVariant),
                           border: InputBorder.none,
                           focusedBorder: InputBorder.none,
                         ),
@@ -91,7 +103,11 @@ class ChatField extends StatelessWidget with BaseLayout {
                             },
                           );
                         },
-                        child: Icon(Icons.attach_file, size: 22.r),
+                        child: Icon(
+                          Icons.attach_file,
+                          size: 22.r,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                     Visibility(
@@ -122,8 +138,11 @@ class ChatField extends StatelessWidget with BaseLayout {
                             },
                           );
                         },
-                        child: Icon(Icons.camera_alt, size: 22.r)
-                            .paddingOnly(left: 8.w),
+                        child: Icon(
+                          Icons.camera_alt,
+                          size: 22.r,
+                          color: colorScheme.onSurfaceVariant,
+                        ).paddingOnly(left: 8.w),
                       ),
                     ),
                   ],
@@ -409,6 +428,11 @@ class _ChatFieldV2State extends State<ChatFieldV2>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = colorSchemeOf(context);
+    final isDarkMode = isDarkModeOf(context);
+    final textFieldFillColor =
+        isDarkMode ? const Color(0xFF18232C) : Colors.grey[200];
+
     return PopScope(
       canPop: _showEmojiPicker == false && _showAboveSheet == false,
       onPopInvokedWithResult: (didPop, result) {
@@ -457,8 +481,10 @@ class _ChatFieldV2State extends State<ChatFieldV2>
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor: Colors.grey[200],
+                            fillColor: textFieldFillColor,
                             hintText: widget.hintText,
+                            hintStyle:
+                                TextStyle(color: colorScheme.onSurfaceVariant),
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 10),
                             border: OutlineInputBorder(
@@ -472,7 +498,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
                                       _showEmojiPicker
                                           ? Icons.keyboard_alt_outlined
                                           : widget.emojiIcon,
-                                      color: Colors.grey,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
                                     onPressed: _toggleEmojiKeyboard,
                                   )
@@ -494,11 +520,12 @@ class _ChatFieldV2State extends State<ChatFieldV2>
                                             true))
                                 ? IconButton(
                                     icon: Icon(widget.attachmentIcon,
-                                        color: Colors.grey),
+                                        color: colorScheme.onSurfaceVariant),
                                     onPressed: () => showAttachment(context),
                                   )
                                 : null,
                           ),
+                          style: TextStyle(color: colorScheme.onSurface),
                         ),
                       ),
                     ),

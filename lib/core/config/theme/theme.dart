@@ -4,14 +4,31 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/utils.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-ThemeData getAppTheme() {
+ThemeData getLightAppTheme() {
+  return _getAppTheme(Brightness.light);
+}
+
+ThemeData getDarkAppTheme() {
+  return _getAppTheme(Brightness.dark);
+}
+
+ThemeData _getAppTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: AppColor.primaryColor,
+    brightness: brightness,
+  );
+  final surfaceColor = isDark ? const Color(0xFF101820) : Colors.white;
+  final scaffoldColor = isDark ? const Color(0xFF0B1218) : Colors.white;
+
   return ThemeData(
+    colorScheme: colorScheme,
     inputDecorationTheme: InputDecorationTheme(
       errorBorder: OutlineInputBorder(
         borderSide: BorderSide(color: Colors.red),
       ),
       border: OutlineInputBorder(
-        borderSide: BorderSide(color: AppColor.primaryColor),
+        borderSide: BorderSide(color: colorScheme.outline),
         borderRadius: BorderRadius.circular(10.r),
       ),
       focusedBorder: OutlineInputBorder(
@@ -26,19 +43,24 @@ ThemeData getAppTheme() {
     ),
     appBarTheme: AppBarTheme(
       // titleSpacing: 0,
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+      backgroundColor: surfaceColor,
+      foregroundColor: colorScheme.onSurface,
+      surfaceTintColor: surfaceColor,
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: surfaceColor,
       elevation: 10,
+      selectedItemColor: AppColor.primaryColor,
+      unselectedItemColor: colorScheme.onSurfaceVariant,
     ),
     useMaterial3: true,
-    scaffoldBackgroundColor: Colors.white,
+    brightness: brightness,
+    scaffoldBackgroundColor: scaffoldColor,
     fontFamily: GoogleFonts.wellfleet().fontFamily,
     tabBarTheme: TabBarThemeData(
       labelColor: AppColor.primaryColor,
       indicatorColor: AppColor.primaryColor,
+      unselectedLabelColor: colorScheme.onSurfaceVariant,
     ),
   );
 }

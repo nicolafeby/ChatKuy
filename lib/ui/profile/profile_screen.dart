@@ -2,6 +2,7 @@ import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
 import 'package:chatkuy/core/helpers/imahe_picker_helper.dart';
 import 'package:chatkuy/core/helpers/permission_handeler_helper.dart';
@@ -137,14 +138,17 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage =
+                        await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 =
+                        await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id = await getIt<SecureStorageRepository>().getUserId();
+                        final id =
+                            await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -155,7 +159,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message: 'Kami tidak mendapatkan akses galeri untuk action ini',
+                      message:
+                          'Kami tidak mendapatkan akses galeri untuk action ini',
                     ));
                   },
                 );
@@ -183,14 +188,17 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage =
+                        await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 =
+                        await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id = await getIt<SecureStorageRepository>().getUserId();
+                        final id =
+                            await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -201,7 +209,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message: 'Kami tidak mendapatkan akses kamera untuk action ini',
+                      message:
+                          'Kami tidak mendapatkan akses kamera untuk action ini',
                     ));
                   },
                 );
@@ -217,13 +226,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
-                  padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: () {
                   store.changeProfilePicture(imageUrl: null).then(
                     (value) async {
-                      final id = await getIt<SecureStorageRepository>().getUserId();
+                      final id =
+                          await getIt<SecureStorageRepository>().getUserId();
 
                       if (id == null) return;
                       return store.getUserProfile(id);
@@ -245,6 +256,10 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
 
   @override
   Widget build(BuildContext context) {
+    final theme = themeOf(context);
+    final colorScheme = colorSchemeOf(context);
+    final isDarkMode = isDarkModeOf(context);
+
     return Scaffold(
       body: Observer(
         builder: (context) {
@@ -255,14 +270,17 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                backgroundColor: Colors.white,
+                backgroundColor: theme.appBarTheme.backgroundColor,
+                foregroundColor: colorScheme.onSurface,
                 expandedHeight: 200.h,
                 pinned: true,
                 elevation: 0,
                 centerTitle: true,
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
-                    final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
+                    final percent = ((constraints.maxHeight - kToolbarHeight) /
+                            (260 - kToolbarHeight))
+                        .clamp(0.0, 1.0);
                     final gender = store.user?.gender;
 
                     return FlexibleSpaceBar(
@@ -271,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         child: Text(
                           store.user?.name ?? '-',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: colorScheme.onSurface,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -280,7 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                       centerTitle: true,
                       background: Container(
                         decoration: BoxDecoration(
-                          color: AppColor.whiteBlue,
+                          color: colorScheme.primaryContainer,
                           borderRadius: BorderRadius.only(
                             bottomLeft: Radius.circular(50.r),
                             bottomRight: Radius.circular(50.r),
@@ -295,7 +313,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               children: [
                                 Container(
                                   padding: EdgeInsets.all(4.r),
-                                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colorScheme.surface),
                                   child: ProfileAvatarWidget(
                                     base64Image: store.user?.photoUrl,
                                     size: 80,
@@ -309,7 +329,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                                     child: Container(
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Colors.white,
+                                        color: colorScheme.surface,
                                       ),
                                       child: Icon(
                                         Icons.edit,
@@ -334,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               "${gender?.value ?? Gender.secret.value}, 25 tahun",
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.black54,
+                                color: colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -373,11 +393,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               (value) async {
                                 if (value != true) return;
 
-                                final id = await getIt<SecureStorageRepository>().getUserId();
+                                final id =
+                                    await getIt<SecureStorageRepository>()
+                                        .getUserId();
 
                                 if (id == null) return;
                                 store.getUserProfile(id);
-                                showSnackbar(title: 'Sukses', message: 'Berhasil Mengubah Profile');
+                                showSnackbar(
+                                    title: 'Sukses',
+                                    message: 'Berhasil Mengubah Profile');
                               },
                             );
                           },
@@ -427,13 +451,11 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                         ),
                         ProfilePreferencesWidget(
                           icon: Icon(
-                            Icons.sunny,
+                            isDarkMode ? Icons.dark_mode : Icons.light_mode,
                             color: Colors.white,
                           ),
-                          onTap: () {
-                            showComingSoonSnackbar();
-                          },
-                          title: 'Terang',
+                          onTap: getIt<ThemeController>().toggleTheme,
+                          title: isDarkMode ? 'Gelap' : 'Terang',
                         ),
                       ],
                     ),
@@ -479,7 +501,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     TextButton(
                       onPressed: () {
                         store.logout(
-                          onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
+                          onSuccess: () =>
+                              Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
                         );
                       },
                       child: Text(

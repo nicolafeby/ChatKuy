@@ -208,6 +208,7 @@ class _FakeSecureStorageRepository implements SecureStorageRepository {
   bool isLogin = false;
   String? userId;
   String? fcmToken;
+  String? themeModeName;
 
   @override
   Future<void> clear() async {
@@ -226,6 +227,9 @@ class _FakeSecureStorageRepository implements SecureStorageRepository {
   Future<bool> getIsLogin() async => isLogin;
 
   @override
+  Future<String?> getThemeModeName() async => themeModeName;
+
+  @override
   Future<String?> getUserId() async => userId;
 
   @override
@@ -236,6 +240,11 @@ class _FakeSecureStorageRepository implements SecureStorageRepository {
   @override
   Future<void> setIsLogin(bool value) async {
     isLogin = value;
+  }
+
+  @override
+  Future<void> setThemeModeName(String value) async {
+    themeModeName = value;
   }
 
   @override

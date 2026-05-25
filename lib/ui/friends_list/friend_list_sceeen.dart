@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
@@ -18,7 +19,7 @@ class FriendListScreen extends StatefulWidget {
 }
 
 class _FriendListScreenState extends State<FriendListScreen>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, BaseLayout {
   final FriendListStore store = FriendListStore(
     friendRepository: getIt<FriendRepository>(),
     chatRepository: getIt<ChatRepository>(),
@@ -56,7 +57,9 @@ class _FriendListScreenState extends State<FriendListScreen>
 
   Widget _buildBody() {
     return Observer(
-      builder: (_) {
+      builder: (context) {
+        final colorScheme = colorSchemeOf(context);
+
         if (store.isLoading && store.friends.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -72,20 +75,24 @@ class _FriendListScreenState extends State<FriendListScreen>
               margin: EdgeInsetsDirectional.symmetric(horizontal: 20.w),
               // padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black54),
-                  borderRadius: BorderRadius.circular(8.r)),
+                border: Border.all(color: colorScheme.outline),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
               child: ListTile(
                 onTap: () =>
                     Get.toNamed(AppRouteName.FRIEND_REQUEST_LIST_SCREEN),
                 title: Text(
                   'Permintaan Pertemanan',
                   textAlign: TextAlign.left,
-                  style: TextStyle(fontSize: 16.sp, color: Colors.black87),
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 trailing: Icon(
                   Icons.arrow_forward_ios_outlined,
                   size: 18.r,
-                  color: Colors.black54,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
               // child: Text(
