@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/di/injection.dart';
@@ -62,7 +63,7 @@ class _FriendListScreenState extends State<FriendListScreen>
         final colorScheme = colorSchemeOf(context);
 
         if (store.isLoading && store.friends.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const ListTileSkeletonList(showSubtitleIcon: false);
         }
 
         if (store.errorMessage != null) {

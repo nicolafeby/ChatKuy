@@ -10,6 +10,7 @@ import 'package:chatkuy/core/utils/converter/xfile_to_string_converter.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
@@ -43,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
   );
 
   List<ReactionDisposer> _reaction = [];
+  bool _isResolvingProfile = true;
 
   @override
   void initState() {
@@ -70,10 +72,19 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
   }
 
   void init() async {
-    final id = await getIt<SecureStorageRepository>().getUserId();
+    try {
+      final id = await getIt<SecureStorageRepository>().getUserId();
 
-    if (id == null) return;
-    store.getUserProfile(id);
+      if (id != null) {
+        await store.getUserProfile(id);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResolvingProfile = false;
+        });
+      }
+    }
   }
 
   Widget _buildAccoungSettingSections() {
@@ -263,8 +274,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     return Scaffold(
       body: Observer(
         builder: (context) {
-          if (store.userFuture?.status == FutureStatus.pending) {
-            return Center(child: CircularProgressIndicator());
+          if (_isResolvingProfile ||
+              store.userFuture?.status == FutureStatus.pending) {
+            return const ProfileSkeletonView();
           }
 
           return CustomScrollView(

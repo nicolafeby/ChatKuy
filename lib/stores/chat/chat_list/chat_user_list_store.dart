@@ -157,9 +157,16 @@ abstract class _ChatUserListStore with Store {
     isLoading = true;
     errorMessage = null;
     currentUid = myUid;
+    var isFirstEmission = true;
 
     _subscription?.cancel();
     _subscription = repository.watchChatUsers(myUid: myUid).listen((users) {
+      if (isFirstEmission && users.isEmpty) {
+        isFirstEmission = false;
+        return;
+      }
+
+      isFirstEmission = false;
       chatUsers
         ..clear()
         ..addAll(users);
