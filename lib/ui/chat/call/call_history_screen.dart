@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
@@ -328,7 +327,7 @@ class CallInfoScreen extends StatelessWidget with BaseLayout {
     String? lastHeader;
 
     for (final entry in group.entries) {
-      final header = _dayHeaderLabel(entry.createdAt);
+      final header = entry.dayHeaderLabel;
       if (header != lastHeader) {
         rows.add(
           Padding(
@@ -426,7 +425,7 @@ class _CallHistoryTile extends StatelessWidget {
             size: 48,
           ),
           title: Text(
-            _groupTitle(group, user?.name),
+            group.displayTitle(user?.name),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -444,7 +443,7 @@ class _CallHistoryTile extends StatelessWidget {
               4.horizontalSpace,
               Flexible(
                 child: Text(
-                  _listDateLabel(latest.createdAt),
+                  latest.listDateLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: colorScheme.onSurfaceVariant),
@@ -525,77 +524,12 @@ class _CallInfoRow extends StatelessWidget {
         entry.isOutgoing ? Icons.call_made : Icons.call_received,
         color: isMissed ? Colors.redAccent : Colors.green,
       ),
-      title: Text(_directionLabel(entry)),
-      subtitle: Text(_timeLabel(entry.createdAt)),
+      title: Text(entry.directionLabel),
+      subtitle: Text(entry.timeLabel),
       trailing: Text(
-        _resultLabel(entry),
+        entry.resultLabel,
         style: TextStyle(color: colorScheme.onSurfaceVariant),
       ),
     );
   }
-}
-
-String _groupTitle(CallHistoryGroup group, String? resolvedName) {
-  final name = resolvedName ?? group.peerName;
-  if (group.entries.length <= 1) return name;
-  return '$name (${group.entries.length})';
-}
-
-String _listDateLabel(DateTime? date) {
-  if (date == null) return '';
-
-  final diff = _dayDifference(date);
-  final time = _timeLabel(date);
-
-  if (diff == 0) return time;
-  if (diff == 1) return 'Kemarin, $time';
-  return '${date.day}/${date.month}/${date.year}, $time';
-}
-
-String _dayHeaderLabel(DateTime? date) {
-  if (date == null) return 'Tidak diketahui';
-
-  final diff = _dayDifference(date);
-  if (diff == 0) return 'Hari ini';
-  if (diff == 1) return 'Kemarin';
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
-
-String _timeLabel(DateTime? date) {
-  if (date == null) return '';
-  return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-}
-
-String _directionLabel(CallHistoryEntry entry) {
-  if (entry.isMissedIncoming) return 'Tak terjawab';
-  return entry.isOutgoing ? 'Keluar' : 'Masuk';
-}
-
-String _resultLabel(CallHistoryEntry entry) {
-  if (entry.status == CallStatus.declined) return 'Ditolak';
-  if (entry.status == CallStatus.missed) return 'Tak terjawab';
-  if (entry.status == CallStatus.calling || entry.status == CallStatus.ringing) {
-    return 'Tidak dijawab';
-  }
-
-  final duration = _durationText(entry);
-  if (duration == null) return 'Berakhir';
-  return duration;
-}
-
-String? _durationText(CallHistoryEntry entry) {
-  if (entry.answeredAt == null || entry.endedAt == null) return null;
-  final seconds = entry.endedAt!.difference(entry.answeredAt!).inSeconds;
-  if (seconds <= 0) return null;
-  final minutes = seconds ~/ 60;
-  final remainingSeconds = seconds % 60;
-  if (minutes <= 0) return '$seconds detik';
-  return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
-}
-
-int _dayDifference(DateTime date) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(date.year, date.month, date.day);
-  return today.difference(target).inDays;
 }

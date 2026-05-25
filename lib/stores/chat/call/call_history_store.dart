@@ -162,6 +162,12 @@ class CallHistoryGroup {
   String get peerUid => latest.peerUid;
   String get peerName => latest.peerName;
 
+  String displayTitle(String? resolvedName) {
+    final name = resolvedName ?? peerName;
+    if (entries.length <= 1) return name;
+    return '$name (${entries.length})';
+  }
+
   String get searchText {
     final buffer = StringBuffer(peerName.toLowerCase());
 
@@ -223,6 +229,57 @@ class CallHistoryEntry {
 
   bool get isMissedIncoming => !isOutgoing && (status == CallStatus.declined || status == CallStatus.missed);
 
+  String get listDateLabel {
+    final date = createdAt;
+    if (date == null) return '';
+
+    final diff = _dayDifference(date);
+    final time = _timeLabel(date);
+
+    if (diff == 0) return time;
+    if (diff == 1) return 'Kemarin, $time';
+    return '${date.day}/${date.month}/${date.year}, $time';
+  }
+
+  String get dayHeaderLabel {
+    final date = createdAt;
+    if (date == null) return 'Tidak diketahui';
+
+    final diff = _dayDifference(date);
+    if (diff == 0) return 'Hari ini';
+    if (diff == 1) return 'Kemarin';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String get timeLabel => _timeLabel(createdAt);
+
+  String get directionLabel {
+    if (isMissedIncoming) return 'Tak terjawab';
+    return isOutgoing ? 'Keluar' : 'Masuk';
+  }
+
+  String get resultLabel {
+    if (status == CallStatus.declined) return 'Ditolak';
+    if (status == CallStatus.missed) return 'Tak terjawab';
+    if (status == CallStatus.calling || status == CallStatus.ringing) {
+      return 'Tidak dijawab';
+    }
+
+    final duration = durationText;
+    if (duration == null) return 'Berakhir';
+    return duration;
+  }
+
+  String? get durationText {
+    if (answeredAt == null || endedAt == null) return null;
+    final seconds = endedAt!.difference(answeredAt!).inSeconds;
+    if (seconds <= 0) return null;
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    if (minutes <= 0) return '$seconds detik';
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
   String get searchText {
     return [
       peerName,
@@ -246,19 +303,9 @@ class CallHistoryEntry {
       return 'tidak dijawab';
     }
 
-    final duration = _durationText;
+    final duration = durationText;
     if (duration == null) return 'berakhir';
     return duration;
-  }
-
-  String? get _durationText {
-    if (answeredAt == null || endedAt == null) return null;
-    final seconds = endedAt!.difference(answeredAt!).inSeconds;
-    if (seconds <= 0) return null;
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    if (minutes <= 0) return '$seconds detik';
-    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
   static CallHistoryEntry fromData({
@@ -302,5 +349,17 @@ class CallHistoryEntry {
     if (diff == 0) return 'hari ini today $time';
     if (diff == 1) return 'kemarin yesterday $time';
     return '${date.day}/${date.month}/${date.year} ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} $time';
+  }
+
+  static String _timeLabel(DateTime? date) {
+    if (date == null) return '';
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  static int _dayDifference(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(date.year, date.month, date.day);
+    return today.difference(target).inDays;
   }
 }
