@@ -171,8 +171,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                             uploadProgress: uploadProgress,
                             isSameGroup: isSameGroup,
                             isFirstInGroup: !isSameGroup,
+                            currentUid: argument!.currentUid,
+                            targetName: user?.name,
                             onRetry: message.status == MessageStatus.failed
                                 ? () => _retryMessage(message)
+                                : null,
+                            onReply: message.status == MessageStatus.sent
+                                ? () => store.setReplyToMessage(message)
                                 : null,
                           ),
                         ],
@@ -180,20 +185,38 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     },
                   ),
                 ),
-                ChatFieldV2(
-                  controller: store.messageController,
-                  sendButtonColor: AppColor.primaryColor,
-                  attachmentConfig: AttachmentConfig(
-                    showAudio: false,
-                    backgroundColor: Colors.grey.withValues(alpha: 0.7),
-                  ),
-                  onSendTap: () {
-                    final text = store.messageController.text.trim();
-                    if (text.isEmpty) return;
-                    store.sendMessage(text, null);
+                Observer(
+                  builder: (context) {
+                    final replyToMessage = store.replyToMessage.value;
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (replyToMessage != null)
+                          _ReplyPreviewBar(
+                            message: replyToMessage,
+                            currentUid: argument!.currentUid,
+                            targetName: user?.name,
+                            onClose: store.clearReplyToMessage,
+                          ),
+                        ChatFieldV2(
+                          controller: store.messageController,
+                          sendButtonColor: AppColor.primaryColor,
+                          attachmentConfig: AttachmentConfig(
+                            showAudio: false,
+                            backgroundColor: Colors.grey.withValues(alpha: 0.7),
+                          ),
+                          onSendTap: () {
+                            final text = store.messageController.text.trim();
+                            if (text.isEmpty) return;
+                            store.sendMessage(text, null);
+                          },
+                          onChanged: store.onTypingChanged,
+                          store: store,
+                        ),
+                      ],
+                    );
                   },
-                  onChanged: store.onTypingChanged,
-                  store: store,
                 ),
               ],
             ),
@@ -242,5 +265,97 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         isVideoCall: isVideoCall,
       ),
     );
+  }
+}
+
+class _ReplyPreviewBar extends StatelessWidget {
+  const _ReplyPreviewBar({
+    required this.message,
+    required this.currentUid,
+    required this.onClose,
+    this.targetName,
+  });
+
+  final ChatMessageModel message;
+  final String currentUid;
+  final String? targetName;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final senderName =
+        message.senderId == currentUid ? 'Anda' : (targetName ?? 'Kontak');
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 0),
+      color: colorScheme.surface,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3.w,
+              height: 38.h,
+              decoration: BoxDecoration(
+                color: AppColor.primaryColor,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            8.horizontalSpace,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    senderName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColor.primaryColor,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  2.verticalSpace,
+                  Text(
+                    _previewText(message),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: onClose,
+              icon: Icon(
+                Icons.close,
+                size: 18.r,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _previewText(ChatMessageModel message) {
+    final text = message.text?.trim();
+    if (text != null && text.isNotEmpty) return text;
+    if (message.type == MessageType.image) return 'Foto';
+    if (message.type == MessageType.video) return 'Video';
+    return 'Pesan';
   }
 }

@@ -161,6 +161,8 @@ class _FakeChatRepository implements ChatRepository {
     required MessageType type,
     String? localImagePath,
     String? localVideoPath,
+    ChatMessageModel? replyToMessage,
+    String? replyToSenderName,
     void Function(int progress)? onUploadProgress,
   }) {
     throw UnimplementedError();

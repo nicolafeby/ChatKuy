@@ -31,6 +31,8 @@ abstract class _ChatRoomStore with Store {
   ObservableStream<List<ChatMessageModel>>? _serverMessages;
   ObservableStream<UserModel>? targetUser;
   ObservableStream<Map<String, bool>>? typing;
+  final Observable<ChatMessageModel?> replyToMessage =
+      Observable<ChatMessageModel?>(null);
 
   @observable
   String? roomId;
@@ -44,10 +46,13 @@ abstract class _ChatRoomStore with Store {
   @observable
   File? croppedImage;
 
-  final ObservableList<ChatMessageModel> uploadingMessages = ObservableList<ChatMessageModel>();
+  final ObservableList<ChatMessageModel> uploadingMessages =
+      ObservableList<ChatMessageModel>();
 
-  final ObservableMap<String, int> uploadProgressByMessageId = ObservableMap<String, int>();
-  final ObservableMap<String, int> uploadProgressByLocalPath = ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByMessageId =
+      ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByLocalPath =
+      ObservableMap<String, int>();
 
   Timer? _resetUnreadTimer;
   Timer? _typingTimer;
@@ -74,7 +79,8 @@ abstract class _ChatRoomStore with Store {
     }
 
     if (uploadingMessages.isNotEmpty) {
-      final visibleUploadingMessages = uploadingMessages.where((uploadingMessage) {
+      final visibleUploadingMessages =
+          uploadingMessages.where((uploadingMessage) {
         return !list.any(
           (message) =>
               message.type == uploadingMessage.type &&
@@ -83,7 +89,8 @@ abstract class _ChatRoomStore with Store {
         );
       });
 
-      list = [...list, ...visibleUploadingMessages]..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
+      list = [...list, ...visibleUploadingMessages]
+        ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     return list;
@@ -101,7 +108,8 @@ abstract class _ChatRoomStore with Store {
     this.roomId = roomId;
     this.currentUid = currentUid;
 
-    _serverMessages = chatRepository.watchMessages(roomId: roomId).asObservable();
+    _serverMessages =
+        chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
@@ -129,6 +137,16 @@ abstract class _ChatRoomStore with Store {
     pickedImage = null;
   }
 
+  @action
+  void setReplyToMessage(ChatMessageModel message) {
+    runInAction(() => replyToMessage.value = message);
+  }
+
+  @action
+  void clearReplyToMessage() {
+    runInAction(() => replyToMessage.value = null);
+  }
+
   // -----------------------
   // SEND MESSAGE
   // -----------------------
@@ -144,9 +162,12 @@ abstract class _ChatRoomStore with Store {
     }
 
     /// Clear input
+    final replyMessage = replyToMessage.value;
+    final replySenderName = _replySenderName(replyMessage);
     messageController.clear();
     onTypingChanged('');
     clearPickedImage();
+    clearReplyToMessage();
 
     ChatMessageModel? uploadingMessage;
     String? localImagePath;
@@ -172,6 +193,11 @@ abstract class _ChatRoomStore with Store {
         status: MessageStatus.pending,
         type: MessageType.image,
         localImagePath: localImagePath,
+        replyToMessageId: replyMessage?.id,
+        replyToSenderId: replyMessage?.senderId,
+        replyToSenderName: replySenderName,
+        replyToText: _replyPreviewText(replyMessage),
+        replyToType: replyMessage?.type,
       );
 
       uploadingMessages.add(uploadingMessage);
@@ -186,6 +212,8 @@ abstract class _ChatRoomStore with Store {
         imageFile: uploadImageFile ?? imageFile,
         localImagePath: localImagePath,
         type: imageFile != null ? MessageType.image : MessageType.text,
+        replyToMessage: replyMessage,
+        replyToSenderName: replySenderName,
         onUploadProgress: uploadingMessage == null
             ? null
             : (progress) {
@@ -206,7 +234,9 @@ abstract class _ChatRoomStore with Store {
         context: {
           'room_id': roomId,
           'current_uid': currentUid,
-          'message_type': imageFile != null ? MessageType.image.name : MessageType.text.name,
+          'message_type': imageFile != null
+              ? MessageType.image.name
+              : MessageType.text.name,
           'has_text': messageText?.isNotEmpty == true,
         },
       );
@@ -216,7 +246,8 @@ abstract class _ChatRoomStore with Store {
         );
 
         if (index != -1) {
-          uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+          uploadingMessages[index] =
+              uploadingMessage.copyWith(status: MessageStatus.failed);
         }
       }
 
@@ -232,6 +263,9 @@ abstract class _ChatRoomStore with Store {
 
     messageController.clear();
     onTypingChanged('');
+    final replyMessage = replyToMessage.value;
+    final replySenderName = _replySenderName(replyMessage);
+    clearReplyToMessage();
 
     final now = DateTime.now();
     final uploadingMessage = ChatMessageModel(
@@ -246,6 +280,11 @@ abstract class _ChatRoomStore with Store {
       status: MessageStatus.pending,
       type: MessageType.video,
       localVideoPath: video.path,
+      replyToMessageId: replyMessage?.id,
+      replyToSenderId: replyMessage?.senderId,
+      replyToSenderName: replySenderName,
+      replyToText: _replyPreviewText(replyMessage),
+      replyToType: replyMessage?.type,
     );
 
     uploadingMessages.add(uploadingMessage);
@@ -257,7 +296,8 @@ abstract class _ChatRoomStore with Store {
         videoFile: video,
         onProgress: (progress) {
           runInAction(() {
-            final mappedProgress = (progress * 0.5).round().clamp(0, 50).toInt();
+            final mappedProgress =
+                (progress * 0.5).round().clamp(0, 50).toInt();
             uploadProgressByMessageId[uploadingMessage.id] = mappedProgress;
             uploadProgressByLocalPath[video.path] = mappedProgress;
           });
@@ -274,12 +314,17 @@ abstract class _ChatRoomStore with Store {
         );
 
         if (index != -1) {
-          uploadingMessages[index] = uploadingMessage.copyWith(localVideoPath: localVideoPath);
+          uploadingMessages[index] =
+              uploadingMessage.copyWith(localVideoPath: localVideoPath);
         }
 
         uploadProgressByMessageId[uploadingMessage.id] =
-            uploadProgressByMessageId[uploadingMessage.id]?.clamp(0, 50).toInt() ?? 50;
-        uploadProgressByLocalPath[localVideoPath] = uploadProgressByMessageId[uploadingMessage.id] ?? 50;
+            uploadProgressByMessageId[uploadingMessage.id]
+                    ?.clamp(0, 50)
+                    .toInt() ??
+                50;
+        uploadProgressByLocalPath[localVideoPath] =
+            uploadProgressByMessageId[uploadingMessage.id] ?? 50;
       });
 
       await chatRepository.sendMessage(
@@ -288,11 +333,15 @@ abstract class _ChatRoomStore with Store {
         videoFile: uploadVideoFile,
         localVideoPath: localVideoPath,
         type: MessageType.video,
+        replyToMessage: replyMessage,
+        replyToSenderName: replySenderName,
         onUploadProgress: (progress) {
           runInAction(() {
             final mappedProgress = (50 + (progress * 0.5)).round();
-            uploadProgressByMessageId[uploadingMessage.id] = mappedProgress.clamp(50, 100).toInt();
-            uploadProgressByLocalPath[localVideoPath] = mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByMessageId[uploadingMessage.id] =
+                mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByLocalPath[localVideoPath] =
+                mappedProgress.clamp(50, 100).toInt();
           });
         },
       );
@@ -312,7 +361,8 @@ abstract class _ChatRoomStore with Store {
       );
 
       if (index != -1) {
-        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] =
+            uploadingMessage.copyWith(status: MessageStatus.failed);
       }
 
       rethrow;
@@ -322,6 +372,22 @@ abstract class _ChatRoomStore with Store {
   String? _localMediaPath(ChatMessageModel message) {
     if (message.type == MessageType.video) return message.localVideoPath;
     return message.localImagePath;
+  }
+
+  String? _replySenderName(ChatMessageModel? message) {
+    if (message == null) return null;
+    if (message.senderId == currentUid) return 'Anda';
+    return targetUser?.value?.name ?? 'Kontak';
+  }
+
+  String? _replyPreviewText(ChatMessageModel? message) {
+    if (message == null) return null;
+
+    final messageText = message.text?.trim();
+    if (messageText != null && messageText.isNotEmpty) return messageText;
+    if (message.type == MessageType.image) return 'Foto';
+    if (message.type == MessageType.video) return 'Video';
+    return null;
   }
 
   void initReadMessagePeriodically() {
@@ -341,7 +407,8 @@ abstract class _ChatRoomStore with Store {
     for (final message in messages) {
       if (message.senderId == currentUid) continue;
 
-      if (!message.deliveredTo.containsKey(currentUid) && _deliveredMessageIds.add(message.id)) {
+      if (!message.deliveredTo.containsKey(currentUid) &&
+          _deliveredMessageIds.add(message.id)) {
         chatRepository
             .markDelivered(
           roomId: roomId!,
@@ -362,7 +429,8 @@ abstract class _ChatRoomStore with Store {
         });
       }
 
-      if (!message.readBy.containsKey(currentUid) && _readMessageIds.add(message.id)) {
+      if (!message.readBy.containsKey(currentUid) &&
+          _readMessageIds.add(message.id)) {
         chatRepository
             .markRead(
           roomId: roomId!,
@@ -497,6 +565,7 @@ abstract class _ChatRoomStore with Store {
     _serverMessages = null;
     targetUser = null;
     typing = null;
+    replyToMessage.value = null;
     messageController.dispose();
   }
 }
