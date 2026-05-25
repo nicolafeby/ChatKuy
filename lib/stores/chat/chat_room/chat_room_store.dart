@@ -46,6 +46,9 @@ abstract class _ChatRoomStore with Store {
   @observable
   File? croppedImage;
 
+  @observable
+  String searchQuery = '';
+
   final ObservableList<ChatMessageModel> uploadingMessages =
       ObservableList<ChatMessageModel>();
 
@@ -102,6 +105,28 @@ abstract class _ChatRoomStore with Store {
     return list;
   }
 
+  @computed
+  List<ChatMessageModel> get visibleMessages {
+    final query = searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return messages;
+
+    return messages.where((message) {
+      final text = message.text?.toLowerCase() ?? '';
+      final replyText = message.replyToText?.toLowerCase() ?? '';
+      final typeLabel = _messageTypeLabel(message.type).toLowerCase();
+
+      return text.contains(query) ||
+          replyText.contains(query) ||
+          typeLabel.contains(query);
+    }).toList();
+  }
+
+  @computed
+  int get searchResultCount {
+    if (searchQuery.trim().isEmpty) return 0;
+    return visibleMessages.length;
+  }
+
   // -----------------------
   // INIT
   // -----------------------
@@ -141,6 +166,16 @@ abstract class _ChatRoomStore with Store {
   @action
   void clearPickedImage() {
     pickedImage = null;
+  }
+
+  @action
+  void setSearchQuery(String value) {
+    searchQuery = value;
+  }
+
+  @action
+  void clearSearch() {
+    searchQuery = '';
   }
 
   @action
@@ -395,6 +430,13 @@ abstract class _ChatRoomStore with Store {
     if (message.type == MessageType.video) return 'Video';
     if (message.type == MessageType.call) return 'Panggilan';
     return null;
+  }
+
+  String _messageTypeLabel(MessageType type) {
+    if (type == MessageType.image) return 'Foto';
+    if (type == MessageType.video) return 'Video';
+    if (type == MessageType.call) return 'Panggilan';
+    return 'Pesan';
   }
 
   @action
@@ -670,6 +712,7 @@ abstract class _ChatRoomStore with Store {
     targetUser = null;
     typing = null;
     replyToMessage.value = null;
+    searchQuery = '';
     messageController.dispose();
   }
 }

@@ -34,6 +34,7 @@ class ChatBubbleWidget extends StatefulWidget {
     this.isSelected = false,
     this.currentUid,
     this.targetName,
+    this.searchQuery = '',
   });
 
   final ChatMessageModel message;
@@ -47,6 +48,7 @@ class ChatBubbleWidget extends StatefulWidget {
   final bool isSelected;
   final String? currentUid;
   final String? targetName;
+  final String searchQuery;
 
   final bool isFirstInGroup;
   final bool isSameGroup;
@@ -161,6 +163,12 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                       decoration: BoxDecoration(
                         color: bubbleColor,
                         borderRadius: _bubbleRadius(),
+                        border: _isSearchMatch()
+                            ? Border.all(
+                                color: Colors.amber,
+                                width: 1.5,
+                              )
+                            : null,
                       ),
                       child: _buildContent(colorScheme, isDarkMode),
                     ),
@@ -335,14 +343,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
               4.verticalSpace,
               Visibility(
                 visible: widget.message.text?.isNotEmpty == true,
-                child: Text(
+                replacement: const SizedBox.shrink(),
+                child: _buildMessageText(
                   widget.message.text ?? '',
-                  softWrap: true,
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    color: messageTextColor,
-                    fontSize: 14.sp,
-                  ),
+                  messageTextColor,
                 ),
               ),
             ],
@@ -370,27 +374,18 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
               4.verticalSpace,
               Visibility(
                 visible: widget.message.text?.isNotEmpty == true,
-                child: Text(
+                replacement: const SizedBox.shrink(),
+                child: _buildMessageText(
                   widget.message.text ?? '',
-                  softWrap: true,
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    color: messageTextColor,
-                    fontSize: 14.sp,
-                  ),
+                  messageTextColor,
                 ),
               ),
             ],
           )
         ] else ...[
-          Text(
+          _buildMessageText(
             widget.message.text ?? '',
-            softWrap: true,
-            textAlign: TextAlign.left,
-            style: TextStyle(
-              color: messageTextColor,
-              fontSize: 14.sp,
-            ),
+            messageTextColor,
           ),
         ],
         Wrap(
@@ -410,6 +405,95 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         ),
       ],
     );
+  }
+
+  bool _isSearchMatch() {
+    final query = widget.searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return false;
+
+    return (widget.message.text ?? '').toLowerCase().contains(query) ||
+        (widget.message.replyToText ?? '').toLowerCase().contains(query) ||
+        _messageTypeLabel(widget.message.type).toLowerCase().contains(query);
+  }
+
+  Widget _buildMessageText(String text, Color textColor) {
+    return _buildHighlightedText(
+      text: text,
+      color: textColor,
+      fontSize: 14.sp,
+    );
+  }
+
+  Widget _buildHighlightedText({
+    required String text,
+    required Color color,
+    required double fontSize,
+    int? maxLines,
+    TextOverflow overflow = TextOverflow.clip,
+  }) {
+    final textStyle = TextStyle(
+      color: color,
+      fontSize: fontSize,
+    );
+    final query = widget.searchQuery.trim();
+
+    if (query.isEmpty ||
+        text.toLowerCase().contains(query.toLowerCase()) == false) {
+      return Text(
+        text,
+        softWrap: true,
+        textAlign: TextAlign.left,
+        maxLines: maxLines,
+        overflow: overflow,
+        style: textStyle,
+      );
+    }
+
+    final spans = <TextSpan>[];
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    var start = 0;
+
+    while (start < text.length) {
+      final index = lowerText.indexOf(lowerQuery, start);
+      if (index == -1) {
+        spans.add(TextSpan(text: text.substring(start)));
+        break;
+      }
+
+      if (index > start) {
+        spans.add(TextSpan(text: text.substring(start, index)));
+      }
+
+      spans.add(
+        TextSpan(
+          text: text.substring(index, index + query.length),
+          style: TextStyle(
+            color: Colors.black,
+            backgroundColor: Colors.amber,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+      start = index + query.length;
+    }
+
+    return RichText(
+      textAlign: TextAlign.left,
+      maxLines: maxLines,
+      overflow: overflow,
+      text: TextSpan(
+        style: textStyle,
+        children: spans,
+      ),
+    );
+  }
+
+  String _messageTypeLabel(MessageType type) {
+    if (type == MessageType.image) return 'Foto';
+    if (type == MessageType.video) return 'Video';
+    if (type == MessageType.call) return 'Panggilan';
+    return 'Pesan';
   }
 
   Widget _buildCallContent(Color messageTextColor, Color metaTextColor) {
@@ -520,14 +604,12 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                   ),
                 ),
                 2.verticalSpace,
-                Text(
-                  _replyPreviewText(),
+                _buildHighlightedText(
+                  text: _replyPreviewText(),
+                  color: metaTextColor,
+                  fontSize: 11.sp,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: metaTextColor,
-                    fontSize: 11.sp,
-                  ),
                 ),
               ],
             ),

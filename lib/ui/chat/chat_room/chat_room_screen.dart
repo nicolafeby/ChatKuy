@@ -26,6 +26,8 @@ class ChatRoomArgument {
   final String roomId;
   final String currentUid;
   final UserModel? targetUser;
+  final String? targetMessageId;
+  final String? initialHighlightQuery;
 
   // explisit for notification
   final String? senderId;
@@ -34,6 +36,8 @@ class ChatRoomArgument {
     required this.roomId,
     required this.currentUid,
     this.targetUser,
+    this.targetMessageId,
+    this.initialHighlightQuery,
     this.senderId,
   });
 }
@@ -54,6 +58,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
   ChatRoomArgument? argument;
   final Set<String> _selectedMessageIds = {};
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _messageKeys = {};
+  String _highlightQuery = '';
+  bool _isSearching = false;
+  bool _targetScrollScheduled = false;
+  bool _didScrollToTarget = false;
 
   @override
   void initState() {
@@ -69,10 +80,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       currentUid: argument!.currentUid,
       targetUid: id,
     );
+
+    _highlightQuery = argument?.initialHighlightQuery?.trim() ?? '';
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
     store.dispose();
     super.dispose();
   }
@@ -95,12 +110,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         final targetUserFallback = argument?.targetUser;
         final user = store.targetUser?.value ?? targetUserFallback;
 
-        final messages = store.messages;
+        final messages = _isSearching ? store.visibleMessages : store.messages;
+        _scheduleTargetMessageScroll(messages);
         final visibleMessageIds = messages.map((message) => message.id).toSet();
         _selectedMessageIds.removeWhere(
           (messageId) => !visibleMessageIds.contains(messageId),
         );
         final isSelectionMode = _selectedMessageIds.isNotEmpty;
+        final hasSearchQuery =
+            _isSearching && store.searchQuery.trim().isNotEmpty;
 
         final dummy = UserModel(
           name: 'name',
@@ -114,6 +132,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           onPopInvokedWithResult: (didPop, result) {
             if (_selectedMessageIds.isNotEmpty) {
               _clearSelectedMessages();
+            } else if (_isSearching) {
+              _hideSearch();
             } else if (AttachmentOverlay.isShowing) {
               AttachmentOverlay.hide();
             } else if (ChatFieldV2.isEmojiShowing) {
@@ -126,115 +146,132 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
             resizeToAvoidBottomInset: true,
             appBar: isSelectionMode
                 ? _buildSelectionAppBar(messages)
-                : ChatAppbarWidget(
-                    store: store,
-                    userData: user ?? dummy,
-                    isTyping: isTargetTyping(),
-                    onCallTap: user == null || targetId == null
-                        ? null
-                        : () => _startCall(user, targetId, isVideoCall: false),
-                    onVideoCallTap: user == null || targetId == null
-                        ? null
-                        : () => _startCall(user, targetId, isVideoCall: true),
-                  ),
+                : _isSearching
+                    ? _buildSearchAppBar()
+                    : ChatAppbarWidget(
+                        store: store,
+                        userData: user ?? dummy,
+                        isTyping: isTargetTyping(),
+                        onSearchTap: _showSearch,
+                        onCallTap: user == null || targetId == null
+                            ? null
+                            : () =>
+                                _startCall(user, targetId, isVideoCall: false),
+                        onVideoCallTap: user == null || targetId == null
+                            ? null
+                            : () =>
+                                _startCall(user, targetId, isVideoCall: true),
+                      ),
             body: Column(
               children: [
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16).r,
-                    reverse: true,
-                    cacheExtent: 600,
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final realIndex = messages.length - 1 - index;
+                  child: messages.isEmpty && hasSearchQuery
+                      ? Center(
+                          child: Text('Pesan tidak ditemukan'),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16).r,
+                          reverse: true,
+                          cacheExtent: 600,
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final realIndex = messages.length - 1 - index;
 
-                      final message = messages[realIndex];
-                      final localMediaPath = _localMediaPath(message);
-                      final isMe = message.senderId == argument!.currentUid;
-                      final isSelected =
-                          _selectedMessageIds.contains(message.id);
+                            final message = messages[realIndex];
+                            final localMediaPath = _localMediaPath(message);
+                            final isMe =
+                                message.senderId == argument!.currentUid;
+                            final isSelected =
+                                _selectedMessageIds.contains(message.id);
 
-                      final prevMessage =
-                          realIndex > 0 ? messages[realIndex - 1] : null;
+                            final prevMessage =
+                                realIndex > 0 ? messages[realIndex - 1] : null;
 
-                      final isSameGroup = prevMessage != null &&
-                          prevMessage.senderId == message.senderId;
+                            final isSameGroup = prevMessage != null &&
+                                prevMessage.senderId == message.senderId;
 
-                      final showDateSeparator = prevMessage == null ||
-                          !message.createdAt.isSameDay(prevMessage.createdAt);
-                      final uploadProgress = store
-                              .uploadProgressByMessageId[message.id] ??
-                          (localMediaPath == null
-                              ? null
-                              : store
-                                  .uploadProgressByLocalPath[localMediaPath]);
+                            final showDateSeparator = prevMessage == null ||
+                                !message.createdAt
+                                    .isSameDay(prevMessage.createdAt);
+                            final uploadProgress =
+                                store.uploadProgressByMessageId[message.id] ??
+                                    (localMediaPath == null
+                                        ? null
+                                        : store.uploadProgressByLocalPath[
+                                            localMediaPath]);
+
+                            return Column(
+                              key: _keyForMessage(message.id),
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (showDateSeparator)
+                                  ChatDateSeparator(
+                                    label: message.createdAt.chatDayLabel,
+                                  ).paddingOnly(top: 8.h),
+                                ChatBubbleWidget(
+                                  message: message,
+                                  isMe: isMe,
+                                  uploadProgress: uploadProgress,
+                                  isSameGroup: isSameGroup,
+                                  isFirstInGroup: !isSameGroup,
+                                  currentUid: argument!.currentUid,
+                                  targetName: user?.name,
+                                  searchQuery: _activeHighlightQuery,
+                                  onRetry:
+                                      message.status == MessageStatus.failed
+                                          ? () => _retryMessage(message)
+                                          : null,
+                                  onReply: !isSelectionMode &&
+                                          message.status == MessageStatus.sent
+                                      ? () => store.setReplyToMessage(message)
+                                      : null,
+                                  onDelete: () => _deleteMessageForMe(message),
+                                  onSelect: () =>
+                                      _toggleSelectedMessage(message.id),
+                                  selectionMode: isSelectionMode,
+                                  isSelected: isSelected,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+                if (!_isSearching)
+                  Observer(
+                    builder: (context) {
+                      final replyToMessage = store.replyToMessage.value;
 
                       return Column(
-                        key: ValueKey(message.id),
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (showDateSeparator)
-                            ChatDateSeparator(
-                              label: message.createdAt.chatDayLabel,
-                            ).paddingOnly(top: 8.h),
-                          ChatBubbleWidget(
-                            message: message,
-                            isMe: isMe,
-                            uploadProgress: uploadProgress,
-                            isSameGroup: isSameGroup,
-                            isFirstInGroup: !isSameGroup,
-                            currentUid: argument!.currentUid,
-                            targetName: user?.name,
-                            onRetry: message.status == MessageStatus.failed
-                                ? () => _retryMessage(message)
-                                : null,
-                            onReply: !isSelectionMode &&
-                                    message.status == MessageStatus.sent
-                                ? () => store.setReplyToMessage(message)
-                                : null,
-                            onDelete: () => _deleteMessageForMe(message),
-                            onSelect: () => _toggleSelectedMessage(message.id),
-                            selectionMode: isSelectionMode,
-                            isSelected: isSelected,
+                          if (replyToMessage != null)
+                            _ReplyPreviewBar(
+                              message: replyToMessage,
+                              currentUid: argument!.currentUid,
+                              targetName: user?.name,
+                              onClose: store.clearReplyToMessage,
+                            ),
+                          ChatFieldV2(
+                            controller: store.messageController,
+                            sendButtonColor: AppColor.primaryColor,
+                            attachmentConfig: AttachmentConfig(
+                              showAudio: false,
+                              backgroundColor:
+                                  Colors.grey.withValues(alpha: 0.7),
+                            ),
+                            onSendTap: () {
+                              final text = store.messageController.text.trim();
+                              if (text.isEmpty) return;
+                              store.sendMessage(text, null);
+                            },
+                            onChanged: store.onTypingChanged,
+                            store: store,
                           ),
                         ],
                       );
                     },
                   ),
-                ),
-                Observer(
-                  builder: (context) {
-                    final replyToMessage = store.replyToMessage.value;
-
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (replyToMessage != null)
-                          _ReplyPreviewBar(
-                            message: replyToMessage,
-                            currentUid: argument!.currentUid,
-                            targetName: user?.name,
-                            onClose: store.clearReplyToMessage,
-                          ),
-                        ChatFieldV2(
-                          controller: store.messageController,
-                          sendButtonColor: AppColor.primaryColor,
-                          attachmentConfig: AttachmentConfig(
-                            showAudio: false,
-                            backgroundColor: Colors.grey.withValues(alpha: 0.7),
-                          ),
-                          onSendTap: () {
-                            final text = store.messageController.text.trim();
-                            if (text.isEmpty) return;
-                            store.sendMessage(text, null);
-                          },
-                          onChanged: store.onTypingChanged,
-                          store: store,
-                        ),
-                      ],
-                    );
-                  },
-                ),
               ],
             ),
           ),
@@ -245,6 +282,85 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
   @override
   bool get wantKeepAlive => true;
+
+  String get _activeHighlightQuery {
+    if (_isSearching) return store.searchQuery;
+    return _highlightQuery;
+  }
+
+  GlobalKey _keyForMessage(String messageId) {
+    return _messageKeys.putIfAbsent(messageId, GlobalKey.new);
+  }
+
+  void _scheduleTargetMessageScroll(List<ChatMessageModel> messages) {
+    final targetMessageId = argument?.targetMessageId;
+    if (targetMessageId == null ||
+        _didScrollToTarget ||
+        _targetScrollScheduled) {
+      return;
+    }
+
+    final realIndex = messages.indexWhere(
+      (message) => message.id == targetMessageId,
+    );
+    if (realIndex == -1) return;
+
+    _targetScrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToTargetMessage(
+        targetMessageId: targetMessageId,
+        realIndex: realIndex,
+        visibleMessageCount: messages.length,
+      );
+    });
+  }
+
+  Future<void> _scrollToTargetMessage({
+    required String targetMessageId,
+    required int realIndex,
+    required int visibleMessageCount,
+  }) async {
+    if (!mounted) return;
+
+    if (!_scrollController.hasClients) {
+      _targetScrollScheduled = false;
+      return;
+    }
+
+    final builderIndex = visibleMessageCount - 1 - realIndex;
+    final estimatedOffset = (builderIndex * 82.h).clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+
+    await _scrollController.animateTo(
+      estimatedOffset,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+
+    for (var attempt = 0; attempt < 8; attempt++) {
+      if (!mounted) return;
+
+      final context = _messageKeys[targetMessageId]?.currentContext;
+      if (context != null) {
+        if (!context.mounted) return;
+
+        await Scrollable.ensureVisible(
+          context,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          alignment: 0.48,
+        );
+        _didScrollToTarget = true;
+        return;
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
+
+    _targetScrollScheduled = false;
+  }
 
   PreferredSizeWidget _buildSelectionAppBar(List<ChatMessageModel> messages) {
     return AppBar(
@@ -261,6 +377,111 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         ),
       ],
     );
+  }
+
+  PreferredSizeWidget _buildSearchAppBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppBar(
+      leading: IconButton(
+        tooltip: 'Tutup pencarian',
+        onPressed: _hideSearch,
+        icon: const Icon(Icons.arrow_back),
+      ),
+      titleSpacing: 4.w,
+      title: SizedBox(
+        height: 38.h,
+        child: TextField(
+          controller: _searchController,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          cursorHeight: 18.h,
+          style: TextStyle(fontSize: 14.sp),
+          onChanged: store.setSearchQuery,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.72,
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12.w,
+              vertical: 8.h,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20.r),
+              borderSide: BorderSide.none,
+            ),
+            hintText: 'Cari pesan',
+            hintStyle: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 14.sp,
+            ),
+            suffixIconConstraints: BoxConstraints(
+              minWidth: 40.w,
+              minHeight: 28.h,
+            ),
+            suffixIcon: store.searchQuery.trim().isEmpty
+                ? null
+                : Center(
+                    widthFactor: 1,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 3.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColor.primaryColor.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Text(
+                        '${store.searchResultCount}',
+                        style: TextStyle(
+                          color: AppColor.primaryColor,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+      actions: [
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _searchController,
+          builder: (context, value, _) {
+            if (value.text.isEmpty) return const SizedBox.shrink();
+
+            return IconButton(
+              tooltip: 'Bersihkan pencarian',
+              onPressed: () {
+                _searchController.clear();
+                store.clearSearch();
+              },
+              icon: const Icon(Icons.close),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showSearch() {
+    setState(() {
+      _isSearching = true;
+      _highlightQuery = '';
+      _selectedMessageIds.clear();
+      store.clearReplyToMessage();
+    });
+  }
+
+  void _hideSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchController.clear();
+      store.clearSearch();
+    });
   }
 
   void _toggleSelectedMessage(String messageId) {
