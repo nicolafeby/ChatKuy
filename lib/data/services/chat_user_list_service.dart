@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:chatkuy/core/constants/firestore.dart';
-import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
@@ -15,229 +14,231 @@ class ChatUserListService implements ChatUserListRepository {
 
   final FirebaseFirestore firestore;
 
-  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
+  CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
+      firestore.collection(FirebaseCollections.chatRooms);
 
-  CollectionReference<Map<String, dynamic>> get _usersRef => firestore.collection(FirebaseCollections.users);
+  CollectionReference<Map<String, dynamic>> get _usersRef =>
+      firestore.collection(FirebaseCollections.users);
 
   /// HIVE BOX
-  final Box<ChatUserItemModel> _chatListBox = Hive.box<ChatUserItemModel>('chat_list');
+  final Box<ChatUserItemModel> _chatListBox =
+      Hive.box<ChatUserItemModel>('chat_list');
+  final Box<ChatMessageModel> _messageBox =
+      Hive.box<ChatMessageModel>('chat_messages');
+  final Map<String, UserModel> _userCache = {};
 
   @override
   Stream<List<ChatUserItemModel>> watchChatUsers({
     required String myUid,
-  }) async* {
-    /// 1️⃣ Emit data lokal dulu (biar tidak kosong saat refresh)
-    final localData = _chatListBox.values.toList()
-      ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
+  }) {
+    final controller = StreamController<List<ChatUserItemModel>>();
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? roomsSubscription;
+    StreamSubscription<BoxEvent>? localSubscription;
+    StreamSubscription<BoxEvent>? messageSubscription;
 
-    yield localData;
+    List<ChatUserItemModel> localItems() {
+      final localData = _chatListBox.values.toList()
+        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0))
+            .compareTo(a.lastMessageAt ?? DateTime(0)));
 
-    /// 2️⃣ Listen Firebase realtime
-    await for (final snapshot in _chatRoomsRef
-        .where(ChatRoomField.participants, arrayContains: myUid)
-        .orderBy(ChatRoomField.lastMessageAt, descending: true)
-        .snapshots()) {
-      final rooms = snapshot.docs
-          .map((doc) => ChatRoomModel.fromJson({
-                'id': doc.id,
-                ...doc.data(),
-              }))
-          .toList();
-      final roomDataById = {
-        for (final doc in snapshot.docs) doc.id: doc.data(),
-      };
-
-      final latestVisibleByRoom = <String, _LatestVisibleMessage?>{};
-      final latestVisibleResults = await Future.wait(
-        rooms.map(
-          (room) => _syncRecentMessagesAndResolveLatestVisible(
-            roomId: room.id,
-            myUid: myUid,
-            roomDeletedMessageIds: _roomDeletedMessageIdsForUser(
-              roomDataById[room.id],
-              myUid,
-            ),
-          ),
-        ),
-      );
-
-      for (var index = 0; index < rooms.length; index++) {
-        latestVisibleByRoom[rooms[index].id] = latestVisibleResults[index];
+      for (final item in localData) {
+        if (item.user.id.isNotEmpty) {
+          _userCache[item.user.id] = item.user;
+        }
       }
 
-      final targetUids = rooms.map((room) => room.participants.firstWhere((uid) => uid != myUid)).toSet();
-
-      final userSnaps = await Future.wait(
-        targetUids.map((uid) => _usersRef.doc(uid).get()),
-      );
-
-      final usersMap = <String, UserModel>{};
-      for (final snap in userSnaps) {
-        if (!snap.exists) continue;
-        usersMap[snap.id] = UserModel.fromJson({
-          'id': snap.id,
-          ...snap.data()!,
-        });
-      }
-
-      final items = <ChatUserItemModel>[];
-
-      for (final room in rooms) {
-        final targetUid = room.participants.firstWhere((uid) => uid != myUid);
-
-        final user = usersMap[targetUid];
-        if (user == null) continue;
-        final latestVisible = latestVisibleByRoom[room.id];
-
-        final item = ChatUserItemModel(
-          roomId: room.id,
-          user: user,
-          lastMessage: latestVisible?.text,
-          lastMessageAt: latestVisible?.createdAt,
-          unreadCount: room.unreadCount?[myUid] ?? 0,
-          imageUrl: latestVisible?.imageUrl,
-          type: latestVisible?.type,
-        );
-
-        items.add(item);
-
-        /// 3️⃣ Simpan / update ke Hive pakai roomId sebagai key
-        await _chatListBox.put(item.roomId, item);
-      }
-
-      /// Optional: hapus room yang sudah tidak ada
-      final remoteRoomIds = items.map((e) => e.roomId).toSet();
-      final localRoomIds = _chatListBox.keys.cast<String>().toSet();
-
-      final deletedIds = localRoomIds.difference(remoteRoomIds);
-      for (final id in deletedIds) {
-        await _chatListBox.delete(id);
-      }
-
-      /// 4️⃣ Emit ulang dari Hive (source of truth lokal)
-      final updatedLocal = _chatListBox.values.toList()
-        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
-
-      yield updatedLocal;
+      return localData;
     }
-  }
 
-  Future<_LatestVisibleMessage?> _syncRecentMessagesAndResolveLatestVisible({
-    required String roomId,
-    required String myUid,
-    required Set<String> roomDeletedMessageIds,
-  }) async {
-    try {
-      final messagesSnap = await _chatRoomsRef
-          .doc(roomId)
-          .collection(FirestoreCollection.messages)
-          .orderBy(MessageField.createdAtClient, descending: true)
-          .limit(30)
-          .get();
+    void emitLocal() {
+      if (!controller.isClosed) {
+        controller.add(localItems());
+      }
+    }
 
-      final batch = firestore.batch();
-      var hasUpdates = false;
-      _LatestVisibleMessage? latestVisibleMessage;
+    controller.onListen = () {
+      emitLocal();
 
-      for (final doc in messagesSnap.docs) {
-        final data = doc.data();
-        final senderId = data[MessageField.senderId];
-        final deliveredTo = Map<String, dynamic>.from(data[MessageField.deliveredTo] ?? {});
-        final deletedFor = Map<String, dynamic>.from(data[MessageField.deletedFor] ?? {});
-        final isDeletedForMe = deletedFor[myUid] == true || roomDeletedMessageIds.contains(doc.id);
+      localSubscription = _chatListBox.watch().listen((_) {
+        emitLocal();
+      });
 
-        final messageType = _messageTypeFromString(data[MessageField.type]);
-        latestVisibleMessage ??= isDeletedForMe
-            ? null
-            : _LatestVisibleMessage(
-                text: _resolveLastMessage(data[MessageField.text], messageType),
-                imageUrl: data[MessageField.imageUrl],
-                createdAt: _dateFromFirestore(data[MessageField.createdAt]) ??
-                    _dateFromFirestore(data[MessageField.createdAtClient]),
-                type: messageType,
-              );
+      messageSubscription = _messageBox.watch().listen((event) async {
+        final message = event.value;
+        if (message is! ChatMessageModel) return;
+        await _syncLocalChatListItemFromLatestMessage(
+          roomId: message.roomId,
+          myUid: myUid,
+        );
+      });
 
-        if (senderId == myUid || deliveredTo[myUid] == true || isDeletedForMe) {
-          continue;
+      roomsSubscription = _chatRoomsRef
+          .where(ChatRoomField.participants, arrayContains: myUid)
+          .orderBy(ChatRoomField.lastMessageAt, descending: true)
+          .snapshots()
+          .listen((snapshot) async {
+        final rooms = snapshot.docs
+            .map((doc) => ChatRoomModel.fromJson({
+                  'id': doc.id,
+                  ...doc.data(),
+                }))
+            .toList();
+
+        final localItemsByRoomId = {
+          for (final item in _chatListBox.values) item.roomId: item,
+        };
+        final targetUids = rooms
+            .map((room) => room.participants.firstWhere((uid) => uid != myUid))
+            .toSet();
+        final missingTargetUids =
+            targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
+
+        final userSnaps = await Future.wait(
+          missingTargetUids.map((uid) => _usersRef.doc(uid).get()),
+        );
+        for (final snap in userSnaps) {
+          if (!snap.exists) continue;
+          _userCache[snap.id] = UserModel.fromJson({
+            'id': snap.id,
+            ...snap.data()!,
+          });
         }
 
-        batch.update(doc.reference, {
-          '${MessageField.deliveredTo}.$myUid': true,
-        });
-        hasUpdates = true;
-      }
+        final items = <ChatUserItemModel>[];
 
-      if (hasUpdates) {
-        await batch.commit();
-      }
+        for (final room in rooms) {
+          final targetUid = room.participants.firstWhere((uid) => uid != myUid);
 
-      return latestVisibleMessage;
-    } catch (error, stackTrace) {
-      await AppErrorLogger.recordError(
-        error,
-        stackTrace,
-        reason: 'Mark chat list messages delivered failed',
-        context: {
-          'room_id': roomId,
-          'current_uid': myUid,
-        },
-        showBottomSheet: false,
-      );
-      return null;
+          final user =
+              _userCache[targetUid] ?? localItemsByRoomId[room.id]?.user;
+          if (user == null) continue;
+          final latestLocalMessage = _latestLocalMessageForRoom(
+            roomId: room.id,
+            myUid: myUid,
+          );
+          final localMatchesRoomLatest = latestLocalMessage != null &&
+              latestLocalMessage.senderId == room.lastSenderId &&
+              latestLocalMessage.type == room.type &&
+              _resolveLastMessage(latestLocalMessage) == room.lastMessage;
+          final useLocalLatest = latestLocalMessage != null &&
+              (room.lastMessageAt == null ||
+                  latestLocalMessage.status == MessageStatus.pending ||
+                  localMatchesRoomLatest ||
+                  latestLocalMessage.createdAtClient
+                      .isAfter(room.lastMessageAt!));
+
+          final item = ChatUserItemModel(
+            roomId: room.id,
+            user: user,
+            lastMessage: useLocalLatest
+                ? _resolveLastMessage(latestLocalMessage)
+                : room.lastMessage,
+            lastMessageAt: useLocalLatest
+                ? latestLocalMessage.createdAtClient
+                : room.lastMessageAt,
+            unreadCount: room.unreadCount?[myUid] ?? 0,
+            imageUrl:
+                useLocalLatest ? latestLocalMessage.imageUrl : room.imageUrl,
+            type: useLocalLatest ? latestLocalMessage.type : room.type,
+            lastSenderId: useLocalLatest
+                ? latestLocalMessage.senderId
+                : room.lastSenderId,
+            lastMessageStatus:
+                useLocalLatest ? latestLocalMessage.status : null,
+            lastMessageDeliveredTo:
+                useLocalLatest ? latestLocalMessage.deliveredTo : const {},
+            lastMessageReadBy:
+                useLocalLatest ? latestLocalMessage.readBy : const {},
+          );
+
+          items.add(item);
+
+          /// 3️⃣ Simpan / update ke Hive pakai roomId sebagai key
+          await _chatListBox.put(item.roomId, item);
+        }
+
+        /// Optional: hapus room yang sudah tidak ada
+        final remoteRoomIds = items.map((e) => e.roomId).toSet();
+        final localRoomIds = _chatListBox.keys.cast<String>().toSet();
+
+        final deletedIds = localRoomIds.difference(remoteRoomIds);
+        for (final id in deletedIds) {
+          await _chatListBox.delete(id);
+        }
+
+        emitLocal();
+      }, onError: controller.addError);
+    };
+
+    controller.onCancel = () async {
+      await roomsSubscription?.cancel();
+      await localSubscription?.cancel();
+      await messageSubscription?.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  ChatMessageModel? _latestLocalMessageForRoom({
+    required String roomId,
+    required String myUid,
+  }) {
+    final messages = _messageBox.values
+        .where(
+          (message) =>
+              message.roomId == roomId && message.deletedFor[myUid] != true,
+        )
+        .toList()
+      ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
+
+    return messages.isEmpty ? null : messages.first;
+  }
+
+  String? _resolveLastMessage(ChatMessageModel message) {
+    final text = message.text?.trim();
+    if (text != null && text.isNotEmpty) return text;
+    if (message.type == MessageType.image) return 'Foto';
+    if (message.type == MessageType.video) return 'Video';
+    if (message.type == MessageType.call) return 'Panggilan';
+    if (message.type == MessageType.file) return 'Dokumen';
+    if (message.type == MessageType.contact) return 'Kontak';
+    return null;
+  }
+
+  Future<void> _syncLocalChatListItemFromLatestMessage({
+    required String roomId,
+    required String myUid,
+  }) async {
+    final existing = _chatListBox.get(roomId);
+    if (existing == null) return;
+
+    final latestMessage = _latestLocalMessageForRoom(
+      roomId: roomId,
+      myUid: myUid,
+    );
+    if (latestMessage == null) return;
+
+    final existingDate = existing.lastMessageAt ?? DateTime(0);
+    if (latestMessage.status != MessageStatus.pending &&
+        latestMessage.createdAtClient.isBefore(existingDate)) {
+      return;
     }
-  }
 
-  MessageType _messageTypeFromString(dynamic value) {
-    if (value == MessageType.image.name) return MessageType.image;
-    if (value == MessageType.video.name) return MessageType.video;
-    if (value == MessageType.call.name) return MessageType.call;
-    if (value == MessageType.file.name) return MessageType.file;
-    if (value == MessageType.contact.name) return MessageType.contact;
-    return MessageType.text;
-  }
-
-  String? _resolveLastMessage(dynamic text, MessageType type) {
-    if (text is String && text.trim().isNotEmpty) return text.trim();
-    if (type == MessageType.image) return 'Foto';
-    if (type == MessageType.video) return 'Video';
-    if (type == MessageType.call) return 'Panggilan';
-    if (type == MessageType.file) return 'Dokumen';
-    if (type == MessageType.contact) return 'Kontak';
-    return null;
-  }
-
-  Set<String> _roomDeletedMessageIdsForUser(
-    Map<String, dynamic>? roomData,
-    String myUid,
-  ) {
-    final deletedMessagesFor = Map<String, dynamic>.from(
-      roomData?[ChatRoomField.deletedMessagesFor] ?? {},
+    await _chatListBox.put(
+      roomId,
+      ChatUserItemModel(
+        roomId: existing.roomId,
+        user: existing.user,
+        lastMessage: _resolveLastMessage(latestMessage),
+        lastMessageAt: latestMessage.createdAtClient,
+        unreadCount: existing.unreadCount,
+        imageUrl: latestMessage.imageUrl ?? existing.imageUrl,
+        type: latestMessage.type,
+        lastSenderId: latestMessage.senderId,
+        lastMessageStatus: latestMessage.status,
+        lastMessageDeliveredTo: latestMessage.deliveredTo,
+        lastMessageReadBy: latestMessage.readBy,
+      ),
     );
-    final deletedMessagesById = Map<String, dynamic>.from(
-      deletedMessagesFor[myUid] ?? {},
-    );
-
-    return deletedMessagesById.entries.where((entry) => entry.value == true).map((entry) => entry.key).toSet();
   }
-
-  DateTime? _dateFromFirestore(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is Timestamp) return value.toDate();
-    return null;
-  }
-}
-
-class _LatestVisibleMessage {
-  const _LatestVisibleMessage({
-    required this.text,
-    required this.imageUrl,
-    required this.createdAt,
-    required this.type,
-  });
-
-  final String? text;
-  final String? imageUrl;
-  final DateTime? createdAt;
-  final MessageType type;
 }

@@ -31,6 +31,7 @@ abstract class ChatRepository {
     String? contactName,
     String? contactPhone,
     required MessageType type,
+    String? clientMessageId,
     String? localImagePath,
     String? localVideoPath,
     String? localFilePath,
@@ -74,5 +75,6 @@ abstract class ChatRepository {
     required String uid,
   });
 
-  Future<LocalImageModel> uploadImage({required File file, required String roomId});
+  Future<LocalImageModel> uploadImage(
+      {required File file, required String roomId});
 }

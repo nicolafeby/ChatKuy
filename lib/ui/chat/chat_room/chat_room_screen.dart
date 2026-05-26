@@ -65,6 +65,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
   bool _isSearching = false;
   bool _targetScrollScheduled = false;
   bool _didScrollToTarget = false;
+  bool _canPopRoute = false;
 
   @override
   void initState() {
@@ -90,6 +91,35 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
     _searchController.dispose();
     store.dispose();
     super.dispose();
+  }
+
+  void _handleBack() {
+    if (_selectedMessageIds.isNotEmpty) {
+      _clearSelectedMessages();
+      return;
+    }
+
+    if (_isSearching) {
+      _hideSearch();
+      return;
+    }
+
+    if (AttachmentOverlay.isShowing) {
+      AttachmentOverlay.hide();
+      return;
+    }
+
+    if (ChatFieldV2.isEmojiShowing) {
+      ChatFieldV2.setEmojiShowing(false);
+      return;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _canPopRoute = true;
+    });
+    Navigator.of(context).pop();
   }
 
   @override
@@ -129,24 +159,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
         );
 
         return PopScope(
-          canPop: false,
+          canPop: _canPopRoute,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop) return;
-
-            if (_selectedMessageIds.isNotEmpty) {
-              _clearSelectedMessages();
-            } else if (_isSearching) {
-              _hideSearch();
-            } else if (AttachmentOverlay.isShowing) {
-              AttachmentOverlay.hide();
-            } else if (ChatFieldV2.isEmojiShowing) {
-              ChatFieldV2.setEmojiShowing(false);
-            } else {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                Get.back();
-              });
-            }
+            _handleBack();
           },
           child: Scaffold(
             resizeToAvoidBottomInset: true,

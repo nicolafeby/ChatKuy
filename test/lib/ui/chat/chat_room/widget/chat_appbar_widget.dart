@@ -175,6 +175,7 @@ class _FakeChatRepository implements ChatRepository {
     String? contactName,
     String? contactPhone,
     required MessageType type,
+    String? clientMessageId,
     String? localImagePath,
     String? localVideoPath,
     String? localFilePath,

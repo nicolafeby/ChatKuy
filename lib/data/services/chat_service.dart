@@ -24,9 +24,11 @@ class ChatService implements ChatRepository {
   final FirebaseStorage firebaseStorage;
 
   /// HIVE BOX
-  final Box<ChatMessageModel> _messageBox = Hive.box<ChatMessageModel>('chat_messages');
+  final Box<ChatMessageModel> _messageBox =
+      Hive.box<ChatMessageModel>('chat_messages');
 
-  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
+  CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
+      firestore.collection(FirebaseCollections.chatRooms);
 
   // -------------------------------
   // CHAT LIST
@@ -79,8 +81,10 @@ class ChatService implements ChatRepository {
         if (existing != null) {
           final data = doc.data();
 
-          final newDelivered = Map<String, bool>.from(data[MessageField.deliveredTo] ?? {});
-          final newRead = Map<String, bool>.from(data[MessageField.readBy] ?? {});
+          final newDelivered =
+              Map<String, bool>.from(data[MessageField.deliveredTo] ?? {});
+          final newRead =
+              Map<String, bool>.from(data[MessageField.readBy] ?? {});
           final deletedFor = _deletedForFromData(data);
 
           updates[messageId] = ChatMessageModel(
@@ -95,27 +99,39 @@ class ChatService implements ChatRepository {
             fileUrl: existing.fileUrl ?? data[MessageField.fileUrl],
             localFilePath: _existingFilePath(existing.localFilePath),
             fileName: existing.fileName ?? data[MessageField.fileName],
-            fileSize: existing.fileSize ?? (data[MessageField.fileSize] as num?)?.toInt(),
-            fileExtension: existing.fileExtension ?? data[MessageField.fileExtension],
+            fileSize: existing.fileSize ??
+                (data[MessageField.fileSize] as num?)?.toInt(),
+            fileExtension:
+                existing.fileExtension ?? data[MessageField.fileExtension],
             contactName: existing.contactName ?? data[MessageField.contactName],
-            contactPhone: existing.contactPhone ?? data[MessageField.contactPhone],
+            contactPhone:
+                existing.contactPhone ?? data[MessageField.contactPhone],
             type: existing.type,
             createdAt: existing.createdAt,
             createdAtClient: existing.createdAtClient,
+            clientMessageId:
+                existing.clientMessageId ?? data[MessageField.clientMessageId],
             deliveredTo: newDelivered,
             readBy: newRead,
-            status: existing.status == MessageStatus.pending ? MessageStatus.sent : existing.status,
-            replyToMessageId: existing.replyToMessageId ?? data[MessageField.replyToMessageId],
-            replyToSenderId: existing.replyToSenderId ?? data[MessageField.replyToSenderId],
-            replyToSenderName: existing.replyToSenderName ?? data[MessageField.replyToSenderName],
+            status: existing.status == MessageStatus.pending
+                ? MessageStatus.sent
+                : existing.status,
+            replyToMessageId: existing.replyToMessageId ??
+                data[MessageField.replyToMessageId],
+            replyToSenderId:
+                existing.replyToSenderId ?? data[MessageField.replyToSenderId],
+            replyToSenderName: existing.replyToSenderName ??
+                data[MessageField.replyToSenderName],
             replyToText: existing.replyToText ?? data[MessageField.replyToText],
-            replyToType: existing.replyToType ?? _nullableMessageTypeFromString(data[MessageField.replyToType]),
+            replyToType: existing.replyToType ??
+                _nullableMessageTypeFromString(data[MessageField.replyToType]),
             deletedFor: deletedFor,
             callId: existing.callId ?? data[MessageField.callId],
             callStatus: data[MessageField.callStatus] ?? existing.callStatus,
             callType: existing.callType ?? data[MessageField.callType],
             callDurationSeconds:
-                (data[MessageField.callDurationSeconds] as num?)?.toInt() ?? existing.callDurationSeconds,
+                (data[MessageField.callDurationSeconds] as num?)?.toInt() ??
+                    existing.callDurationSeconds,
           );
 
           continue;
@@ -144,20 +160,26 @@ class ChatService implements ChatRepository {
           createdAt: _dateFromFirestore(data[MessageField.createdAt]) ??
               _dateFromFirestore(data[MessageField.createdAtClient]) ??
               DateTime.now(),
-          createdAtClient: _dateFromFirestore(data[MessageField.createdAtClient]) ?? DateTime.now(),
-          deliveredTo: Map<String, bool>.from(data[MessageField.deliveredTo] ?? {}),
+          createdAtClient:
+              _dateFromFirestore(data[MessageField.createdAtClient]) ??
+                  DateTime.now(),
+          clientMessageId: data[MessageField.clientMessageId],
+          deliveredTo:
+              Map<String, bool>.from(data[MessageField.deliveredTo] ?? {}),
           readBy: Map<String, bool>.from(data[MessageField.readBy] ?? {}),
           status: MessageStatus.sent,
           replyToMessageId: data[MessageField.replyToMessageId],
           replyToSenderId: data[MessageField.replyToSenderId],
           replyToSenderName: data[MessageField.replyToSenderName],
           replyToText: data[MessageField.replyToText],
-          replyToType: _nullableMessageTypeFromString(data[MessageField.replyToType]),
+          replyToType:
+              _nullableMessageTypeFromString(data[MessageField.replyToType]),
           deletedFor: deletedFor,
           callId: data[MessageField.callId],
           callStatus: data[MessageField.callStatus],
           callType: data[MessageField.callType],
-          callDurationSeconds: (data[MessageField.callDurationSeconds] as num?)?.toInt(),
+          callDurationSeconds:
+              (data[MessageField.callDurationSeconds] as num?)?.toInt(),
         );
       }
 
@@ -218,6 +240,7 @@ class ChatService implements ChatRepository {
     String? contactName,
     String? contactPhone,
     required MessageType type,
+    String? clientMessageId,
     String? localImagePath,
     String? localVideoPath,
     String? localFilePath,
@@ -228,9 +251,13 @@ class ChatService implements ChatRepository {
     final uid = auth.currentUser!.uid;
 
     final roomRef = _chatRoomsRef.doc(roomId);
-    final messageRef = roomRef.collection(FirestoreCollection.messages).doc();
+    final messagesRef = roomRef.collection(FirestoreCollection.messages);
+    final messageRef = clientMessageId == null
+        ? messagesRef.doc()
+        : messagesRef.doc(clientMessageId);
 
-    final userDoc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
+    final userDoc =
+        await firestore.collection(FirebaseCollections.users).doc(uid).get();
     final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
 
     final roomSnap = await roomRef.get();
@@ -239,7 +266,8 @@ class ChatService implements ChatRepository {
       throw StateError('Chat room $roomId tidak ditemukan');
     }
 
-    final participants = List<String>.from(roomData[ChatRoomField.participants] ?? const []);
+    final participants =
+        List<String>.from(roomData[ChatRoomField.participants] ?? const []);
 
     final targetUid = participants.firstWhere(
       (e) => e != uid,
@@ -249,16 +277,29 @@ class ChatService implements ChatRepository {
       throw StateError('Chat room $roomId tidak memiliki penerima pesan');
     }
     final createdAtClient = DateTime.now();
-    final localPath =
-        localImagePath ?? (imageFile != null ? await saveImageToLocal(imageFile: imageFile, roomId: roomId) : null);
-    final localVideo =
-        localVideoPath ?? (videoFile != null ? await saveVideoToLocal(videoFile: videoFile, roomId: roomId) : null);
-    final resolvedLocalFilePath =
-        localFilePath ?? (file != null ? await saveFileToLocal(file: file, roomId: roomId) : null);
-    final resolvedFileName = fileName ?? (file == null ? null : p.basename(file.path));
-    final resolvedFileSize = fileSize ?? (file == null ? null : await file.length());
+    final localPath = localImagePath ??
+        (imageFile != null
+            ? await saveImageToLocal(imageFile: imageFile, roomId: roomId)
+            : null);
+    final localVideo = localVideoPath ??
+        (videoFile != null
+            ? await saveVideoToLocal(videoFile: videoFile, roomId: roomId)
+            : null);
+    final resolvedLocalFilePath = localFilePath ??
+        (file != null
+            ? await saveFileToLocal(file: file, roomId: roomId)
+            : null);
+    final resolvedFileName =
+        fileName ?? (file == null ? null : p.basename(file.path));
+    final resolvedFileSize =
+        fileSize ?? (file == null ? null : await file.length());
     final resolvedFileExtension = fileExtension ??
-        (resolvedFileName == null ? null : p.extension(resolvedFileName).replaceFirst('.', '').toUpperCase());
+        (resolvedFileName == null
+            ? null
+            : p
+                .extension(resolvedFileName)
+                .replaceFirst('.', '')
+                .toUpperCase());
 
     /// OPTIMISTIC LOCAL MESSAGE
     final localMessage = ChatMessageModel(
@@ -278,6 +319,7 @@ class ChatService implements ChatRepository {
       type: type,
       createdAt: createdAtClient,
       createdAtClient: createdAtClient,
+      clientMessageId: clientMessageId,
       deliveredTo: {},
       readBy: {},
       status: MessageStatus.pending,
@@ -298,7 +340,10 @@ class ChatService implements ChatRepository {
       String? uploadedFileUrl = fileUrl;
 
       if (imageFile != null) {
-        final ref = firebaseStorage.ref().child(StorageCollection.chatImages).child(imageNameFormat(roomId, imageFile));
+        final ref = firebaseStorage
+            .ref()
+            .child(StorageCollection.chatImages)
+            .child(imageNameFormat(roomId, imageFile));
 
         final uploadTask = ref.putFile(imageFile);
 
@@ -306,7 +351,9 @@ class ChatService implements ChatRepository {
           final totalBytes = snapshot.totalBytes;
 
           if (totalBytes > 0) {
-            final progress = ((snapshot.bytesTransferred / totalBytes) * 100).round().clamp(0, 100);
+            final progress = ((snapshot.bytesTransferred / totalBytes) * 100)
+                .round()
+                .clamp(0, 100);
             onUploadProgress?.call(progress);
           }
         }
@@ -321,7 +368,10 @@ class ChatService implements ChatRepository {
       }
 
       if (videoFile != null) {
-        final ref = firebaseStorage.ref().child(StorageCollection.chatVideos).child(mediaNameFormat(roomId, videoFile));
+        final ref = firebaseStorage
+            .ref()
+            .child(StorageCollection.chatVideos)
+            .child(mediaNameFormat(roomId, videoFile));
 
         final uploadTask = ref.putFile(videoFile);
 
@@ -329,7 +379,9 @@ class ChatService implements ChatRepository {
           final totalBytes = snapshot.totalBytes;
 
           if (totalBytes > 0) {
-            final progress = ((snapshot.bytesTransferred / totalBytes) * 100).round().clamp(0, 100);
+            final progress = ((snapshot.bytesTransferred / totalBytes) * 100)
+                .round()
+                .clamp(0, 100);
             onUploadProgress?.call(progress);
           }
         }
@@ -344,7 +396,10 @@ class ChatService implements ChatRepository {
       }
 
       if (file != null) {
-        final ref = firebaseStorage.ref().child(StorageCollection.chatFiles).child(mediaNameFormat(roomId, file));
+        final ref = firebaseStorage
+            .ref()
+            .child(StorageCollection.chatFiles)
+            .child(mediaNameFormat(roomId, file));
 
         final uploadTask = ref.putFile(file);
 
@@ -352,7 +407,9 @@ class ChatService implements ChatRepository {
           final totalBytes = snapshot.totalBytes;
 
           if (totalBytes > 0) {
-            final progress = ((snapshot.bytesTransferred / totalBytes) * 100).round().clamp(0, 100);
+            final progress = ((snapshot.bytesTransferred / totalBytes) * 100)
+                .round()
+                .clamp(0, 100);
             onUploadProgress?.call(progress);
           }
         }
@@ -384,6 +441,7 @@ class ChatService implements ChatRepository {
         MessageField.contactPhone: contactPhone,
         MessageField.createdAt: FieldValue.serverTimestamp(),
         MessageField.createdAtClient: createdAtClient,
+        MessageField.clientMessageId: clientMessageId,
         MessageField.deliveredTo: <String, bool>{},
         MessageField.readBy: <String, bool>{},
         MessageField.deletedFor: <String, bool>{},
@@ -487,7 +545,10 @@ class ChatService implements ChatRepository {
         deletedMessagesFor[uid] ?? {},
       );
 
-      return deletedMessagesById.entries.where((entry) => entry.value == true).map((entry) => entry.key).toSet();
+      return deletedMessagesById.entries
+          .where((entry) => entry.value == true)
+          .map((entry) => entry.key)
+          .toSet();
     } catch (_) {
       return {};
     }
@@ -585,7 +646,11 @@ class ChatService implements ChatRepository {
     required String messageId,
     required String uid,
   }) {
-    return _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
+    return _chatRoomsRef
+        .doc(roomId)
+        .collection(FirestoreCollection.messages)
+        .doc(messageId)
+        .update({
       '${MessageField.deliveredTo}.$uid': true,
     });
   }
@@ -599,7 +664,11 @@ class ChatService implements ChatRepository {
     required String messageId,
     required String uid,
   }) {
-    return _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
+    return _chatRoomsRef
+        .doc(roomId)
+        .collection(FirestoreCollection.messages)
+        .doc(messageId)
+        .update({
       '${MessageField.readBy}.$uid': true,
     });
   }
@@ -626,7 +695,11 @@ class ChatService implements ChatRepository {
     if (existing != null && existing.status != MessageStatus.sent) return;
 
     try {
-      await _chatRoomsRef.doc(roomId).collection(FirestoreCollection.messages).doc(messageId).update({
+      await _chatRoomsRef
+          .doc(roomId)
+          .collection(FirestoreCollection.messages)
+          .doc(messageId)
+          .update({
         '${MessageField.deletedFor}.$uid': true,
       });
     } on FirebaseException catch (e) {
@@ -656,9 +729,13 @@ class ChatService implements ChatRepository {
     required File file,
     required String roomId,
   }) async {
-    final localImagePath = await saveImageToLocal(imageFile: file, roomId: roomId);
+    final localImagePath =
+        await saveImageToLocal(imageFile: file, roomId: roomId);
 
-    final ref = firebaseStorage.ref().child(StorageCollection.chatImages).child(imageNameFormat(roomId, file));
+    final ref = firebaseStorage
+        .ref()
+        .child(StorageCollection.chatImages)
+        .child(imageNameFormat(roomId, file));
 
     await ref.putFile(file);
 
