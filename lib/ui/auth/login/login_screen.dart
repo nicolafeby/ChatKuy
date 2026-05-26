@@ -23,6 +23,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:mobx/mobx.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,6 +50,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestCallMediaPermissions();
       _reaction = [
         reaction((p0) => store.loginFuture?.status, (p0) {
           if (p0 == FutureStatus.pending) {
@@ -102,6 +104,27 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
         }),
       ];
     });
+  }
+
+  Future<void> _requestCallMediaPermissions() async {
+    try {
+      final microphoneStatus = await Permission.microphone.status;
+      if (!microphoneStatus.isGranted) {
+        await Permission.microphone.request();
+      }
+
+      final cameraStatus = await Permission.camera.status;
+      if (!cameraStatus.isGranted) {
+        await Permission.camera.request();
+      }
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Login call media permission request failed',
+        showBottomSheet: false,
+      );
+    }
   }
 
   @override

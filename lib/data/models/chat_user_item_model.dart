@@ -22,6 +22,14 @@ class ChatUserItemModel {
   final String? imageUrl;
   @HiveField(6)
   final MessageType? type;
+  @HiveField(7)
+  final String? lastSenderId;
+  @HiveField(8)
+  final MessageStatus? lastMessageStatus;
+  @HiveField(9)
+  final Map<String, bool> lastMessageDeliveredTo;
+  @HiveField(10)
+  final Map<String, bool> lastMessageReadBy;
 
   ChatUserItemModel({
     required this.roomId,
@@ -31,6 +39,10 @@ class ChatUserItemModel {
     required this.unreadCount,
     this.imageUrl,
     this.type,
+    this.lastSenderId,
+    this.lastMessageStatus,
+    this.lastMessageDeliveredTo = const {},
+    this.lastMessageReadBy = const {},
   });
 
   factory ChatUserItemModel.fromJson(Map<String, dynamic> json) =>
