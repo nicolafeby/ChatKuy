@@ -28,6 +28,12 @@ enum MessageType {
 
   @HiveField(3)
   call,
+
+  @HiveField(4)
+  file,
+
+  @HiveField(5)
+  contact,
 }
 
 @HiveType(typeId: 0)
@@ -112,6 +118,27 @@ class ChatMessageModel {
   @HiveField(24)
   final int? callDurationSeconds;
 
+  @HiveField(25)
+  final String? fileUrl;
+
+  @HiveField(26)
+  final String? localFilePath;
+
+  @HiveField(27)
+  final String? fileName;
+
+  @HiveField(28)
+  final int? fileSize;
+
+  @HiveField(29)
+  final String? fileExtension;
+
+  @HiveField(30)
+  final String? contactName;
+
+  @HiveField(31)
+  final String? contactPhone;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -138,10 +165,16 @@ class ChatMessageModel {
     this.callStatus,
     this.callType,
     this.callDurationSeconds,
+    this.fileUrl,
+    this.localFilePath,
+    this.fileName,
+    this.fileSize,
+    this.fileExtension,
+    this.contactName,
+    this.contactPhone,
   });
 
-  factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
-      _$ChatMessageModelFromJson(json);
+  factory ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatMessageModelToJson(this);
 
@@ -151,6 +184,8 @@ class ChatMessageModel {
     String? imageUrl,
     String? localVideoPath,
     String? videoUrl,
+    String? localFilePath,
+    String? fileUrl,
     Map<String, bool>? deletedFor,
     String? callStatus,
     int? callDurationSeconds,
@@ -171,6 +206,13 @@ class ChatMessageModel {
       localImagePath: localImagePath ?? this.localImagePath,
       videoUrl: videoUrl ?? this.videoUrl,
       localVideoPath: localVideoPath ?? this.localVideoPath,
+      fileUrl: fileUrl ?? this.fileUrl,
+      localFilePath: localFilePath ?? this.localFilePath,
+      fileName: fileName,
+      fileSize: fileSize,
+      fileExtension: fileExtension,
+      contactName: contactName,
+      contactPhone: contactPhone,
       replyToMessageId: replyToMessageId,
       replyToSenderId: replyToSenderId,
       replyToSenderName: replyToSenderName,

@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum UiMessageStatus {
   sent,
@@ -74,8 +76,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         : isDarkMode
             ? const Color(0xFF18232C)
             : Colors.grey.shade200;
-    final replyProgress =
-        (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
+    final replyProgress = (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
     final selectedRowColor = AppColor.primaryColor.withValues(
       alpha: isDarkMode ? 0.22 : 0.12,
     );
@@ -90,8 +91,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           bottom: widget.isSelected ? 1.5.h : 0,
         ),
         child: Row(
-          mainAxisAlignment:
-              widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
             ConstrainedBox(
               constraints: BoxConstraints(
@@ -111,8 +111,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                           width: 32.r,
                           height: 32.r,
                           decoration: BoxDecoration(
-                            color:
-                                AppColor.primaryColor.withValues(alpha: 0.14),
+                            color: AppColor.primaryColor.withValues(alpha: 0.14),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -130,30 +129,15 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                         : widget.message.status == MessageStatus.failed
                             ? widget.onRetry
                             : null,
-                    onLongPress:
-                        widget.onSelect == null && widget.onDelete == null
-                            ? null
-                            : _handleLongPress,
+                    onLongPress: widget.onSelect == null && widget.onDelete == null ? null : _handleLongPress,
                     onHorizontalDragStart:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _onHorizontalDragStart,
+                        widget.onReply == null || widget.selectionMode ? null : _onHorizontalDragStart,
                     onHorizontalDragUpdate:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _onHorizontalDragUpdate,
-                    onHorizontalDragEnd:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _onHorizontalDragEnd,
-                    onHorizontalDragCancel:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _resetDrag,
+                        widget.onReply == null || widget.selectionMode ? null : _onHorizontalDragUpdate,
+                    onHorizontalDragEnd: widget.onReply == null || widget.selectionMode ? null : _onHorizontalDragEnd,
+                    onHorizontalDragCancel: widget.onReply == null || widget.selectionMode ? null : _resetDrag,
                     child: AnimatedContainer(
-                      duration: _isDragging
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
+                      duration: _isDragging ? Duration.zero : const Duration(milliseconds: 180),
                       curve: Curves.easeOutCubic,
                       transform: Matrix4.translationValues(_dragOffset, 0, 0),
                       padding: EdgeInsets.symmetric(
@@ -244,8 +228,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    final nextOffset =
-        (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
+    final nextOffset = (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
     final nextIsReplyArmed = nextOffset >= _replyTriggerOffset;
 
     if (nextIsReplyArmed && !_isReplyArmed) {
@@ -259,8 +242,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragEnd(DragEndDetails details) {
-    final shouldReply = _dragOffset >= _replyTriggerOffset ||
-        (details.primaryVelocity ?? 0) > 480;
+    final shouldReply = _dragOffset >= _replyTriggerOffset || (details.primaryVelocity ?? 0) > 480;
 
     if (shouldReply) {
       widget.onReply?.call();
@@ -294,19 +276,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final type = widget.message.type;
     final imageUrl = widget.message.imageUrl;
     final localImagePath = widget.message.localImagePath;
-    final hasImage = type == MessageType.image &&
-        (localImagePath != null || imageUrl != null);
+    final hasImage = type == MessageType.image && (localImagePath != null || imageUrl != null);
     final videoUrl = widget.message.videoUrl;
     final localVideoPath = widget.message.localVideoPath;
     final playableLocalVideoPath = _existingFilePath(localVideoPath);
-    final hasVideo = type == MessageType.video &&
-        (playableLocalVideoPath != null || videoUrl != null);
-    final messageTextColor = widget.isMe
-        ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
-        : colorScheme.onSurface;
-    final metaTextColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.68)
-        : colorScheme.onSurfaceVariant;
+    final hasVideo = type == MessageType.video && (playableLocalVideoPath != null || videoUrl != null);
+    final messageTextColor = widget.isMe ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1) : colorScheme.onSurface;
+    final metaTextColor = widget.isMe ? Colors.white.withValues(alpha: 0.68) : colorScheme.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -318,6 +294,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         ],
         if (type == MessageType.call) ...[
           _buildCallContent(messageTextColor, metaTextColor),
+        ] else if (type == MessageType.file) ...[
+          _buildFileContent(messageTextColor, metaTextColor),
+        ] else if (type == MessageType.contact) ...[
+          _buildContactContent(messageTextColor, metaTextColor),
         ] else if (hasImage) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,8 +417,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     );
     final query = widget.searchQuery.trim();
 
-    if (query.isEmpty ||
-        text.toLowerCase().contains(query.toLowerCase()) == false) {
+    if (query.isEmpty || text.toLowerCase().contains(query.toLowerCase()) == false) {
       return Text(
         text,
         softWrap: true,
@@ -493,7 +472,130 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     if (type == MessageType.image) return 'Foto';
     if (type == MessageType.video) return 'Video';
     if (type == MessageType.call) return 'Panggilan';
+    if (type == MessageType.file) return 'Dokumen';
+    if (type == MessageType.contact) return 'Kontak';
     return 'Pesan';
+  }
+
+  Widget _buildFileContent(Color messageTextColor, Color metaTextColor) {
+    final fileName = widget.message.fileName ?? 'Dokumen';
+    final fileMeta = [
+      if (widget.message.fileExtension?.isNotEmpty == true) widget.message.fileExtension,
+      if (widget.message.fileSize != null) _formatBytes(widget.message.fileSize!),
+    ].whereType<String>().join(' • ');
+
+    return InkWell(
+      onTap: _openFile,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36.r,
+            height: 36.r,
+            decoration: BoxDecoration(
+              color: widget.isMe ? Colors.white.withValues(alpha: 0.16) : AppColor.primaryColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.insert_drive_file_outlined,
+              size: 20.r,
+              color: widget.isMe ? Colors.white : AppColor.primaryColor,
+            ),
+          ),
+          8.horizontalSpace,
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  fileName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: messageTextColor,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (fileMeta.isNotEmpty) ...[
+                  2.verticalSpace,
+                  Text(
+                    fileMeta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: metaTextColor,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactContent(Color messageTextColor, Color metaTextColor) {
+    final contactName = widget.message.contactName ?? 'Kontak';
+    final contactPhone = widget.message.contactPhone ?? '';
+
+    return InkWell(
+      onTap: contactPhone.isEmpty ? null : () => launchUrl(Uri(scheme: 'tel', path: contactPhone)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36.r,
+            height: 36.r,
+            decoration: BoxDecoration(
+              color: widget.isMe ? Colors.white.withValues(alpha: 0.16) : AppColor.primaryColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.person_outline,
+              size: 20.r,
+              color: widget.isMe ? Colors.white : AppColor.primaryColor,
+            ),
+          ),
+          8.horizontalSpace,
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  contactName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: messageTextColor,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (contactPhone.isNotEmpty) ...[
+                  2.verticalSpace,
+                  Text(
+                    contactPhone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: metaTextColor,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCallContent(Color messageTextColor, Color metaTextColor) {
@@ -507,9 +609,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           width: 32.r,
           height: 32.r,
           decoration: BoxDecoration(
-            color: widget.isMe
-                ? Colors.white.withValues(alpha: 0.16)
-                : AppColor.primaryColor.withValues(alpha: 0.12),
+            color: widget.isMe ? Colors.white.withValues(alpha: 0.16) : AppColor.primaryColor.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -571,9 +671,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: widget.isMe
-            ? Colors.white.withValues(alpha: 0.14)
-            : Colors.black.withValues(alpha: 0.06),
+        color: widget.isMe ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Row(
@@ -624,12 +722,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     if (text != null && text.isNotEmpty) return text;
     if (widget.message.replyToType == MessageType.image) return 'Foto';
     if (widget.message.replyToType == MessageType.video) return 'Video';
+    if (widget.message.replyToType == MessageType.file) return 'Dokumen';
+    if (widget.message.replyToType == MessageType.contact) return 'Kontak';
     return 'Pesan';
   }
 
   String _replySenderName() {
-    if (widget.message.replyToSenderId != null &&
-        widget.message.replyToSenderId == widget.currentUid) {
+    if (widget.message.replyToSenderId != null && widget.message.replyToSenderId == widget.currentUid) {
       return 'Anda';
     }
 
@@ -757,6 +856,39 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
   String _videoHeroTag(String? videoUrl, String? localVideoPath) {
     return videoUrl ?? localVideoPath ?? widget.message.id;
+  }
+
+  Future<void> _openFile() async {
+    final localFilePath = _existingFilePath(widget.message.localFilePath);
+    if (localFilePath != null) {
+      final result = await OpenFilex.open(localFilePath);
+      if (result.type == ResultType.done) return;
+
+      if (!mounted) return;
+      Get.snackbar(
+        'Chat',
+        result.message.isEmpty ? 'File tidak bisa dibuka' : result.message,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    final uri = Uri.tryParse(widget.message.fileUrl ?? '');
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(kb < 10 ? 1 : 0)} KB';
+
+    final mb = kb / 1024;
+    if (mb < 1024) return '${mb.toStringAsFixed(mb < 10 ? 1 : 0)} MB';
+
+    final gb = mb / 1024;
+    return '${gb.toStringAsFixed(gb < 10 ? 1 : 0)} GB';
   }
 
   String? _existingFilePath(String? path) {

@@ -10,16 +10,13 @@ class LocalImageModel {
   final String localImagePath;
   final String downloadUrl;
 
-  const LocalImageModel(
-      {required this.localImagePath, required this.downloadUrl});
+  const LocalImageModel({required this.localImagePath, required this.downloadUrl});
 }
 
-Future<String> saveImageToLocal(
-    {required File imageFile, required String roomId}) async {
+Future<String> saveImageToLocal({required File imageFile, required String roomId}) async {
   final directory = await getApplicationDocumentsDirectory();
 
-  final chatDir =
-      Directory('${directory.path}/${StorageCollection.chatImages}');
+  final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
   if (!await chatDir.exists()) {
     await chatDir.create(recursive: true);
   }
@@ -39,8 +36,7 @@ Future<String> saveVideoToLocal({
 }) async {
   final directory = await getApplicationDocumentsDirectory();
 
-  final chatDir =
-      Directory('${directory.path}/${StorageCollection.chatVideos}');
+  final chatDir = Directory('${directory.path}/${StorageCollection.chatVideos}');
   if (!await chatDir.exists()) {
     await chatDir.create(recursive: true);
   }
@@ -52,11 +48,28 @@ Future<String> saveVideoToLocal({
   return newFile.path;
 }
 
+Future<String> saveFileToLocal({
+  required File file,
+  required String roomId,
+}) async {
+  final directory = await getApplicationDocumentsDirectory();
+
+  final chatDir = Directory('${directory.path}/${StorageCollection.chatFiles}');
+  if (!await chatDir.exists()) {
+    await chatDir.create(recursive: true);
+  }
+
+  final fileName = mediaNameFormat(roomId, file);
+  final newPath = '${chatDir.path}/$fileName';
+  final newFile = await file.copy(newPath);
+
+  return newFile.path;
+}
+
 Future<String> getOrDownloadImage({required String imageUrl}) async {
   final directory = await getApplicationDocumentsDirectory();
 
-  final chatDir =
-      Directory('${directory.path}/${StorageCollection.chatImages}');
+  final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
   if (!await chatDir.exists()) {
     await chatDir.create(recursive: true);
   }
