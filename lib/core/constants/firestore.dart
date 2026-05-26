@@ -29,28 +29,22 @@ abstract class FirestorePaths {
   static String user(String uid) => '${FirebaseCollections.users}/$uid';
 
   /// users/{uid}/friends
-  static String userFriends(String uid) =>
-      '${user(uid)}/${FirestoreCollection.friends}';
+  static String userFriends(String uid) => '${user(uid)}/${FirestoreCollection.friends}';
 
   /// users/{uid}/friends/{friendUid}
-  static String userFriendDoc(String uid, String friendUid) =>
-      '${userFriends(uid)}/$friendUid';
+  static String userFriendDoc(String uid, String friendUid) => '${userFriends(uid)}/$friendUid';
 
   /// chat_rooms/{roomId}
-  static String chatRoom(String roomId) =>
-      '${FirebaseCollections.chatRooms}/$roomId';
+  static String chatRoom(String roomId) => '${FirebaseCollections.chatRooms}/$roomId';
 
   /// chat_rooms/{roomId}/messages
-  static String chatMessages(String roomId) =>
-      '${chatRoom(roomId)}/${FirestoreCollection.messages}';
+  static String chatMessages(String roomId) => '${chatRoom(roomId)}/${FirestoreCollection.messages}';
 
   /// users/{uid}/friend_requests
-  static String userFriendRequests(String uid) =>
-      '${user(uid)}/${FirestoreCollection.friendRequests}';
+  static String userFriendRequests(String uid) => '${user(uid)}/${FirestoreCollection.friendRequests}';
 
   /// users/{uid}/friend_requests/{requestId}
-  static String userFriendRequestDoc(String uid, String requestId) =>
-      '${userFriendRequests(uid)}/$requestId';
+  static String userFriendRequestDoc(String uid, String requestId) => '${userFriendRequests(uid)}/$requestId';
 }
 
 /// ==============================
@@ -94,6 +88,13 @@ abstract class MessageField {
   static const callStatus = 'callStatus';
   static const callType = 'callType';
   static const callDurationSeconds = 'callDurationSeconds';
+  static const fileUrl = 'fileUrl';
+  static const localFilePath = 'localFilePath';
+  static const fileName = 'fileName';
+  static const fileSize = 'fileSize';
+  static const fileExtension = 'fileExtension';
+  static const contactName = 'contactName';
+  static const contactPhone = 'contactPhone';
 }
 
 /// ==============================
@@ -168,4 +169,5 @@ abstract class FriendRequestStatus {
 abstract class StorageCollection {
   static const chatImages = 'chat_images';
   static const chatVideos = 'chat_videos';
+  static const chatFiles = 'chat_files';
 }

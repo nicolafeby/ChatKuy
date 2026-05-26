@@ -27,8 +27,7 @@ abstract class _ChatUserListStore with Store {
   // STATE
   // -----------------------------
   @observable
-  ObservableList<ChatUserItemModel> chatUsers =
-      ObservableList<ChatUserItemModel>();
+  ObservableList<ChatUserItemModel> chatUsers = ObservableList<ChatUserItemModel>();
 
   @observable
   bool isLoading = false;
@@ -82,15 +81,12 @@ abstract class _ChatUserListStore with Store {
       final hasProfileMatch = name.contains(query) || email.contains(query);
       final hasLastMessageMatch = lastMessage.contains(query);
 
-      if (matchingMessages.isEmpty &&
-          (hasProfileMatch || hasLastMessageMatch)) {
+      if (matchingMessages.isEmpty && (hasProfileMatch || hasLastMessageMatch)) {
         results.add(
           ChatSearchResult(
             item: item,
             message: null,
-            previewText: item.lastMessage?.isNotEmpty == true
-                ? item.lastMessage!
-                : item.user.email,
+            previewText: item.lastMessage?.isNotEmpty == true ? item.lastMessage! : item.user.email,
           ),
         );
       }
@@ -124,17 +120,14 @@ abstract class _ChatUserListStore with Store {
     final messages = Hive.box<ChatMessageModel>('chat_messages')
         .values
         .where(
-          (message) =>
-              message.roomId == item.roomId &&
-              (currentUid == null || message.deletedFor[currentUid] != true),
+          (message) => message.roomId == item.roomId && (currentUid == null || message.deletedFor[currentUid] != true),
         )
         .toList()
       ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
 
     return messages
         .where(
-          (message) =>
-              _searchableMessageText(message).toLowerCase().contains(query),
+          (message) => _searchableMessageText(message).toLowerCase().contains(query),
         )
         .toList();
   }
@@ -189,9 +182,7 @@ abstract class _ChatUserListStore with Store {
   }
 
   bool _isExpectedLogoutStreamError(Object error) {
-    return FirebaseAuth.instance.currentUser == null &&
-        error is FirebaseException &&
-        error.code == 'permission-denied';
+    return FirebaseAuth.instance.currentUser == null && error is FirebaseException && error.code == 'permission-denied';
   }
 
   String? currentUid;
@@ -206,6 +197,8 @@ abstract class _ChatUserListStore with Store {
     if (message.type == MessageType.image) return 'Foto';
     if (message.type == MessageType.video) return 'Video';
     if (message.type == MessageType.call) return 'Panggilan';
+    if (message.type == MessageType.file) return 'Dokumen';
+    if (message.type == MessageType.contact) return 'Kontak';
     return '';
   }
 

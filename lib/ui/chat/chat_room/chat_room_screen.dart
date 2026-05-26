@@ -50,8 +50,7 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen>
-    with AutomaticKeepAliveClientMixin {
+class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAliveClientMixin {
   ChatRoomStore store = ChatRoomStore(
     chatRepository: getIt<ChatRepository>(),
     userRepository: getIt<UserRepository>(),
@@ -111,8 +110,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         final targetUserFallback = argument?.targetUser;
         final user = store.targetUser?.value ?? targetUserFallback;
         final currentUser = store.currentUser?.value;
-        final canViewPresence = currentUser?.isOnlineStatusVisible == true &&
-            user?.isOnlineStatusVisible != false;
+        final canViewPresence = currentUser?.isOnlineStatusVisible == true && user?.isOnlineStatusVisible != false;
 
         final messages = _isSearching ? store.visibleMessages : store.messages;
         _scheduleTargetMessageScroll(messages);
@@ -121,8 +119,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           (messageId) => !visibleMessageIds.contains(messageId),
         );
         final isSelectionMode = _selectedMessageIds.isNotEmpty;
-        final hasSearchQuery =
-            _isSearching && store.searchQuery.trim().isNotEmpty;
+        final hasSearchQuery = _isSearching && store.searchQuery.trim().isNotEmpty;
 
         final dummy = UserModel(
           name: 'name',
@@ -175,12 +172,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                 ),
                         onCallTap: user == null || targetId == null
                             ? null
-                            : () =>
-                                _startCall(user, targetId, isVideoCall: false),
+                            : () => _startCall(user, targetId, isVideoCall: false),
                         onVideoCallTap: user == null || targetId == null
                             ? null
-                            : () =>
-                                _startCall(user, targetId, isVideoCall: true),
+                            : () => _startCall(user, targetId, isVideoCall: true),
                       ),
             body: Column(
               children: [
@@ -200,26 +195,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
                             final message = messages[realIndex];
                             final localMediaPath = _localMediaPath(message);
-                            final isMe =
-                                message.senderId == argument!.currentUid;
-                            final isSelected =
-                                _selectedMessageIds.contains(message.id);
+                            final isMe = message.senderId == argument!.currentUid;
+                            final isSelected = _selectedMessageIds.contains(message.id);
 
-                            final prevMessage =
-                                realIndex > 0 ? messages[realIndex - 1] : null;
+                            final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
 
-                            final isSameGroup = prevMessage != null &&
-                                prevMessage.senderId == message.senderId;
+                            final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
 
-                            final showDateSeparator = prevMessage == null ||
-                                !message.createdAt
-                                    .isSameDay(prevMessage.createdAt);
-                            final uploadProgress =
-                                store.uploadProgressByMessageId[message.id] ??
-                                    (localMediaPath == null
-                                        ? null
-                                        : store.uploadProgressByLocalPath[
-                                            localMediaPath]);
+                            final showDateSeparator =
+                                prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
+                            final uploadProgress = store.uploadProgressByMessageId[message.id] ??
+                                (localMediaPath == null ? null : store.uploadProgressByLocalPath[localMediaPath]);
 
                             return Column(
                               key: _keyForMessage(message.id),
@@ -238,17 +224,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   currentUid: argument!.currentUid,
                                   targetName: user?.name,
                                   searchQuery: _activeHighlightQuery,
-                                  onRetry:
-                                      message.status == MessageStatus.failed
-                                          ? () => _retryMessage(message)
-                                          : null,
-                                  onReply: !isSelectionMode &&
-                                          message.status == MessageStatus.sent
+                                  onRetry: message.status == MessageStatus.failed ? () => _retryMessage(message) : null,
+                                  onReply: !isSelectionMode && message.status == MessageStatus.sent
                                       ? () => store.setReplyToMessage(message)
                                       : null,
                                   onDelete: () => _deleteMessageForMe(message),
-                                  onSelect: () =>
-                                      _toggleSelectedMessage(message.id),
+                                  onSelect: () => _toggleSelectedMessage(message.id),
                                   selectionMode: isSelectionMode,
                                   isSelected: isSelected,
                                 ),
@@ -277,8 +258,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                             sendButtonColor: AppColor.primaryColor,
                             attachmentConfig: AttachmentConfig(
                               showAudio: false,
-                              backgroundColor:
-                                  Colors.grey.withValues(alpha: 0.7),
+                              backgroundColor: Colors.grey.withValues(alpha: 0.7),
                             ),
                             onSendTap: () {
                               final text = store.messageController.text.trim();
@@ -314,9 +294,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
   void _scheduleTargetMessageScroll(List<ChatMessageModel> messages) {
     final targetMessageId = argument?.targetMessageId;
-    if (targetMessageId == null ||
-        _didScrollToTarget ||
-        _targetScrollScheduled) {
+    if (targetMessageId == null || _didScrollToTarget || _targetScrollScheduled) {
       return;
     }
 
@@ -520,11 +498,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   }
 
   String? _localMediaPath(ChatMessageModel message) {
+    if (message.type == MessageType.file) return message.localFilePath;
     if (message.type == MessageType.video) return message.localVideoPath;
     return message.localImagePath;
   }
 
   void _retryMessage(ChatMessageModel message) {
+    if (message.type == MessageType.file && message.localFilePath != null) {
+      store.sendFileMessage(File(message.localFilePath!));
+      return;
+    }
+
     if (message.type == MessageType.video && message.localVideoPath != null) {
       store.sendVideoMessage(message.text, File(message.localVideoPath!));
       return;
@@ -553,9 +537,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   Future<void> _deleteSelectedMessagesForMe(
     List<ChatMessageModel> messages,
   ) async {
-    final selectedMessages = messages
-        .where((message) => _selectedMessageIds.contains(message.id))
-        .toList();
+    final selectedMessages = messages.where((message) => _selectedMessageIds.contains(message.id)).toList();
 
     if (selectedMessages.isEmpty) {
       _clearSelectedMessages();
@@ -634,8 +616,7 @@ class _ReplyPreviewBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final senderName =
-        message.senderId == currentUid ? 'Anda' : (targetName ?? 'Kontak');
+    final senderName = message.senderId == currentUid ? 'Anda' : (targetName ?? 'Kontak');
 
     return Container(
       width: double.infinity,
@@ -707,6 +688,8 @@ class _ReplyPreviewBar extends StatelessWidget {
     if (message.type == MessageType.image) return 'Foto';
     if (message.type == MessageType.video) return 'Video';
     if (message.type == MessageType.call) return 'Panggilan';
+    if (message.type == MessageType.file) return 'Dokumen';
+    if (message.type == MessageType.contact) return 'Kontak';
     return 'Pesan';
   }
 }

@@ -15,15 +15,12 @@ class ChatUserListService implements ChatUserListRepository {
 
   final FirebaseFirestore firestore;
 
-  CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
-      firestore.collection(FirebaseCollections.chatRooms);
+  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
 
-  CollectionReference<Map<String, dynamic>> get _usersRef =>
-      firestore.collection(FirebaseCollections.users);
+  CollectionReference<Map<String, dynamic>> get _usersRef => firestore.collection(FirebaseCollections.users);
 
   /// HIVE BOX
-  final Box<ChatUserItemModel> _chatListBox =
-      Hive.box<ChatUserItemModel>('chat_list');
+  final Box<ChatUserItemModel> _chatListBox = Hive.box<ChatUserItemModel>('chat_list');
 
   @override
   Stream<List<ChatUserItemModel>> watchChatUsers({
@@ -31,8 +28,7 @@ class ChatUserListService implements ChatUserListRepository {
   }) async* {
     /// 1️⃣ Emit data lokal dulu (biar tidak kosong saat refresh)
     final localData = _chatListBox.values.toList()
-      ..sort((a, b) => (b.lastMessageAt ?? DateTime(0))
-          .compareTo(a.lastMessageAt ?? DateTime(0)));
+      ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
 
     yield localData;
 
@@ -69,9 +65,7 @@ class ChatUserListService implements ChatUserListRepository {
         latestVisibleByRoom[rooms[index].id] = latestVisibleResults[index];
       }
 
-      final targetUids = rooms
-          .map((room) => room.participants.firstWhere((uid) => uid != myUid))
-          .toSet();
+      final targetUids = rooms.map((room) => room.participants.firstWhere((uid) => uid != myUid)).toSet();
 
       final userSnaps = await Future.wait(
         targetUids.map((uid) => _usersRef.doc(uid).get()),
@@ -122,8 +116,7 @@ class ChatUserListService implements ChatUserListRepository {
 
       /// 4️⃣ Emit ulang dari Hive (source of truth lokal)
       final updatedLocal = _chatListBox.values.toList()
-        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0))
-            .compareTo(a.lastMessageAt ?? DateTime(0)));
+        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
 
       yield updatedLocal;
     }
@@ -149,12 +142,9 @@ class ChatUserListService implements ChatUserListRepository {
       for (final doc in messagesSnap.docs) {
         final data = doc.data();
         final senderId = data[MessageField.senderId];
-        final deliveredTo =
-            Map<String, dynamic>.from(data[MessageField.deliveredTo] ?? {});
-        final deletedFor =
-            Map<String, dynamic>.from(data[MessageField.deletedFor] ?? {});
-        final isDeletedForMe =
-            deletedFor[myUid] == true || roomDeletedMessageIds.contains(doc.id);
+        final deliveredTo = Map<String, dynamic>.from(data[MessageField.deliveredTo] ?? {});
+        final deletedFor = Map<String, dynamic>.from(data[MessageField.deletedFor] ?? {});
+        final isDeletedForMe = deletedFor[myUid] == true || roomDeletedMessageIds.contains(doc.id);
 
         final messageType = _messageTypeFromString(data[MessageField.type]);
         latestVisibleMessage ??= isDeletedForMe
@@ -201,6 +191,8 @@ class ChatUserListService implements ChatUserListRepository {
     if (value == MessageType.image.name) return MessageType.image;
     if (value == MessageType.video.name) return MessageType.video;
     if (value == MessageType.call.name) return MessageType.call;
+    if (value == MessageType.file.name) return MessageType.file;
+    if (value == MessageType.contact.name) return MessageType.contact;
     return MessageType.text;
   }
 
@@ -209,6 +201,8 @@ class ChatUserListService implements ChatUserListRepository {
     if (type == MessageType.image) return 'Foto';
     if (type == MessageType.video) return 'Video';
     if (type == MessageType.call) return 'Panggilan';
+    if (type == MessageType.file) return 'Dokumen';
+    if (type == MessageType.contact) return 'Kontak';
     return null;
   }
 
@@ -223,10 +217,7 @@ class ChatUserListService implements ChatUserListRepository {
       deletedMessagesFor[myUid] ?? {},
     );
 
-    return deletedMessagesById.entries
-        .where((entry) => entry.value == true)
-        .map((entry) => entry.key)
-        .toSet();
+    return deletedMessagesById.entries.where((entry) => entry.value == true).map((entry) => entry.key).toSet();
   }
 
   DateTime? _dateFromFirestore(dynamic value) {

@@ -23,9 +23,17 @@ abstract class ChatRepository {
     File? imageFile,
     String? videoUrl,
     File? videoFile,
+    String? fileUrl,
+    File? file,
+    String? fileName,
+    int? fileSize,
+    String? fileExtension,
+    String? contactName,
+    String? contactPhone,
     required MessageType type,
     String? localImagePath,
     String? localVideoPath,
+    String? localFilePath,
     ChatMessageModel? replyToMessage,
     String? replyToSenderName,
     void Function(int progress)? onUploadProgress,
@@ -66,6 +74,5 @@ abstract class ChatRepository {
     required String uid,
   });
 
-  Future<LocalImageModel> uploadImage(
-      {required File file, required String roomId});
+  Future<LocalImageModel> uploadImage({required File file, required String roomId});
 }
