@@ -19,7 +19,6 @@ import 'package:flutter_callkit_incoming/entities/notification_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class LocalNotificationService implements LocalNotificationRepository {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -43,9 +42,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   static final Set<String> _finishedCallIds = {};
   static DateTime? _lastCallKitFinishedAt;
   static final Map<String, bool> _closeAppAfterCallById = {};
-  static final Map<String,
-          StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
-      _callStatusSubscriptions = {};
+  static final Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>> _callStatusSubscriptions = {};
 
   @override
   Future<void> init() async {
@@ -71,8 +68,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (handleLaunchDetails) {
       final launchDetails = await _plugin.getNotificationAppLaunchDetails();
       final launchResponse = launchDetails?.notificationResponse;
-      if (launchDetails?.didNotificationLaunchApp == true &&
-          launchResponse != null) {
+      if (launchDetails?.didNotificationLaunchApp == true && launchResponse != null) {
         _pendingLaunchResponse = launchResponse;
       }
     }
@@ -94,50 +90,25 @@ class LocalNotificationService implements LocalNotificationRepository {
     );
 
     await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
 
     await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(callChannel);
 
     if (handleLaunchDetails) {
-      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      final notificationGranted =
-          await androidPlugin?.requestNotificationsPermission();
-      final fullScreenGranted =
-          await androidPlugin?.requestFullScreenIntentPermission();
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final notificationGranted = await androidPlugin?.requestNotificationsPermission();
+      final fullScreenGranted = await androidPlugin?.requestFullScreenIntentPermission();
       debugPrint(
         'LocalNotification permission: notifications=$notificationGranted fullScreen=$fullScreenGranted',
       );
       await FlutterCallkitIncoming.requestNotificationPermission({
-        'rationaleMessagePermission':
-            'ChatKuy membutuhkan izin notifikasi untuk menampilkan panggilan masuk.',
-        'postNotificationMessageRequired':
-            'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
+        'rationaleMessagePermission': 'ChatKuy membutuhkan izin notifikasi untuk menampilkan panggilan masuk.',
+        'postNotificationMessageRequired': 'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
       });
       await FlutterCallkitIncoming.requestFullIntentPermission();
-      await _requestStartupCallMediaPermissions();
-    }
-  }
-
-  static Future<void> _requestStartupCallMediaPermissions() async {
-    try {
-      final microphoneStatus = await Permission.microphone.request();
-      final cameraStatus = await Permission.camera.request();
-      debugPrint(
-        'Startup call media permission: microphone=$microphoneStatus camera=$cameraStatus',
-      );
-    } catch (error, stackTrace) {
-      await AppErrorLogger.recordError(
-        error,
-        stackTrace,
-        reason: 'Startup call media permission request failed',
-        showBottomSheet: false,
-      );
     }
   }
 
@@ -147,15 +118,13 @@ class LocalNotificationService implements LocalNotificationRepository {
       await markChatMessageDeliveredFromPayload(message.data);
     }
 
-    final isCall = message.data['type'] == 'voice_call' ||
-        message.data['type'] == 'video_call';
+    final isCall = message.data['type'] == 'voice_call' || message.data['type'] == 'video_call';
     if (isCall) {
       await _showIncomingCall(message.data);
       return;
     }
 
-    final isCallEnded = message.data['type'] == 'voice_call_ended' ||
-        message.data['type'] == 'video_call_ended';
+    final isCallEnded = message.data['type'] == 'voice_call_ended' || message.data['type'] == 'video_call_ended';
     if (isCallEnded) {
       final callId = message.data['callId'];
       if (callId is String && callId.isNotEmpty) {
@@ -164,12 +133,8 @@ class LocalNotificationService implements LocalNotificationRepository {
       return;
     }
 
-    final title =
-        message.notification?.title ?? message.data['title'] ?? 'Pesan baru';
-    final body = message.notification?.body ??
-        message.data['body'] ??
-        message.data['text'] ??
-        '';
+    final title = message.notification?.title ?? message.data['title'] ?? 'Pesan baru';
+    final body = message.notification?.body ?? message.data['body'] ?? message.data['text'] ?? '';
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -200,15 +165,11 @@ class LocalNotificationService implements LocalNotificationRepository {
     final receiverId = data['receiverId'];
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
-    if (roomId is! String ||
-        roomId.isEmpty ||
-        messageId is! String ||
-        messageId.isEmpty) {
+    if (roomId is! String || roomId.isEmpty || messageId is! String || messageId.isEmpty) {
       return;
     }
 
-    final deliveredUid = currentUid ??
-        (receiverId is String && receiverId.isNotEmpty ? receiverId : null);
+    final deliveredUid = currentUid ?? (receiverId is String && receiverId.isNotEmpty ? receiverId : null);
 
     if (deliveredUid == null) return;
 
@@ -241,14 +202,9 @@ class LocalNotificationService implements LocalNotificationRepository {
     final roomId = data['roomId'];
     final callerId = data['callerId'];
     final isVideoCall = _isVideoCallPayload(data);
-    final callerName = data['callerName'] ??
-        data['title'] ??
-        (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
+    final callerName = data['callerName'] ?? data['title'] ?? (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
 
-    if (callId is! String ||
-        callId.isEmpty ||
-        roomId is! String ||
-        callerId is! String) {
+    if (callId is! String || callId.isEmpty || roomId is! String || callerId is! String) {
       return;
     }
 
@@ -327,9 +283,7 @@ class LocalNotificationService implements LocalNotificationRepository {
 
   static Future<void> _markCallRinging(String callId) async {
     try {
-      final callRef = FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId);
+      final callRef = FirebaseFirestore.instance.collection(FirebaseCollections.calls).doc(callId);
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final snapshot = await transaction.get(callRef);
         final status = snapshot.data()?[CallField.status];
@@ -357,10 +311,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (callerId is! String || callerId.isEmpty) return null;
 
     try {
-      final callerSnap = await FirebaseFirestore.instance
-          .collection(FirebaseCollections.users)
-          .doc(callerId)
-          .get();
+      final callerSnap = await FirebaseFirestore.instance.collection(FirebaseCollections.users).doc(callerId).get();
       return _callKitAvatarUrl(callerSnap.data()?[FriendField.photoUrl]);
     } catch (error) {
       debugPrint('Resolve caller avatar failed: $error');
@@ -378,15 +329,10 @@ class LocalNotificationService implements LocalNotificationRepository {
 
   static Future<bool> _shouldShowIncomingCall(String callId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId)
-          .get();
+      final snapshot = await FirebaseFirestore.instance.collection(FirebaseCollections.calls).doc(callId).get();
       final status = snapshot.data()?[CallField.status];
       if (_isClosedCallStatus(status)) return false;
-      return status == null ||
-          status == CallStatus.calling ||
-          status == CallStatus.ringing;
+      return status == null || status == CallStatus.calling || status == CallStatus.ringing;
     } catch (_) {
       return true;
     }
@@ -415,9 +361,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static bool _isClosedCallStatus(dynamic status) {
-    return status == CallStatus.declined ||
-        status == CallStatus.ended ||
-        status == CallStatus.missed;
+    return status == CallStatus.declined || status == CallStatus.ended || status == CallStatus.missed;
   }
 
   static void _listenCallKitEvents() {
@@ -517,9 +461,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static bool _hasCallKeys(Map<String, dynamic> data) {
-    return data['callId'] is String &&
-        data['roomId'] is String &&
-        data['callerId'] is String;
+    return data['callId'] is String && data['roomId'] is String && data['callerId'] is String;
   }
 
   static Future<void> processPendingLaunchNotification() async {
@@ -603,9 +545,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       if (!isAccepted) continue;
 
       final callId = callMap['id']?.toString();
-      if (callId == null ||
-          _finishedCallIds.contains(callId) ||
-          _handledAcceptedCallIds.contains(callId)) {
+      if (callId == null || _finishedCallIds.contains(callId) || _handledAcceptedCallIds.contains(callId)) {
         continue;
       }
 
@@ -629,10 +569,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (_finishedCallIds.contains(callId)) return false;
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(FirebaseCollections.calls)
-          .doc(callId)
-          .get();
+      final snapshot = await FirebaseFirestore.instance.collection(FirebaseCollections.calls).doc(callId).get();
       final status = snapshot.data()?[CallField.status];
       if (_isClosedCallStatus(status)) {
         await _finishCallKitCall(callId);
@@ -722,8 +659,7 @@ class LocalNotificationService implements LocalNotificationRepository {
 
     final roomId = callData[CallField.roomId] as String?;
     final callType = callData[CallField.type] as String? ?? 'voice';
-    final durationSeconds =
-        _callDurationSeconds(callData[CallField.answeredAt]);
+    final durationSeconds = _callDurationSeconds(callData[CallField.answeredAt]);
     final text = _callMessageText(
       status,
       callType,
@@ -737,10 +673,8 @@ class LocalNotificationService implements LocalNotificationRepository {
     });
 
     if (roomId != null && roomId.isNotEmpty) {
-      final chatRoomRef =
-          firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
-      final messageRef =
-          chatRoomRef.collection(FirestoreCollection.messages).doc(callId);
+      final chatRoomRef = firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
+      final messageRef = chatRoomRef.collection(FirestoreCollection.messages).doc(callId);
 
       batch.set(
         messageRef,
@@ -873,13 +807,9 @@ class LocalNotificationService implements LocalNotificationRepository {
     final callId = data['callId'];
     final callerId = data['callerId'];
     final isVideoCall = _isVideoCallPayload(data);
-    final callerName = data['callerName'] ??
-        (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
+    final callerName = data['callerName'] ?? (isVideoCall ? 'Panggilan video' : 'Panggilan suara');
 
-    if (currentUid == null ||
-        roomId is! String ||
-        callId is! String ||
-        callerId is! String) {
+    if (currentUid == null || roomId is! String || callId is! String || callerId is! String) {
       return null;
     }
 
@@ -897,9 +827,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   }
 
   static bool _isVideoCallPayload(Map<String, dynamic> data) {
-    return data['type'] == 'video_call' ||
-        data['callType'] == 'video' ||
-        data[CallField.type] == 'video';
+    return data['type'] == 'video_call' || data['callType'] == 'video' || data[CallField.type] == 'video';
   }
 
   static bool _closeAppOnEndFor(
