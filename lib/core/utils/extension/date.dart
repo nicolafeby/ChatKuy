@@ -1,4 +1,3 @@
-import 'package:get/get.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
 
 extension DateTimeExtension on DateTime {
@@ -32,11 +31,11 @@ extension DateTimeExtension on DateTime {
     final diff = daysFromNow();
 
     if (diff == 0) {
-      return AppTranslationKey.today.tr;
+      return AppTranslationKey.text(AppTranslationKey.today);
     }
 
     if (diff == 1) {
-      return AppTranslationKey.yesterday.tr;
+      return AppTranslationKey.text(AppTranslationKey.yesterday);
     }
 
     if (diff >= 2 && diff <= 6) {
@@ -47,11 +46,11 @@ extension DateTimeExtension on DateTime {
   }
 
   String _weekdayName(int w) {
-    return 'weekday$w'.tr;
+    return AppTranslationKey.text('weekday$w');
   }
 
   String _monthName(int m) {
-    return 'month$m'.tr;
+    return AppTranslationKey.text('month$m');
   }
 
   /// Format tanggal untuk chat:
@@ -63,11 +62,11 @@ extension DateTimeExtension on DateTime {
     final yesterday = now.subtract(const Duration(days: 1));
 
     if (isSameDay(now)) {
-      return AppTranslationKey.today.tr;
+      return AppTranslationKey.text(AppTranslationKey.today);
     }
 
     if (isSameDay(yesterday)) {
-      return AppTranslationKey.yesterday.tr;
+      return AppTranslationKey.text(AppTranslationKey.yesterday);
     }
 
     return '${day.toString().padLeft(2, '0')}/'

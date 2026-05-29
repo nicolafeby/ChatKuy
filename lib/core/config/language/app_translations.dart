@@ -223,6 +223,18 @@ class AppTranslationKey {
   static const recommendedAppVersion = 'recommendedAppVersion';
   static const minimumBuildNumber = 'minimumBuildNumber';
   static const recommendedBuildNumber = 'recommendedBuildNumber';
+
+  static String text(String key, {Map<String, String>? params}) {
+    final languageCode = Get.locale?.languageCode;
+    final translations = languageCode == 'en' ? _en : _id;
+    var value = translations[key] ?? key;
+
+    params?.forEach((paramKey, paramValue) {
+      value = value.replaceAll('@$paramKey', paramValue);
+    });
+
+    return value;
+  }
 }
 
 const Map<String, String> _id = {
@@ -315,7 +327,7 @@ const Map<String, String> _id = {
   AppTranslationKey.online: 'Online',
   AppTranslationKey.offline: 'Offline',
   AppTranslationKey.lastOnlineAt: 'Terakhir online @time',
-  AppTranslationKey.typing: 'sedang mengetik...',
+  AppTranslationKey.typing: 'Sedang mengetik ...',
   AppTranslationKey.hiddenOnlineStatus: 'Status online disembunyikan',
   AppTranslationKey.call: 'Panggilan',
   AppTranslationKey.reject: 'Tolak',

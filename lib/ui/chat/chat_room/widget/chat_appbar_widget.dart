@@ -5,7 +5,6 @@ import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 
 class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final ChatRoomStore store;
@@ -52,25 +51,24 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
         IconButton(
           onPressed: onSearchTap,
           icon: const Icon(Icons.search),
-          tooltip: AppTranslationKey.searchMessages.tr,
+          tooltip: AppTranslationKey.text(AppTranslationKey.searchMessages),
         ),
         IconButton(
           onPressed: onVideoCallTap,
           icon: const Icon(Icons.videocam),
-          tooltip: AppTranslationKey.videoCall.tr,
+          tooltip: AppTranslationKey.text(AppTranslationKey.videoCall),
         ),
         IconButton(
           onPressed: onCallTap,
           icon: const Icon(Icons.call),
-          tooltip: AppTranslationKey.voiceCall.tr,
+          tooltip: AppTranslationKey.text(AppTranslationKey.voiceCall),
         ),
       ],
       elevation: 2,
     );
   }
 
-  Widget _buildAvatarSection(UserModel user) =>
-      ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
+  Widget _buildAvatarSection(UserModel user) => ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
 
   Widget _buildDisplayNameSections(
     UserModel user, {
@@ -79,11 +77,11 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   }) {
     final statusText = canViewPresence
         ? (isTyping
-            ? AppTranslationKey.typing.tr
+            ? AppTranslationKey.text(AppTranslationKey.typing)
             : user.isOnline == true
-                ? AppTranslationKey.online.tr
+                ? AppTranslationKey.text(AppTranslationKey.online)
                 : (user.lastOnlineAt?.daysAndTime ?? ''))
-        : AppTranslationKey.hiddenOnlineStatus.tr;
+        : AppTranslationKey.text(AppTranslationKey.hiddenOnlineStatus);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
