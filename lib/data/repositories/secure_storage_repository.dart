@@ -11,6 +11,9 @@ abstract class SecureStorageRepository {
   Future<void> setThemeModeName(String value);
   Future<String?> getThemeModeName();
 
+  Future<void> setLanguageCode(String value);
+  Future<String?> getLanguageCode();
+
   Future<List<int>> getHiveEncryptionKey();
 
   Future<void> clear();

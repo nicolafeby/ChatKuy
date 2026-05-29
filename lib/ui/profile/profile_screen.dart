@@ -2,6 +2,7 @@ import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/config/language/language_controller.dart';
 import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/core/helpers/image_cropper_helper.dart';
 import 'package:chatkuy/core/helpers/imahe_picker_helper.dart';
@@ -22,6 +23,7 @@ import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/profile/widget/profile_bbutton_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_information_box_widget.dart';
 import 'package:chatkuy/ui/profile/widget/profile_preferences_widget.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -92,12 +94,12 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Pengaturan Akun',
+          AppTranslationKey.accountSettings.tr,
           style: TextStyle(fontSize: 18.sp),
         ),
         8.verticalSpace,
         ProfileButtonWidget(
-          title: Text('Ubah Email', style: TextStyle(fontSize: 12.sp)),
+          title: Text(AppTranslationKey.changeEmail.tr, style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.email_outlined, size: 20.r),
           onTap: () {
             final email = store.user?.email;
@@ -110,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           },
         ),
         ProfileButtonWidget(
-          title: Text('Ubah Password', style: TextStyle(fontSize: 12.sp)),
+          title: Text(AppTranslationKey.changePassword.tr, style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.password_outlined, size: 20.r),
           onTap: () => Get.toNamed(AppRouteName.CHANGE_PASSWORD_SCREEN),
         ),
@@ -129,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Pilih Opsi',
+              AppTranslationKey.chooseOption.tr,
               style: TextStyle(fontSize: 18.sp),
             ),
             10.verticalSpace,
@@ -149,17 +151,14 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage =
-                        await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 =
-                        await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id =
-                            await getIt<SecureStorageRepository>().getUserId();
+                        final id = await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -170,14 +169,13 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message:
-                          'Kami tidak mendapatkan akses galeri untuk action ini',
+                      message: AppTranslationKey.galleryPermissionDenied.tr,
                     ));
                   },
                 );
               },
               label: Text(
-                'Pilih dari galeri',
+                AppTranslationKey.chooseFromGallery.tr,
                 style: TextStyle(fontSize: 16.sp),
               ),
               icon: Icon(Icons.photo_album_outlined),
@@ -199,17 +197,14 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     );
 
                     if (image == null) return;
-                    final croppedImage =
-                        await ImageCropperHelper.cropImage(imageFile: image);
+                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
 
                     if (croppedImage == null) return;
-                    final base64 =
-                        await FileConverterHelper.fileToBase64(croppedImage);
+                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
 
                     store.changeProfilePicture(imageUrl: base64).then(
                       (value) async {
-                        final id =
-                            await getIt<SecureStorageRepository>().getUserId();
+                        final id = await getIt<SecureStorageRepository>().getUserId();
 
                         if (id == null) return;
                         return store.getUserProfile(id);
@@ -220,14 +215,13 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Get.bottomSheet(BottomsheetWidget(
                       asset: AppAsset.imgFaceSad,
                       title: AppStrings.oopsTerjadiKesalahan,
-                      message:
-                          'Kami tidak mendapatkan akses kamera untuk action ini',
+                      message: AppTranslationKey.cameraPermissionDenied.tr,
                     ));
                   },
                 );
               },
               label: Text(
-                'Ambil dari kamera',
+                AppTranslationKey.takePhoto.tr,
                 style: TextStyle(fontSize: 16.sp),
               ),
               icon: Icon(Icons.camera_alt_outlined),
@@ -237,15 +231,13 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
+                  padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: () {
                   store.changeProfilePicture(imageUrl: null).then(
                     (value) async {
-                      final id =
-                          await getIt<SecureStorageRepository>().getUserId();
+                      final id = await getIt<SecureStorageRepository>().getUserId();
 
                       if (id == null) return;
                       return store.getUserProfile(id);
@@ -253,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                   );
                 },
                 label: Text(
-                  'Hapus foto profil',
+                  AppTranslationKey.removePhoto.tr,
                   style: TextStyle(fontSize: 16.sp),
                 ),
                 icon: Icon(Icons.delete_outline),
@@ -274,8 +266,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     return Scaffold(
       body: Observer(
         builder: (context) {
-          if (_isResolvingProfile ||
-              store.userFuture?.status == FutureStatus.pending) {
+          final languageController = getIt<LanguageController>();
+          if (_isResolvingProfile || store.userFuture?.status == FutureStatus.pending) {
             return const ProfileSkeletonView();
           }
 
@@ -290,9 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 centerTitle: true,
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
-                    final percent = ((constraints.maxHeight - kToolbarHeight) /
-                            (260 - kToolbarHeight))
-                        .clamp(0.0, 1.0);
+                    final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
                     final gender = store.user?.gender;
                     int? age;
 
@@ -330,9 +320,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               children: [
                                 Container(
                                   padding: EdgeInsets.all(4.r),
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: colorScheme.surface),
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.surface),
                                   child: ProfileAvatarWidget(
                                     base64Image: store.user?.photoUrl,
                                     size: 80,
@@ -377,7 +365,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               ),
                             ] else ...[
                               Text(
-                                "${gender?.value ?? Gender.secret.value}, $age tahun",
+                                "${gender?.value ?? Gender.secret.value}, ${AppTranslationKey.yearsOld.trParams({
+                                      'age': '$age',
+                                    })}",
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: colorScheme.onSurfaceVariant,
@@ -399,23 +389,21 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                       children: [
                         ProfilePreferencesWidget(
                           icon: Icon(
-                            Icons.online_prediction_outlined,
+                            Icons.translate,
                             color: Colors.white,
                           ),
                           onTap: () async {
-                            final nextValue =
-                                !(store.user?.isOnlineStatusVisible ?? true);
-                            await store.updateOnlineStatusVisibility(nextValue);
+                            await languageController.toggleLanguage();
                             showSnackbar(
-                              title: 'Privasi Online',
-                              message: nextValue
-                                  ? 'Status online kamu bisa dilihat teman.'
-                                  : 'Status online kamu disembunyikan. Kamu juga tidak bisa melihat status online teman.',
+                              title: AppTranslationKey.language.tr,
+                              message: languageController.isIndonesian
+                                  ? AppTranslationKey.languageChangedToId.tr
+                                  : AppTranslationKey.languageChangedToEn.tr,
                             );
                           },
-                          title: store.user?.isOnlineStatusVisible == false
-                              ? 'Offline'
-                              : 'Online',
+                          title: languageController.isIndonesian
+                              ? AppTranslationKey.indonesian.tr
+                              : AppTranslationKey.english.tr,
                         ),
                         ProfilePreferencesWidget(
                           icon: Icon(
@@ -425,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                           onTap: () {
                             showComingSoonSnackbar();
                           },
-                          title: 'Notifikasi',
+                          title: AppTranslationKey.notifications.tr,
                         ),
                         ProfilePreferencesWidget(
                           icon: Icon(
@@ -433,7 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             color: Colors.white,
                           ),
                           onTap: getIt<ThemeController>().toggleTheme,
-                          title: isDarkMode ? 'Gelap' : 'Terang',
+                          title: isDarkMode ? AppTranslationKey.dark.tr : AppTranslationKey.light.tr,
                         ),
                       ],
                     ),
@@ -441,7 +429,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     Row(
                       children: [
                         Text(
-                          'Informasi Personal',
+                          AppTranslationKey.personalInformation.tr,
                           style: TextStyle(fontSize: 18.sp),
                         ),
                         Spacer(),
@@ -465,22 +453,19 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               (value) async {
                                 if (value != true) return;
 
-                                final id =
-                                    await getIt<SecureStorageRepository>()
-                                        .getUserId();
+                                final id = await getIt<SecureStorageRepository>().getUserId();
 
                                 if (id == null) return;
                                 store.getUserProfile(id);
                                 showSnackbar(
-                                    title: 'Sukses',
-                                    message: 'Berhasil Mengubah Profile');
+                                    title: AppTranslationKey.success.tr, message: AppTranslationKey.profileUpdated.tr);
                               },
                             );
                           },
                           child: Row(
                             children: [
                               Text(
-                                'Ubah',
+                                AppTranslationKey.editProfile.tr,
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   color: AppColor.primaryColor,
@@ -499,7 +484,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
-                      title: 'Jenis kelamin',
+                      title: AppTranslationKey.gender.tr,
                       icon: Icon(
                         Icons.male,
                         color: Colors.grey,
@@ -508,7 +493,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
-                      title: 'Username',
+                      title: AppTranslationKey.username.tr,
                       icon: Icon(
                         Icons.person_2_outlined,
                         color: Colors.grey,
@@ -517,7 +502,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
-                      title: 'Tanggal lahir',
+                      title: AppTranslationKey.birthDate.tr,
                       icon: Icon(
                         Icons.cake_outlined,
                         color: Colors.grey,
@@ -526,7 +511,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
-                      title: 'Nomor HP',
+                      title: AppTranslationKey.phoneNumber.tr,
                       icon: Icon(
                         Icons.phone_android_sharp,
                         color: Colors.grey,
@@ -535,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     ),
                     16.verticalSpace,
                     ProfileInformationBoxWidget(
-                      title: 'Email',
+                      title: AppTranslationKey.email.tr,
                       icon: Icon(
                         Icons.email_outlined,
                         color: Colors.grey,
@@ -550,12 +535,11 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     TextButton(
                       onPressed: () {
                         store.logout(
-                          onSuccess: () =>
-                              Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
+                          onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
                         );
                       },
                       child: Text(
-                        'Keluar',
+                        AppTranslationKey.logout.tr,
                         style: TextStyle(fontSize: 18.sp, color: Colors.red),
                       ),
                     ),
@@ -578,22 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
   String _formatBirthDate(DateTime? date) {
     if (date == null) return '-';
 
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${date.day} ${'month${date.month}'.tr} ${date.year}';
   }
 
   Widget _buildPrivacySections() {
@@ -603,14 +572,14 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Privasi Profil',
+          AppTranslationKey.privacy.tr,
           style: TextStyle(fontSize: 18.sp),
         ),
         8.verticalSpace,
         _PrivacySwitchTile(
           icon: Icons.email_outlined,
-          title: 'Tampilkan email',
-          subtitle: 'Izinkan teman melihat alamat email kamu',
+          title: AppTranslationKey.showEmail.tr,
+          subtitle: AppTranslationKey.showEmailSubtitle.tr,
           value: store.user?.isEmailVisible ?? true,
           colorScheme: colorScheme,
           onChanged: store.updateEmailVisibility,
@@ -618,8 +587,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
         8.verticalSpace,
         _PrivacySwitchTile(
           icon: Icons.cake_outlined,
-          title: 'Tampilkan tanggal lahir',
-          subtitle: 'Izinkan teman melihat tanggal lahir kamu',
+          title: AppTranslationKey.showBirthDate.tr,
+          subtitle: AppTranslationKey.showBirthDateSubtitle.tr,
           value: store.user?.isBirthDateVisible ?? true,
           colorScheme: colorScheme,
           onChanged: store.updateBirthDateVisibility,
@@ -627,9 +596,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
         8.verticalSpace,
         _PrivacySwitchTile(
           icon: Icons.online_prediction_outlined,
-          title: 'Tampilkan status online',
-          subtitle:
-              'Jika dimatikan, kamu juga tidak bisa melihat status online teman',
+          title: AppTranslationKey.showOnlineStatus.tr,
+          subtitle: AppTranslationKey.showOnlineStatusSubtitle.tr,
           value: store.user?.isOnlineStatusVisible ?? true,
           colorScheme: colorScheme,
           onChanged: store.updateOnlineStatusVisibility,

@@ -1,5 +1,6 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -40,7 +41,7 @@ class ErrorBottomsheetWidget extends StatelessWidget {
             ),
             16.verticalSpace,
             Text(
-              'Ooops!! Terjadi Kesalahan',
+              AppTranslationKey.oopsError.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16.sp,
@@ -73,7 +74,7 @@ class ErrorBottomsheetWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'ID tiket error',
+                          AppTranslationKey.errorTicketId.tr,
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: colorScheme.onSurfaceVariant,
@@ -92,14 +93,14 @@ class ErrorBottomsheetWidget extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Salin ID tiket',
+                    tooltip: AppTranslationKey.copyTicketId.tr,
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: ticketId));
                       if (Get.isSnackbarOpen) return;
                       Get.showSnackbar(
-                        const GetSnackBar(
-                          message: 'ID tiket error berhasil disalin',
-                          duration: Duration(milliseconds: 1600),
+                        GetSnackBar(
+                          message: AppTranslationKey.errorTicketCopied.tr,
+                          duration: const Duration(milliseconds: 1600),
                         ),
                       );
                     },
@@ -111,7 +112,7 @@ class ErrorBottomsheetWidget extends StatelessWidget {
             ),
             12.verticalSpace,
             Text(
-              'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem.',
+              AppTranslationKey.errorTicketHelp.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12.sp,
@@ -121,7 +122,7 @@ class ErrorBottomsheetWidget extends StatelessWidget {
             24.verticalSpace,
             ButtonWidget(
               onPressed: () => Get.back(),
-              title: 'Oke',
+              title: AppTranslationKey.ok.tr,
             ),
           ],
         ),

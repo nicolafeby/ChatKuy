@@ -6,6 +6,7 @@ import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/call/call_store.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -73,7 +74,7 @@ class _CallScreenState extends State<CallScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    Get.snackbar('Panggilan', message);
+    Get.snackbar(AppTranslationKey.call.tr, message);
   }
 
   @override
@@ -105,7 +106,8 @@ class _CallScreenState extends State<CallScreen> {
                   ],
                   if (store.isIncomingVideoUpgradeRequest) ...[
                     _VideoUpgradePrompt(
-                      callerName: argument?.targetName ?? 'Teman',
+                      callerName:
+                          argument?.targetName ?? AppTranslationKey.friend.tr,
                       onAccept: store.acceptVideoUpgrade,
                       onDecline: store.declineVideoUpgrade,
                     ),
@@ -117,13 +119,13 @@ class _CallScreenState extends State<CallScreen> {
                       children: [
                         _CallControlButton(
                           icon: Icons.call_end,
-                          label: 'Tolak',
+                          label: AppTranslationKey.reject.tr,
                           color: Colors.redAccent,
                           onTap: store.declineIncomingCall,
                         ),
                         _CallControlButton(
                           icon: Icons.call,
-                          label: 'Terima',
+                          label: AppTranslationKey.accept.tr,
                           color: Colors.green,
                           onTap: store.acceptIncomingCall,
                         ),
@@ -148,12 +150,12 @@ class _CallScreenState extends State<CallScreen> {
                               ? (store.isLocalVideoEnabled
                                   ? 'Kamera'
                                   : 'Kamera')
-                              : 'Video',
+                              : AppTranslationKey.video.tr,
                           onTap: store.requestVideoUpgrade,
                         ),
                         _CallControlButton(
                           icon: Icons.call_end,
-                          label: 'Akhiri',
+                          label: AppTranslationKey.end.tr,
                           color: Colors.redAccent,
                           onTap: () => store.endCall(),
                         ),
@@ -161,7 +163,7 @@ class _CallScreenState extends State<CallScreen> {
                           icon: store.isSpeakerOn
                               ? Icons.volume_up
                               : Icons.volume_down,
-                          label: 'Speaker',
+                          label: AppTranslationKey.speaker.tr,
                           onTap: store.toggleSpeaker,
                         ),
                       ],
@@ -182,7 +184,7 @@ class _CallScreenState extends State<CallScreen> {
         onPressed: () => store.endCall(),
         icon: const Icon(Icons.keyboard_arrow_down),
         color: Colors.white,
-        tooltip: 'Tutup',
+        tooltip: AppTranslationKey.close.tr,
       ),
     );
   }
@@ -217,7 +219,7 @@ class _CallScreenState extends State<CallScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          argument?.targetName ?? 'Telepon suara',
+          argument?.targetName ?? AppTranslationKey.voiceCall.tr,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
@@ -339,7 +341,7 @@ class _VideoUpgradePrompt extends StatelessWidget {
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white38),
                   ),
-                  child: const Text('Tolak'),
+                  child: Text(AppTranslationKey.reject.tr),
                 ),
               ),
               12.horizontalSpace,
@@ -350,7 +352,7 @@ class _VideoUpgradePrompt extends StatelessWidget {
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Terima'),
+                  child: Text(AppTranslationKey.accept.tr),
                 ),
               ),
             ],

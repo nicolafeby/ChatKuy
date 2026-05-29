@@ -1,3 +1,5 @@
+import 'package:chatkuy/core/config/language/app_translations.dart';
+import 'package:chatkuy/core/config/language/language_controller.dart';
 import 'package:chatkuy/core/config/theme/theme.dart';
 import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/core/navigation/initial_route_argument.dart';
@@ -42,11 +44,15 @@ class MyApp extends StatelessWidget {
     return ScreenUtilInit(
       builder: (_, screenUtilChild) {
         final themeController = getIt<ThemeController>();
+        final languageController = getIt<LanguageController>();
 
-        return AnimatedBuilder(
-          animation: themeController,
+        return ListenableBuilder(
+          listenable: Listenable.merge([themeController, languageController]),
           builder: (context, _) => GetMaterialApp(
             navigatorKey: Get.key,
+            translations: AppTranslations(),
+            locale: languageController.locale,
+            fallbackLocale: const Locale('id', 'ID'),
             theme: getLightAppTheme(),
             darkTheme: getDarkAppTheme(),
             themeMode: themeController.themeMode,

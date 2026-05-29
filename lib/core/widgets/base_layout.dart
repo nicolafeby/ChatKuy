@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 
 mixin BaseLayout {
   ThemeData themeOf(BuildContext context) => Theme.of(context);
@@ -31,8 +32,9 @@ mixin BaseLayout {
   }) {
     if (Get.isSnackbarOpen) return;
 
-    final safeMessage =
-        (message != null && message.isNotEmpty) ? message : 'Terjadi kesalahan';
+    final safeMessage = (message != null && message.isNotEmpty)
+        ? message
+        : AppTranslationKey.somethingWentWrong.tr;
 
     Get.showSnackbar(
       GetSnackBar(
@@ -45,8 +47,8 @@ mixin BaseLayout {
 
   void showComingSoonSnackbar() {
     showSnackbar(
-      title: 'Tunggu, yaa...',
-      message: 'Futur ini akan segera kami luncurkan',
+      title: AppTranslationKey.comingSoonTitle.tr,
+      message: AppTranslationKey.comingSoonMessage.tr,
     );
   }
 }
@@ -81,7 +83,7 @@ class LoadingDialog extends StatelessWidget {
                 height: 10,
               ),
               Text(
-                text ?? 'Loading',
+                text ?? AppTranslationKey.loading.tr,
                 style: TextStyle(fontSize: 14.sp),
                 textAlign: TextAlign.center,
               )

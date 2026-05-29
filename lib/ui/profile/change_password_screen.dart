@@ -12,6 +12,7 @@ import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -25,7 +26,8 @@ class ChangePasswordScreen extends StatefulWidget {
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> with BaseLayout {
+class _ChangePasswordScreenState extends State<ChangePasswordScreen>
+    with BaseLayout {
   ProfileStore store = ProfileStore(
     presenceRepository: getIt<PresenceRepository>(),
     authRepository: getIt<AuthRepository>(),
@@ -69,7 +71,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> with BaseLa
   }
 
   PreferredSizeWidget _buildAppbar() {
-    return AppbarWidget(title: 'Ganti Password');
+    return AppbarWidget(title: AppTranslationKey.changePasswordAppbar.tr);
   }
 
   Widget _buildBody() {
@@ -83,8 +85,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> with BaseLa
                   onValidPassword: (password) {
                     store.currentPassword = password;
                   },
-                  label: 'Password Sekarang',
-                  hintText: 'Masukan password sekarang',
+                  label: AppTranslationKey.currentPassword.tr,
+                  hintText: AppTranslationKey.enterCurrentPassword.tr,
                 ),
                 20.verticalSpace,
                 TextfieldPasswordWidget.create(
@@ -103,11 +105,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> with BaseLa
                         onSuccess: () async {
                           Get.offAllNamed(AppRouteName.LOGIN_SCREEN);
                           await Future.delayed(Duration(milliseconds: 200));
-                          showSnackbar(title: 'Sukses', message: 'Kamu harus login ulang setelah mengganti password');
+                          showSnackbar(
+                              title: AppTranslationKey.success.tr,
+                              message: AppTranslationKey
+                                  .mustLoginAgainAfterPasswordChange.tr);
                         },
                       )
                   : null,
-              title: 'Ubah Password',
+              title: AppTranslationKey.changePassword.tr,
             ),
           ),
         ],

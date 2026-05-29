@@ -10,6 +10,7 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -123,18 +124,20 @@ class _VerifyScreenState extends State<VerifyScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Verifikasi Email',
+              AppTranslationKey.verifyEmail.tr,
               style: TextStyle(fontSize: 28.sp, fontWeight: FontWeight.bold),
             ),
             16.verticalSpace,
             Text(
-              'Buka email ${argument?.email} dan klik link verifikasi yang kami kirim',
+              AppTranslationKey.verifyEmailInstruction.trParams({
+                'email': argument?.email ?? '',
+              }),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14.sp, color: Colors.grey),
             ),
             32.verticalSpace,
             ButtonWidget.withCountdown(
-              title: 'Kirim Ulang Link',
+              title: AppTranslationKey.resendLink.tr,
               initCountdown: true,
               onPressed: _resendVerification,
               value: 1,
@@ -162,10 +165,9 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     Get.bottomSheet(
       BottomsheetWidget(
-        title: 'Email Berhasil Diubah',
-        message:
-            'Email baru kamu sudah berhasil diverifikasi. Untuk keamanan akun, silakan login ulang menggunakan username dan password kamu.',
-        buttonText: 'Login Ulang',
+        title: AppTranslationKey.emailChangedTitle.tr,
+        message: AppTranslationKey.newEmailVerifiedMessage.tr,
+        buttonText: AppTranslationKey.relogin.tr,
         restricBackNative: true,
         onButtonPressed: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
       ),

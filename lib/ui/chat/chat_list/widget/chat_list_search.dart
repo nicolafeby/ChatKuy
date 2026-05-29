@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 
 class ChatListSearchWidget extends StatelessWidget {
   const ChatListSearchWidget({
@@ -37,7 +39,7 @@ class ChatListSearchWidget extends StatelessWidget {
         prefixIconColor: Colors.grey,
         suffixIcon: controller?.text.isEmpty == false
             ? IconButton(
-                tooltip: 'Bersihkan pencarian',
+                tooltip: AppTranslationKey.clearSearch.tr,
                 onPressed: onClear,
                 icon: Icon(Icons.close, size: 18.r),
               )
@@ -51,7 +53,7 @@ class ChatListSearchWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(50.r),
         ),
         floatingLabelBehavior: FloatingLabelBehavior.auto,
-        hintText: 'Cari percakapan',
+        hintText: AppTranslationKey.searchChats.tr,
         hintStyle: TextStyle(color: Colors.grey, fontSize: 14.sp),
       ),
     );

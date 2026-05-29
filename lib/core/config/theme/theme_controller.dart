@@ -14,8 +14,7 @@ class ThemeController extends ChangeNotifier {
 
   Future<void> init() async {
     final storedTheme = await _storageRepository.getThemeModeName();
-    _themeMode =
-        storedTheme == ThemeMode.dark.name ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = storedTheme == ThemeMode.dark.name ? ThemeMode.dark : ThemeMode.light;
   }
 
   Future<void> toggleTheme() async {

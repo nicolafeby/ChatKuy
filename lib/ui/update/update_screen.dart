@@ -4,6 +4,7 @@ import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/navigation/initial_route_argument.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/data/models/app_update_info.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -34,7 +35,8 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
   @override
   void initState() {
     super.initState();
-    _argument = Get.arguments as AppUpdateScreenArgument? ?? InitialRouteArgument.takeAppUpdate();
+    _argument = Get.arguments as AppUpdateScreenArgument? ??
+        InitialRouteArgument.takeAppUpdate();
 
     if (_argument == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -65,7 +67,9 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
                 ),
                 28.verticalSpace,
                 Text(
-                  isRequired ? 'Update Diperlukan' : 'Update Tersedia',
+                  isRequired
+                      ? AppTranslationKey.updateRequired.tr
+                      : AppTranslationKey.updateAvailable.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28.sp,
@@ -75,8 +79,8 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
                 12.verticalSpace,
                 Text(
                   isRequired
-                      ? 'Versi ChatKuy yang kamu pakai sudah berada di bawah minimum yang didukung.'
-                      : 'Ada versi ChatKuy yang lebih baru. Kamu bisa update sekarang atau lanjut dulu.',
+                      ? AppTranslationKey.updateRequiredMessage.tr
+                      : AppTranslationKey.updateAvailableMessage.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.black54,
@@ -88,7 +92,7 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
                 _RequirementBox(updateInfo: _updateInfo),
                 const Spacer(),
                 ButtonWidget(
-                  title: 'Buka App Tester',
+                  title: AppTranslationKey.openAppTester.tr,
                   onPressed: _openAppTester,
                 ),
                 if (!isRequired) ...[
@@ -96,7 +100,7 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
                   TextButton(
                     onPressed: () => Get.offAllNamed(_argument!.nextRouteName),
                     child: Text(
-                      'Nanti saja',
+                      AppTranslationKey.later.tr,
                       style: TextStyle(
                         color: AppColor.primaryColor,
                         fontWeight: FontWeight.w700,
@@ -116,7 +120,8 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
   Future<void> _openAppTester() async {
     final uri = Uri.tryParse(_updateInfo.appTesterUrl);
     if (uri == null) {
-      Get.snackbar('Gagal membuka App Tester', 'URL App Tester tidak valid');
+      Get.snackbar(AppTranslationKey.failedOpenAppTester.tr,
+          AppTranslationKey.invalidAppTesterUrl.tr);
       return;
     }
 
@@ -126,7 +131,8 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
     );
 
     if (!isLaunched) {
-      Get.snackbar('Gagal membuka App Tester', 'Silakan coba lagi beberapa saat lagi');
+      Get.snackbar(AppTranslationKey.failedOpenAppTester.tr,
+          AppTranslationKey.tryAgainLater.tr);
     }
   }
 }
@@ -138,12 +144,18 @@ class _RequirementBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final versionTarget =
-        updateInfo.isUpdateRequired ? updateInfo.minimumRequiredVersion : updateInfo.recommendedVersion;
-    final buildTarget =
-        updateInfo.isUpdateRequired ? updateInfo.minimumRequiredBuildNumber : updateInfo.recommendedBuildNumber;
-    final versionLabel = updateInfo.isUpdateRequired ? 'Minimal app version' : 'Rekomendasi app version';
-    final buildLabel = updateInfo.isUpdateRequired ? 'Minimal build number' : 'Rekomendasi build number';
+    final versionTarget = updateInfo.isUpdateRequired
+        ? updateInfo.minimumRequiredVersion
+        : updateInfo.recommendedVersion;
+    final buildTarget = updateInfo.isUpdateRequired
+        ? updateInfo.minimumRequiredBuildNumber
+        : updateInfo.recommendedBuildNumber;
+    final versionLabel = updateInfo.isUpdateRequired
+        ? AppTranslationKey.minimumAppVersion.tr
+        : AppTranslationKey.recommendedAppVersion.tr;
+    final buildLabel = updateInfo.isUpdateRequired
+        ? AppTranslationKey.minimumBuildNumber.tr
+        : AppTranslationKey.recommendedBuildNumber.tr;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -156,8 +168,9 @@ class _RequirementBox extends StatelessWidget {
         child: Column(
           children: [
             _VersionRow(
-              label: 'Versi kamu',
-              value: '${updateInfo.currentVersion}+${updateInfo.currentBuildNumberText}',
+              label: AppTranslationKey.yourVersion.tr,
+              value:
+                  '${updateInfo.currentVersion}+${updateInfo.currentBuildNumberText}',
             ),
             if (versionTarget.trim().isNotEmpty) ...[
               12.verticalSpace,
