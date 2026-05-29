@@ -16,6 +16,7 @@ import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/login/login_store.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -67,9 +68,9 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               BottomsheetWidget(
                 title: AppStrings.oopsTerjadiKesalahan,
                 asset: AppAsset.imgFaceSad,
-                message: 'Mohon verifikasi email kamu agar bisa mengakses seluruh fitur',
+                message: AppTranslationKey.emailVerificationRequired.tr,
                 errorTicketId: AppErrorLogger.latestErrorTicketId,
-                buttonText: 'Verifikasi Sekarang',
+                buttonText: AppTranslationKey.verifyNow.tr,
                 onButtonPressed: () {
                   final email = store.email;
                   if (email == null) return;
@@ -147,18 +148,20 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               Image.asset(AppAsset.imgFaceSmile, height: 150.r),
               32.verticalSpace,
               Text(
-                'Welcome Back',
+                AppTranslationKey.welcomeBack.tr,
                 style: TextStyle(fontSize: 30.sp),
               ),
               50.verticalSpace,
               TextfieldWidget(
-                label: 'Username',
-                hintText: 'Masukan Username',
+                label: AppTranslationKey.username.tr,
+                hintText: AppTranslationKey.enterUsername.tr,
                 textInputType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 onChanged: store.validateUsername,
                 errorText: store.error.username,
-                inputFormatters: [FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)],
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)
+                ],
               ),
               20.verticalSpace,
               TextfieldPasswordWidget.verify(
@@ -171,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
                 alignment: Alignment.centerRight,
                 child: InkWell(
                   child: Text(
-                    'Lupa Password?',
+                    AppTranslationKey.forgotPassword.tr,
                     style: TextStyle(
                       fontSize: 14.sp,
                       decoration: TextDecoration.underline,
@@ -188,16 +191,18 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
                             Get.offAllNamed(AppRouteName.BASE_SCREEN);
                           },
                         ),
-                title: 'Masuk',
+                title: AppTranslationKey.login.tr,
               ),
               48.verticalSpace,
               Text.rich(
                 TextSpan(
-                  text: 'Tidak punya akun? ',
+                  text: AppTranslationKey.dontHaveAccount.tr,
                   children: <InlineSpan>[
                     TextSpan(
-                      text: 'Daftar',
-                      recognizer: TapGestureRecognizer()..onTap = () => Get.toNamed(AppRouteName.REGISTER_SCREEN),
+                      text: AppTranslationKey.register.tr,
+                      recognizer: TapGestureRecognizer()
+                        ..onTap =
+                            () => Get.toNamed(AppRouteName.REGISTER_SCREEN),
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                         decorationColor: AppColor.primaryColor,

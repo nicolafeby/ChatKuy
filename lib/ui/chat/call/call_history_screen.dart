@@ -8,6 +8,7 @@ import 'package:chatkuy/stores/chat/call/call_history_store.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:chatkuy/ui/chat/call/call_info_screen.dart';
 import 'package:chatkuy/ui/chat/call/widget/call_history_tile.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -24,7 +25,8 @@ class CallHistoryScreen extends StatefulWidget {
 class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
   final CallRepository repository = getIt<CallRepository>();
   final UserRepository userRepository = getIt<UserRepository>();
-  late final CallHistoryStore store = CallHistoryStore(userRepository: userRepository);
+  late final CallHistoryStore store =
+      CallHistoryStore(userRepository: userRepository);
   final TextEditingController _searchController = TextEditingController();
   Future<String?>? _uidFuture;
 
@@ -44,7 +46,8 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) => Scaffold(
-        appBar: store.isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
+        appBar:
+            store.isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
         body: FutureBuilder<String?>(
           future: _uidFuture,
           builder: (context, authSnapshot) {
@@ -54,7 +57,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
 
             final currentUid = authSnapshot.data;
             if (currentUid == null) {
-              return const Center(child: Text('Silakan masuk kembali'));
+              return Center(child: Text(AppTranslationKey.pleaseLoginAgain.tr));
             }
 
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -121,12 +124,12 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
-        'Telepon',
+        AppTranslationKey.callHistory.tr,
         style: TextStyle(fontSize: 28.sp),
       ),
       actions: [
         IconButton(
-          tooltip: 'Cari',
+          tooltip: AppTranslationKey.search.tr,
           onPressed: store.showSearch,
           icon: const Icon(Icons.search),
         ),
@@ -139,7 +142,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
 
     return AppBar(
       leading: IconButton(
-        tooltip: 'Tutup pencarian',
+        tooltip: AppTranslationKey.closeSearch.tr,
         onPressed: _hideSearch,
         icon: const Icon(Icons.arrow_back),
       ),
@@ -167,7 +170,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
               borderRadius: BorderRadius.circular(20.r),
               borderSide: BorderSide.none,
             ),
-            hintText: 'Cari riwayat panggilan',
+            hintText: AppTranslationKey.searchCallHistory.tr,
             hintStyle: TextStyle(
               color: colorScheme.onSurfaceVariant,
               fontSize: 14.sp,
@@ -182,7 +185,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
             if (value.text.isEmpty) return const SizedBox.shrink();
 
             return IconButton(
-              tooltip: 'Bersihkan pencarian',
+              tooltip: AppTranslationKey.clearSearch.tr,
               onPressed: () {
                 _searchController.clear();
                 store.clearSearch();

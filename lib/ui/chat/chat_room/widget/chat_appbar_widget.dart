@@ -2,8 +2,10 @@ import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final ChatRoomStore store;
@@ -50,17 +52,17 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
         IconButton(
           onPressed: onSearchTap,
           icon: const Icon(Icons.search),
-          tooltip: 'Cari pesan',
+          tooltip: AppTranslationKey.searchMessages.tr,
         ),
         IconButton(
           onPressed: onVideoCallTap,
           icon: const Icon(Icons.videocam),
-          tooltip: 'Panggilan video',
+          tooltip: AppTranslationKey.videoCall.tr,
         ),
         IconButton(
           onPressed: onCallTap,
           icon: const Icon(Icons.call),
-          tooltip: 'Telepon suara',
+          tooltip: AppTranslationKey.voiceCall.tr,
         ),
       ],
       elevation: 2,
@@ -77,11 +79,11 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   }) {
     final statusText = canViewPresence
         ? (isTyping
-            ? 'Sedang mengetik ...'
+            ? AppTranslationKey.typing.tr
             : user.isOnline == true
-                ? 'Online'
+                ? AppTranslationKey.online.tr
                 : (user.lastOnlineAt?.daysAndTime ?? ''))
-        : 'Status online disembunyikan';
+        : AppTranslationKey.hiddenOnlineStatus.tr;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

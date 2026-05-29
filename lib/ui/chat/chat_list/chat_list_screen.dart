@@ -12,6 +12,7 @@ import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/chat/chat_list/widget/chat_list_search.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -73,7 +74,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
-        'Percakapan',
+        AppTranslationKey.chats.tr,
         style: TextStyle(fontSize: 28.sp),
       ),
       actions: [
@@ -118,15 +119,15 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               final searchResults = store.searchResults;
 
               if (store.chatUsers.isEmpty) {
-                return const Center(
-                  child: Text('Belum ada percakapan'),
+                return Center(
+                  child: Text(AppTranslationKey.noChats.tr),
                 );
               }
 
               if (isSearching) {
                 if (searchResults.isEmpty) {
                   return Center(
-                    child: Text('Pesan tidak ditemukan'),
+                    child: Text(AppTranslationKey.messageNotFound.tr),
                   );
                 }
 
@@ -220,7 +221,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
 
               if (chatUsers.isEmpty) {
                 return Center(
-                  child: Text('Percakapan tidak ditemukan'),
+                  child: Text(AppTranslationKey.chatNotFound.tr),
                 );
               }
 

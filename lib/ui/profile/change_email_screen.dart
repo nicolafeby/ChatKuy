@@ -10,6 +10,7 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
 import 'package:chatkuy/ui/auth/verify/verify_screen.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -45,7 +46,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
   }
 
   PreferredSizeWidget _buildAppbar() {
-    return AppbarWidget(title: 'Ubah Alamat Email');
+    return AppbarWidget(title: AppTranslationKey.changeEmailAddress.tr);
   }
 
   Widget _buildBody() {
@@ -56,8 +57,8 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
             child: Column(
               children: [
                 TextfieldWidget(
-                  label: 'Email Baru',
-                  hintText: 'Masukan email baru kamu',
+                  label: AppTranslationKey.newEmail.tr,
+                  hintText: AppTranslationKey.enterNewEmail.tr,
                   textInputAction: TextInputAction.next,
                   textInputType: TextInputType.emailAddress,
                   errorText: store.error.email,
@@ -76,7 +77,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
             flex: 0,
             child: ButtonWidget(
               onPressed: store.canChangeEmail ? _requestEmailChange : null,
-              title: 'Konfirmasi',
+              title: AppTranslationKey.confirm.tr,
             ),
           ),
         ],
@@ -85,7 +86,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
   }
 
   Future<void> _requestEmailChange() async {
-    showLoading(text: 'Mengirim link verifikasi...');
+    showLoading(text: AppTranslationKey.sendingVerificationLink.tr);
     final requested = await store.requestEmailChange();
     dismissLoading();
 
@@ -93,7 +94,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
       final error = store.error.general;
       if (error != null) {
         showSnackbar(
-          title: 'Gagal mengganti email',
+          title: AppTranslationKey.failedChangeEmail.tr,
           message: error.message,
         );
       }
@@ -115,7 +116,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> with BaseLayout {
     final error = store.error.general;
     if (error != null) {
       showSnackbar(
-        title: 'Gagal mengganti email',
+        title: AppTranslationKey.failedChangeEmail.tr,
         message: error.message,
       );
     }

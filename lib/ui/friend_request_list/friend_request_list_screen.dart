@@ -4,9 +4,11 @@ import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/friend_request/friend_request_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:mobx/mobx.dart';
 
 class FriendRequestScreen extends StatefulWidget {
@@ -57,13 +59,13 @@ class _FriendRequestPageState extends State<FriendRequestScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppbarWidget(
-        title: 'Permintaan Pertemanan',
+        title: AppTranslationKey.friendRequests.tr,
         appbarHeight: 86.h,
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Masuk'),
-            Tab(text: 'Terkirim'),
+            Tab(text: AppTranslationKey.incomingRequests.tr),
+            Tab(text: AppTranslationKey.sentRequests.tr),
           ],
         ),
       ),
@@ -96,8 +98,8 @@ class _IncomingRequestTab extends StatelessWidget {
         }
 
         if (data.isEmpty) {
-          return const Center(
-            child: Text('Tidak ada permintaan masuk'),
+          return Center(
+            child: Text(AppTranslationKey.noIncomingRequests.tr),
           );
         }
 
@@ -175,8 +177,8 @@ class _OutgoingRequestTab extends StatelessWidget {
         }
 
         if (data.isEmpty) {
-          return const Center(
-            child: Text('Tidak ada permintaan terkirim'),
+          return Center(
+            child: Text(AppTranslationKey.noSentRequests.tr),
           );
         }
 
@@ -216,7 +218,7 @@ class _OutgoingRequestTab extends StatelessWidget {
                             ),
                             SizedBox(width: 6),
                             Text(
-                              'Menunggu persetujuan',
+                              AppTranslationKey.waitingApproval.tr,
                               style: TextStyle(color: Colors.orange),
                             ),
                           ],
@@ -227,7 +229,7 @@ class _OutgoingRequestTab extends StatelessWidget {
                       onTap: () async => await store.cancelFriendRequest(
                           targetUid: request.toUid),
                       child: Text(
-                        'Batalkan',
+                        AppTranslationKey.cancel.tr,
                         style: TextStyle(color: Colors.red),
                       ),
                     )

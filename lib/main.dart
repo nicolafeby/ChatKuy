@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:chatkuy/app_context.dart';
+import 'package:chatkuy/core/config/language/language_controller.dart';
 import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
@@ -87,6 +88,7 @@ Future<void> main() async {
 
       await setupDI();
       await getIt<ThemeController>().init();
+      await getIt<LanguageController>().init();
       await getIt<LocalNotificationRepository>().init();
       await AppContext.init();
       await getIt<NotificationRepository>().init();

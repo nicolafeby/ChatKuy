@@ -14,6 +14,7 @@ import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/ui/profile/edit_profile_screen.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -387,7 +388,7 @@ abstract class _ProfileStore with Store {
       );
       error.general = FirebaseException(
         plugin: e.toString(),
-        message: 'Terjadi kesalahan, silakan coba lagi',
+        message: AppTranslationKey.tryAgainError.tr,
       );
     }
   }
@@ -420,7 +421,7 @@ abstract class _ProfileStore with Store {
         error.general = FirebaseException(
           plugin: e.toString(),
           code: e.code,
-          message: 'Password lama salah',
+          message: AppTranslationKey.currentPasswordWrong.tr,
         );
 
         break;
@@ -429,7 +430,7 @@ abstract class _ProfileStore with Store {
         error.general = FirebaseException(
           plugin: e.toString(),
           code: e.code,
-          message: 'Silakan login ulang demi keamanan',
+          message: AppTranslationKey.securityLoginAgain.tr,
         );
         break;
 
@@ -438,7 +439,7 @@ abstract class _ProfileStore with Store {
         error.general = FirebaseException(
           plugin: e.toString(),
           code: e.code,
-          message: 'User tidak valid',
+          message: AppTranslationKey.invalidUser.tr,
         );
 
         break;
@@ -447,7 +448,7 @@ abstract class _ProfileStore with Store {
         error.general = FirebaseException(
           plugin: e.toString(),
           code: e.code,
-          message: e.message ?? 'Gagal mengganti password',
+          message: e.message ?? AppTranslationKey.failedChangePassword.tr,
         );
     }
   }
@@ -571,7 +572,7 @@ abstract class _ProfileStore with Store {
       );
       error.general = FirebaseException(
         plugin: e.toString(),
-        message: 'Gagal mengganti email',
+        message: AppTranslationKey.failedChangeEmail.tr,
       );
     }
 
@@ -605,7 +606,7 @@ abstract class _ProfileStore with Store {
         error.general = FirebaseException(
           plugin: e.plugin,
           code: e.code,
-          message: 'Email berhasil diverifikasi. Silakan login ulang.',
+          message: AppTranslationKey.emailVerifiedLoginAgain.tr,
         );
         return false;
       }

@@ -1,3 +1,6 @@
+import 'package:get/get.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
+
 extension DateTimeExtension on DateTime {
   /// Format: HH:mm (contoh: 09:30)
   String get hhmm {
@@ -29,11 +32,11 @@ extension DateTimeExtension on DateTime {
     final diff = daysFromNow();
 
     if (diff == 0) {
-      return 'Hari ini';
+      return AppTranslationKey.today.tr;
     }
 
     if (diff == 1) {
-      return 'Kemarin';
+      return AppTranslationKey.yesterday.tr;
     }
 
     if (diff >= 2 && diff <= 6) {
@@ -44,34 +47,11 @@ extension DateTimeExtension on DateTime {
   }
 
   String _weekdayName(int w) {
-    const days = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    return days[w - 1];
+    return 'weekday$w'.tr;
   }
 
   String _monthName(int m) {
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Augustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember'
-    ];
-    return months[m - 1];
+    return 'month$m'.tr;
   }
 
   /// Format tanggal untuk chat:
@@ -83,11 +63,11 @@ extension DateTimeExtension on DateTime {
     final yesterday = now.subtract(const Duration(days: 1));
 
     if (isSameDay(now)) {
-      return 'Hari ini';
+      return AppTranslationKey.today.tr;
     }
 
     if (isSameDay(yesterday)) {
-      return 'Kemarin';
+      return AppTranslationKey.yesterday.tr;
     }
 
     return '${day.toString().padLeft(2, '0')}/'

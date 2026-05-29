@@ -18,6 +18,7 @@ import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:chatkuy/ui/profile/user_profile_screen.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -50,7 +51,8 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAliveClientMixin {
+class _ChatRoomScreenState extends State<ChatRoomScreen>
+    with AutomaticKeepAliveClientMixin {
   ChatRoomStore store = ChatRoomStore(
     chatRepository: getIt<ChatRepository>(),
     userRepository: getIt<UserRepository>(),
@@ -140,7 +142,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
         final targetUserFallback = argument?.targetUser;
         final user = store.targetUser?.value ?? targetUserFallback;
         final currentUser = store.currentUser?.value;
-        final canViewPresence = currentUser?.isOnlineStatusVisible == true && user?.isOnlineStatusVisible != false;
+        final canViewPresence = currentUser?.isOnlineStatusVisible == true &&
+            user?.isOnlineStatusVisible != false;
 
         final messages = _isSearching ? store.visibleMessages : store.messages;
         _scheduleTargetMessageScroll(messages);
@@ -149,7 +152,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
           (messageId) => !visibleMessageIds.contains(messageId),
         );
         final isSelectionMode = _selectedMessageIds.isNotEmpty;
-        final hasSearchQuery = _isSearching && store.searchQuery.trim().isNotEmpty;
+        final hasSearchQuery =
+            _isSearching && store.searchQuery.trim().isNotEmpty;
 
         final dummy = UserModel(
           name: 'name',
@@ -188,17 +192,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                                 ),
                         onCallTap: user == null || targetId == null
                             ? null
-                            : () => _startCall(user, targetId, isVideoCall: false),
+                            : () =>
+                                _startCall(user, targetId, isVideoCall: false),
                         onVideoCallTap: user == null || targetId == null
                             ? null
-                            : () => _startCall(user, targetId, isVideoCall: true),
+                            : () =>
+                                _startCall(user, targetId, isVideoCall: true),
                       ),
             body: Column(
               children: [
                 Expanded(
                   child: messages.isEmpty && hasSearchQuery
                       ? Center(
-                          child: Text('Pesan tidak ditemukan'),
+                          child: Text(AppTranslationKey.messageNotFound.tr),
                         )
                       : ListView.builder(
                           controller: _scrollController,
@@ -211,17 +217,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
 
                             final message = messages[realIndex];
                             final localMediaPath = _localMediaPath(message);
-                            final isMe = message.senderId == argument!.currentUid;
-                            final isSelected = _selectedMessageIds.contains(message.id);
+                            final isMe =
+                                message.senderId == argument!.currentUid;
+                            final isSelected =
+                                _selectedMessageIds.contains(message.id);
 
-                            final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+                            final prevMessage =
+                                realIndex > 0 ? messages[realIndex - 1] : null;
 
-                            final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+                            final isSameGroup = prevMessage != null &&
+                                prevMessage.senderId == message.senderId;
 
-                            final showDateSeparator =
-                                prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
-                            final uploadProgress = store.uploadProgressByMessageId[message.id] ??
-                                (localMediaPath == null ? null : store.uploadProgressByLocalPath[localMediaPath]);
+                            final showDateSeparator = prevMessage == null ||
+                                !message.createdAt
+                                    .isSameDay(prevMessage.createdAt);
+                            final uploadProgress =
+                                store.uploadProgressByMessageId[message.id] ??
+                                    (localMediaPath == null
+                                        ? null
+                                        : store.uploadProgressByLocalPath[
+                                            localMediaPath]);
 
                             return Column(
                               key: _keyForMessage(message.id),
@@ -240,12 +255,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                                   currentUid: argument!.currentUid,
                                   targetName: user?.name,
                                   searchQuery: _activeHighlightQuery,
-                                  onRetry: message.status == MessageStatus.failed ? () => _retryMessage(message) : null,
-                                  onReply: !isSelectionMode && message.status == MessageStatus.sent
+                                  onRetry:
+                                      message.status == MessageStatus.failed
+                                          ? () => _retryMessage(message)
+                                          : null,
+                                  onReply: !isSelectionMode &&
+                                          message.status == MessageStatus.sent
                                       ? () => store.setReplyToMessage(message)
                                       : null,
                                   onDelete: () => _deleteMessageForMe(message),
-                                  onSelect: () => _toggleSelectedMessage(message.id),
+                                  onSelect: () =>
+                                      _toggleSelectedMessage(message.id),
                                   selectionMode: isSelectionMode,
                                   isSelected: isSelected,
                                 ),
@@ -274,7 +294,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                             sendButtonColor: AppColor.primaryColor,
                             attachmentConfig: AttachmentConfig(
                               showAudio: false,
-                              backgroundColor: Colors.grey.withValues(alpha: 0.7),
+                              backgroundColor:
+                                  Colors.grey.withValues(alpha: 0.7),
                             ),
                             onSendTap: () {
                               final text = store.messageController.text.trim();
@@ -310,7 +331,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
 
   void _scheduleTargetMessageScroll(List<ChatMessageModel> messages) {
     final targetMessageId = argument?.targetMessageId;
-    if (targetMessageId == null || _didScrollToTarget || _targetScrollScheduled) {
+    if (targetMessageId == null ||
+        _didScrollToTarget ||
+        _targetScrollScheduled) {
       return;
     }
 
@@ -385,7 +408,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
       title: Text('${_selectedMessageIds.length}'),
       actions: [
         IconButton(
-          tooltip: 'Hapus untuk saya',
+          tooltip: AppTranslationKey.deleteForMe.tr,
           onPressed: () => _deleteSelectedMessagesForMe(messages),
           icon: const Icon(Icons.delete_outline),
         ),
@@ -398,7 +421,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
 
     return AppBar(
       leading: IconButton(
-        tooltip: 'Tutup pencarian',
+        tooltip: AppTranslationKey.closeSearch.tr,
         onPressed: _hideSearch,
         icon: const Icon(Icons.arrow_back),
       ),
@@ -426,7 +449,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
               borderRadius: BorderRadius.circular(20.r),
               borderSide: BorderSide.none,
             ),
-            hintText: 'Cari pesan',
+            hintText: AppTranslationKey.searchMessages.tr,
             hintStyle: TextStyle(
               color: colorScheme.onSurfaceVariant,
               fontSize: 14.sp,
@@ -468,7 +491,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
             if (value.text.isEmpty) return const SizedBox.shrink();
 
             return IconButton(
-              tooltip: 'Bersihkan pencarian',
+              tooltip: AppTranslationKey.clearSearch.tr,
               onPressed: () {
                 _searchController.clear();
                 store.clearSearch();
@@ -543,8 +566,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
       if (!mounted) return;
 
       Get.snackbar(
-        'Chat',
-        'Pesan gagal dihapus',
+        AppTranslationKey.chat.tr,
+        AppTranslationKey.somethingWentWrong.tr,
         snackPosition: SnackPosition.BOTTOM,
       );
     }
@@ -553,7 +576,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
   Future<void> _deleteSelectedMessagesForMe(
     List<ChatMessageModel> messages,
   ) async {
-    final selectedMessages = messages.where((message) => _selectedMessageIds.contains(message.id)).toList();
+    final selectedMessages = messages
+        .where((message) => _selectedMessageIds.contains(message.id))
+        .toList();
 
     if (selectedMessages.isEmpty) {
       _clearSelectedMessages();
@@ -563,16 +588,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hapus ${selectedMessages.length} pesan?'),
-        content: const Text('Pesan akan dihapus hanya dari chat Anda.'),
+        title: Text(AppTranslationKey.deleteMessagesTitle.trParams({
+          'count': '${selectedMessages.length}',
+        })),
+        content: Text(AppTranslationKey.deleteMessagesContent.tr),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
+            child: Text(AppTranslationKey.cancel.tr),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Hapus'),
+            child: Text(AppTranslationKey.delete.tr),
           ),
         ],
       ),
@@ -587,8 +614,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
       if (!mounted) return;
 
       Get.snackbar(
-        'Chat',
-        'Pesan yang dipilih gagal dihapus',
+        AppTranslationKey.chat.tr,
+        AppTranslationKey.somethingWentWrong.tr,
         snackPosition: SnackPosition.BOTTOM,
       );
     }
@@ -632,7 +659,9 @@ class _ReplyPreviewBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final senderName = message.senderId == currentUid ? 'Anda' : (targetName ?? 'Kontak');
+    final senderName = message.senderId == currentUid
+        ? AppTranslationKey.you.tr
+        : (targetName ?? AppTranslationKey.contact.tr);
 
     return Container(
       width: double.infinity,
@@ -701,11 +730,13 @@ class _ReplyPreviewBar extends StatelessWidget {
   String _previewText(ChatMessageModel message) {
     final text = message.text?.trim();
     if (text != null && text.isNotEmpty) return text;
-    if (message.type == MessageType.image) return 'Foto';
-    if (message.type == MessageType.video) return 'Video';
-    if (message.type == MessageType.call) return 'Panggilan';
-    if (message.type == MessageType.file) return 'Dokumen';
-    if (message.type == MessageType.contact) return 'Kontak';
-    return 'Pesan';
+    if (message.type == MessageType.image) return AppTranslationKey.photo.tr;
+    if (message.type == MessageType.video) return AppTranslationKey.video.tr;
+    if (message.type == MessageType.call) return AppTranslationKey.call.tr;
+    if (message.type == MessageType.file) return AppTranslationKey.document.tr;
+    if (message.type == MessageType.contact) {
+      return AppTranslationKey.contact.tr;
+    }
+    return AppTranslationKey.message.tr;
   }
 }

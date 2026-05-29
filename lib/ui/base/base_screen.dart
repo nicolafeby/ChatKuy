@@ -3,9 +3,11 @@ import 'package:chatkuy/stores/base/base_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/chat/call/call_history_screen.dart';
 import 'package:chatkuy/ui/friends_list/friend_list_sceeen.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:get/get.dart';
 
 class BaseScreen extends StatefulWidget {
   const BaseScreen({super.key});
@@ -47,10 +49,16 @@ class _BaseScreenState extends State<BaseScreen> {
             onTap: store.onTapItem,
             type: BottomNavigationBarType.fixed,
             items: [
-              BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Teman'),
-              BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Percakapan'),
-              BottomNavigationBarItem(icon: Icon(Icons.call), label: 'Telepon'),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.people),
+                  label: AppTranslationKey.friends.tr),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.chat), label: AppTranslationKey.chats.tr),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.call), label: AppTranslationKey.calls.tr),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: AppTranslationKey.profile.tr),
             ],
           ),
         ),

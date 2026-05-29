@@ -14,6 +14,7 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/auth/register/register_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -86,19 +87,19 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
           child: Column(
             children: [
               Text(
-                'Selamat Datang',
+                AppTranslationKey.welcome.tr,
                 style: TextStyle(fontSize: 30.sp),
               ),
               16.verticalSpace,
               Text(
-                'Yuk, buat akun sekarang agar kita tetap nyambung!!',
+                AppTranslationKey.registerSubtitle.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14.sp),
               ),
               34.verticalSpace,
               TextfieldWidget(
-                label: 'Nama',
-                hintText: 'Masukan Nama',
+                label: AppTranslationKey.name.tr,
+                hintText: AppTranslationKey.enterName.tr,
                 textInputType: TextInputType.name,
                 textInputAction: TextInputAction.next,
                 onChanged: store.validateName,
@@ -106,8 +107,8 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
               ),
               20.verticalSpace,
               TextfieldWidget(
-                label: 'Username',
-                hintText: 'Masukan Username',
+                label: AppTranslationKey.username.tr,
+                hintText: AppTranslationKey.enterUsername.tr,
                 textInputType: TextInputType.name,
                 textInputAction: TextInputAction.next,
                 inputFormatters: [
@@ -118,8 +119,8 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
               ),
               20.verticalSpace,
               TextfieldWidget(
-                label: 'Email',
-                hintText: 'Masukan Email',
+                label: AppTranslationKey.email.tr,
+                hintText: AppTranslationKey.enterEmail.tr,
                 textInputType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 onChanged: store.validateEmail,
@@ -143,10 +144,11 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
                             BottomsheetWidget(
                               asset: AppAsset.imgFaceWink,
                               restricBackNative: true,
-                              title: 'Horee!! Registrasi Berhasil',
-                              message:
-                                  'Yuk, verifikasi email kamu agar bisa mengakses semua fitur kami',
-                              buttonText: 'Verifikasi Sekarang',
+                              title:
+                                  AppTranslationKey.registrationSuccessTitle.tr,
+                              message: AppTranslationKey
+                                  .verifyEmailToAccessFeatures.tr,
+                              buttonText: AppTranslationKey.verifyNow.tr,
                               onButtonPressed: () {
                                 final email = store.email;
 
@@ -159,16 +161,15 @@ class _RegisterScreenState extends State<RegisterScreen> with BaseLayout {
                             ),
                           );
                         }),
-                title: 'Daftar',
+                title: AppTranslationKey.register.tr,
               ),
               48.verticalSpace,
               Text.rich(
                 TextSpan(
-                  text:
-                      'Sudah punya akun? ', // Default style applied to this segment
+                  text: AppTranslationKey.alreadyHaveAccount.tr,
                   children: <InlineSpan>[
                     TextSpan(
-                      text: 'Masuk',
+                      text: AppTranslationKey.login.tr,
                       recognizer: TapGestureRecognizer()
                         ..onTap =
                             () => Get.offAndToNamed(AppRouteName.LOGIN_SCREEN),
