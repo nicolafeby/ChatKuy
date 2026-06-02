@@ -20,10 +20,12 @@ class HiveEncryptionService implements HiveEncryptionRepository {
     final encryptionKey = await secureStorage.getHiveEncryptionKey();
     final cipher = HiveAesCipher(encryptionKey);
 
-    await _openEncryptedBox<ChatMessageModel>('chat_messages', cipher);
-    await _openEncryptedBox<ChatRoomModel>('chat_room', cipher);
-    await _openEncryptedBox<ChatUserItemModel>('chat_list', cipher);
-    await _openEncryptedBox<UserModel>('user_model', cipher);
+    await Future.wait([
+      _openEncryptedBox<ChatMessageModel>('chat_messages', cipher),
+      _openEncryptedBox<ChatRoomModel>('chat_room', cipher),
+      _openEncryptedBox<ChatUserItemModel>('chat_list', cipher),
+      _openEncryptedBox<UserModel>('user_model', cipher),
+    ]);
   }
 
   @override
@@ -82,8 +84,7 @@ class HiveEncryptionService implements HiveEncryptionRepository {
 
   Future<void> _clearChatImages() async {
     final directory = await getApplicationDocumentsDirectory();
-    final chatDir =
-        Directory('${directory.path}/${StorageCollection.chatImages}');
+    final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
 
     if (await chatDir.exists()) {
       await chatDir.delete(recursive: true);
@@ -92,8 +93,7 @@ class HiveEncryptionService implements HiveEncryptionRepository {
 
   Future<void> _clearChatVideos() async {
     final directory = await getApplicationDocumentsDirectory();
-    final chatDir =
-        Directory('${directory.path}/${StorageCollection.chatVideos}');
+    final chatDir = Directory('${directory.path}/${StorageCollection.chatVideos}');
 
     if (await chatDir.exists()) {
       await chatDir.delete(recursive: true);
