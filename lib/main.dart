@@ -7,6 +7,7 @@ import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/services/app_update_service.dart';
 import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
@@ -90,7 +91,7 @@ Future<void> main() async {
       await getIt<ThemeController>().init();
       await getIt<LanguageController>().init();
       await getIt<LocalNotificationRepository>().init();
-      await AppContext.init();
+      await AppContext.init(getIt<SecureStorageRepository>());
       await getIt<NotificationRepository>().init();
       getIt<PresenceService>().init();
       WidgetsBinding.instance.addObserver(_CallKitLifecycleObserver());
@@ -108,26 +109,6 @@ Future<void> main() async {
         },
       );
 
-      FirebaseMessaging.onMessageOpenedApp.listen(
-        (message) {
-          getIt<NotificationRepository>().handleMessage(message);
-        },
-        onError: (error, stackTrace) {
-          AppErrorLogger.recordError(
-            error,
-            stackTrace,
-            reason: 'Firebase opened-app message stream failed',
-          );
-        },
-      );
-
-      final initialMessage =
-          await FirebaseMessaging.instance.getInitialMessage();
-
-      if (initialMessage != null) {
-        getIt<NotificationRepository>().handleMessage(initialMessage);
-      }
-
       final initialCallArgument =
           await LocalNotificationService.takeInitialAcceptedCallArgument();
       final initialUpdateInfo =
@@ -138,9 +119,6 @@ Future<void> main() async {
         initialUpdateInfo: initialUpdateInfo,
       ));
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        LocalNotificationService.processPendingLaunchNotification();
-      });
-      Future.delayed(const Duration(seconds: 1), () {
         LocalNotificationService.processPendingLaunchNotification();
       });
     },
