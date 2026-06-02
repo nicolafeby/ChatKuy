@@ -4,21 +4,31 @@ import 'dart:ui';
 import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/core/config/language/language_controller.dart';
 import 'package:chatkuy/core/config/theme/theme_controller.dart';
+import 'package:chatkuy/core/constants/routes.dart';
+import 'package:chatkuy/core/navigation/initial_route_argument.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
+import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/services/app_update_service.dart';
 import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
+import 'package:chatkuy/ui/update/update_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:get/get.dart';
 
 import 'app.dart';
 import 'di/injection.dart';
+
+const _enableUpdateCheckInDebug = bool.fromEnvironment(
+  'ENABLE_UPDATE_CHECK_IN_DEBUG',
+);
 
 class _CallKitLifecycleObserver extends WidgetsBindingObserver {
   @override
@@ -74,8 +84,7 @@ Future<void> main() async {
       isCrashlyticsReady = true;
       await AppErrorLogger.setUserId(FirebaseAuth.instance.currentUser?.uid);
 
-      FlutterError.onError =
-          FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         AppErrorLogger.recordError(
           error,
@@ -90,9 +99,7 @@ Future<void> main() async {
       await getIt<ThemeController>().init();
       await getIt<LanguageController>().init();
       await getIt<LocalNotificationRepository>().init();
-      await AppContext.init();
-      await getIt<NotificationRepository>().init();
-      getIt<PresenceService>().init();
+      await AppContext.init(getIt<SecureStorageRepository>());
       WidgetsBinding.instance.addObserver(_CallKitLifecycleObserver());
 
       FirebaseMessaging.onMessage.listen(
@@ -108,40 +115,17 @@ Future<void> main() async {
         },
       );
 
-      FirebaseMessaging.onMessageOpenedApp.listen(
-        (message) {
-          getIt<NotificationRepository>().handleMessage(message);
-        },
-        onError: (error, stackTrace) {
-          AppErrorLogger.recordError(
-            error,
-            stackTrace,
-            reason: 'Firebase opened-app message stream failed',
-          );
-        },
-      );
-
-      final initialMessage =
-          await FirebaseMessaging.instance.getInitialMessage();
-
-      if (initialMessage != null) {
-        getIt<NotificationRepository>().handleMessage(initialMessage);
-      }
-
-      final initialCallArgument =
-          await LocalNotificationService.takeInitialAcceptedCallArgument();
-      final initialUpdateInfo =
-          await getIt<AppUpdateService>().checkForUpdate();
+      final initialCallArgument = await LocalNotificationService.takeInitialAcceptedCallArgument();
 
       runApp(MyApp(
         initialCallArgument: initialCallArgument,
-        initialUpdateInfo: initialUpdateInfo,
       ));
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _startDeferredServices();
         LocalNotificationService.processPendingLaunchNotification();
-      });
-      Future.delayed(const Duration(seconds: 1), () {
-        LocalNotificationService.processPendingLaunchNotification();
+        if (initialCallArgument == null) {
+          unawaited(_checkForUpdateAfterFirstFrame());
+        }
       });
     },
     (error, stack) {
@@ -155,4 +139,35 @@ Future<void> main() async {
       }
     },
   );
+}
+
+void _startDeferredServices() {
+  getIt<PresenceService>().init();
+  unawaited(getIt<NotificationRepository>().init());
+}
+
+Future<void> _checkForUpdateAfterFirstFrame() async {
+  if (kDebugMode && !_enableUpdateCheckInDebug) return;
+
+  final updateInfo = await getIt<AppUpdateService>().checkForUpdate();
+  if (kDebugMode) {
+    debugPrint(
+      'App update check: '
+      'current=${updateInfo.currentVersion}+${updateInfo.currentBuildNumberText}, '
+      'minimum=${updateInfo.minimumRequiredVersion}+${updateInfo.minimumRequiredBuildNumberText}, '
+      'recommended=${updateInfo.recommendedVersion}+${updateInfo.recommendedBuildNumberText}, '
+      'type=${updateInfo.type.name}',
+    );
+  }
+
+  if (!updateInfo.shouldShowUpdate) return;
+  if (Get.currentRoute == AppRouteName.APP_UPDATE_SCREEN) return;
+  if (Get.currentRoute == AppRouteName.CALL_SCREEN) return;
+
+  final nextRouteName = Get.currentRoute.isEmpty ? AppRouteName.BASE_SCREEN : Get.currentRoute;
+  InitialRouteArgument.appUpdate = AppUpdateScreenArgument(
+    updateInfo: updateInfo,
+    nextRouteName: nextRouteName,
+  );
+  Get.toNamed(AppRouteName.APP_UPDATE_SCREEN);
 }

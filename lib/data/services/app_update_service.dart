@@ -17,23 +17,10 @@ class AppUpdateService {
       'https://appdistribution.firebase.google.com/testerapps';
 
   final FirebaseRemoteConfig _remoteConfig;
+  bool _isConfigured = false;
 
   Future<AppUpdateInfo> checkForUpdate() async {
-    await _remoteConfig.setDefaults({
-      minimumRequiredAppVersionKey: '',
-      minimumRequiredBuildNumberKey: 0,
-      recommendedAppVersionKey: '',
-      recommendedBuildNumberKey: 0,
-      appTesterUrlKey: defaultAppTesterUrl,
-    });
-
-    await _remoteConfig.setConfigSettings(
-      RemoteConfigSettings(
-        fetchTimeout: const Duration(seconds: 10),
-        minimumFetchInterval:
-            kDebugMode ? Duration.zero : const Duration(hours: 1),
-      ),
-    );
+    await _configureRemoteConfig();
 
     try {
       await _remoteConfig.fetchAndActivate();
@@ -82,6 +69,28 @@ class AppUpdateService {
       recommendedBuildNumber: recommendedBuildNumber,
       appTesterUrl: appTesterUrl.isEmpty ? defaultAppTesterUrl : appTesterUrl,
     );
+  }
+
+  Future<void> _configureRemoteConfig() async {
+    if (_isConfigured) return;
+
+    await _remoteConfig.setDefaults({
+      minimumRequiredAppVersionKey: '',
+      minimumRequiredBuildNumberKey: 0,
+      recommendedAppVersionKey: '',
+      recommendedBuildNumberKey: 0,
+      appTesterUrlKey: defaultAppTesterUrl,
+    });
+
+    await _remoteConfig.setConfigSettings(
+      RemoteConfigSettings(
+        fetchTimeout: const Duration(seconds: 5),
+        minimumFetchInterval:
+            kDebugMode ? Duration.zero : const Duration(hours: 1),
+      ),
+    );
+
+    _isConfigured = true;
   }
 
   bool _isLowerVersion(String currentVersion, String targetVersion) {

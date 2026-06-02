@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/data/models/user_presence_model.dart';
 import 'package:chatkuy/data/repositories/presence_repository.dart';
@@ -14,6 +12,8 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
   final FirebaseFirestore firestore;
 
   User? get _firebaseUser => auth.currentUser;
+  DateTime? _lastPresenceWriteAt;
+  bool? _lastPresenceOnline;
 
   void init() {
     WidgetsBinding.instance.addObserver(this);
@@ -26,8 +26,6 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    log('Lifecycle: $state');
-
     if (_firebaseUser == null) return;
 
     switch (state) {
@@ -50,6 +48,7 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
   Future<void> setOnline() async {
     final uid = _firebaseUser?.uid;
     if (uid == null) return;
+    if (_shouldSkipPresenceWrite(true)) return;
 
     var isOnlineStatusVisible = true;
     try {
@@ -70,12 +69,14 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
     );
 
     await firestore.collection(FirebaseCollections.users).doc(uid).update(presence.toJson());
+    _markPresenceWritten(true);
   }
 
   @override
   Future<void> setOffline() async {
     final uid = _firebaseUser?.uid;
     if (uid == null) return;
+    if (_shouldSkipPresenceWrite(false)) return;
 
     final presence = UserPresenceModel(
       isOnline: false,
@@ -83,5 +84,20 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
     );
 
     await firestore.collection(FirebaseCollections.users).doc(uid).update(presence.toJson());
+    _markPresenceWritten(false);
+  }
+
+  bool _shouldSkipPresenceWrite(bool nextOnline) {
+    final lastWriteAt = _lastPresenceWriteAt;
+    if (_lastPresenceOnline != nextOnline || lastWriteAt == null) {
+      return false;
+    }
+
+    return DateTime.now().difference(lastWriteAt) < const Duration(seconds: 15);
+  }
+
+  void _markPresenceWritten(bool isOnline) {
+    _lastPresenceOnline = isOnline;
+    _lastPresenceWriteAt = DateTime.now();
   }
 }

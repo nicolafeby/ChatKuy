@@ -34,8 +34,7 @@ abstract class _ChatRoomStore with Store {
   ObservableStream<UserModel>? targetUser;
   ObservableStream<UserModel>? currentUser;
   ObservableStream<Map<String, bool>>? typing;
-  final Observable<ChatMessageModel?> replyToMessage =
-      Observable<ChatMessageModel?>(null);
+  final Observable<ChatMessageModel?> replyToMessage = Observable<ChatMessageModel?>(null);
 
   @observable
   String? roomId;
@@ -52,13 +51,10 @@ abstract class _ChatRoomStore with Store {
   @observable
   String searchQuery = '';
 
-  final ObservableList<ChatMessageModel> uploadingMessages =
-      ObservableList<ChatMessageModel>();
+  final ObservableList<ChatMessageModel> uploadingMessages = ObservableList<ChatMessageModel>();
 
-  final ObservableMap<String, int> uploadProgressByMessageId =
-      ObservableMap<String, int>();
-  final ObservableMap<String, int> uploadProgressByLocalPath =
-      ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByMessageId = ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByLocalPath = ObservableMap<String, int>();
 
   Timer? _resetUnreadTimer;
   Timer? _typingTimer;
@@ -82,17 +78,14 @@ abstract class _ChatRoomStore with Store {
 
       list = box.values
           .where(
-            (m) =>
-                m.roomId == roomId &&
-                (currentUid == null || m.deletedFor[currentUid] != true),
+            (m) => m.roomId == roomId && (currentUid == null || m.deletedFor[currentUid] != true),
           )
           .toList()
         ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     if (uploadingMessages.isNotEmpty) {
-      final visibleUploadingMessages =
-          uploadingMessages.where((uploadingMessage) {
+      final visibleUploadingMessages = uploadingMessages.where((uploadingMessage) {
         return !list.any(
           (message) =>
               message.type == uploadingMessage.type &&
@@ -101,8 +94,7 @@ abstract class _ChatRoomStore with Store {
         );
       });
 
-      list = [...list, ...visibleUploadingMessages]
-        ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
+      list = [...list, ...visibleUploadingMessages]..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     return list;
@@ -118,9 +110,7 @@ abstract class _ChatRoomStore with Store {
       final replyText = message.replyToText?.toLowerCase() ?? '';
       final typeLabel = _messageTypeLabel(message.type).toLowerCase();
 
-      return text.contains(query) ||
-          replyText.contains(query) ||
-          typeLabel.contains(query);
+      return text.contains(query) || replyText.contains(query) || typeLabel.contains(query);
     }).toList();
   }
 
@@ -142,8 +132,7 @@ abstract class _ChatRoomStore with Store {
     this.roomId = roomId;
     this.currentUid = currentUid;
 
-    _serverMessages =
-        chatRepository.watchMessages(roomId: roomId).asObservable();
+    _serverMessages = chatRepository.watchMessages(roomId: roomId).asObservable();
 
     targetUser = userRepository.watchUser(targetUid).asObservable();
     currentUser = userRepository.watchUser(currentUid).asObservable();
@@ -279,9 +268,7 @@ abstract class _ChatRoomStore with Store {
         context: {
           'room_id': roomId,
           'current_uid': currentUid,
-          'message_type': imageFile != null
-              ? MessageType.image.name
-              : MessageType.text.name,
+          'message_type': imageFile != null ? MessageType.image.name : MessageType.text.name,
           'has_text': messageText?.isNotEmpty == true,
         },
       );
@@ -291,8 +278,7 @@ abstract class _ChatRoomStore with Store {
         );
 
         if (index != -1) {
-          uploadingMessages[index] =
-              uploadingMessage.copyWith(status: MessageStatus.failed);
+          uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
         }
       }
 
@@ -348,8 +334,7 @@ abstract class _ChatRoomStore with Store {
         videoFile: video,
         onProgress: (progress) {
           runInAction(() {
-            final mappedProgress =
-                (progress * 0.5).round().clamp(0, 50).toInt();
+            final mappedProgress = (progress * 0.5).round().clamp(0, 50).toInt();
             uploadProgressByMessageId[uploadingMessage.id] = mappedProgress;
             uploadProgressByLocalPath[video.path] = mappedProgress;
           });
@@ -378,12 +363,8 @@ abstract class _ChatRoomStore with Store {
         }
 
         uploadProgressByMessageId[uploadingMessage.id] =
-            uploadProgressByMessageId[uploadingMessage.id]
-                    ?.clamp(0, 50)
-                    .toInt() ??
-                50;
-        uploadProgressByLocalPath[localVideoPath] =
-            uploadProgressByMessageId[uploadingMessage.id] ?? 50;
+            uploadProgressByMessageId[uploadingMessage.id]?.clamp(0, 50).toInt() ?? 50;
+        uploadProgressByLocalPath[localVideoPath] = uploadProgressByMessageId[uploadingMessage.id] ?? 50;
       });
 
       await chatRepository.sendMessage(
@@ -398,10 +379,8 @@ abstract class _ChatRoomStore with Store {
         onUploadProgress: (progress) {
           runInAction(() {
             final mappedProgress = (50 + (progress * 0.5)).round();
-            uploadProgressByMessageId[uploadingMessage.id] =
-                mappedProgress.clamp(50, 100).toInt();
-            uploadProgressByLocalPath[localVideoPath] =
-                mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByMessageId[uploadingMessage.id] = mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByLocalPath[localVideoPath] = mappedProgress.clamp(50, 100).toInt();
           });
         },
       );
@@ -421,8 +400,7 @@ abstract class _ChatRoomStore with Store {
       );
 
       if (index != -1) {
-        uploadingMessages[index] =
-            uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
       }
       await Hive.box<ChatMessageModel>('chat_messages').put(
         uploadingMessage.id,
@@ -471,8 +449,7 @@ abstract class _ChatRoomStore with Store {
     final now = DateTime.now();
     final fileName = p.basename(file.path);
     final fileSize = await file.length();
-    final fileExtension =
-        p.extension(fileName).replaceFirst('.', '').toUpperCase();
+    final fileExtension = p.extension(fileName).replaceFirst('.', '').toUpperCase();
     final localFilePath = await saveFileToLocal(file: file, roomId: roomId!);
     final uploadingMessage = ChatMessageModel(
       id: 'uploading_${now.microsecondsSinceEpoch}',
@@ -533,8 +510,7 @@ abstract class _ChatRoomStore with Store {
       );
 
       if (index != -1) {
-        uploadingMessages[index] =
-            uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
       }
 
       rethrow;
@@ -638,8 +614,7 @@ abstract class _ChatRoomStore with Store {
       uploadProgressByLocalPath.remove(localMediaPath);
     }
 
-    final isUploadingMessage =
-        uploadingMessages.any((item) => item.id == message.id);
+    final isUploadingMessage = uploadingMessages.any((item) => item.id == message.id);
     uploadingMessages.removeWhere((item) => item.id == message.id);
     if (isUploadingMessage) return;
 
@@ -676,8 +651,7 @@ abstract class _ChatRoomStore with Store {
 
     clearReplyToMessage();
 
-    final uploadingMessageIds =
-        uploadingMessages.map((item) => item.id).toSet();
+    final uploadingMessageIds = uploadingMessages.map((item) => item.id).toSet();
 
     for (final message in uniqueMessages) {
       uploadProgressByMessageId.remove(message.id);
@@ -692,9 +666,7 @@ abstract class _ChatRoomStore with Store {
       (item) => uniqueMessages.any((message) => message.id == item.id),
     );
 
-    final persistedMessages = uniqueMessages
-        .where((message) => !uploadingMessageIds.contains(message.id))
-        .toList();
+    final persistedMessages = uniqueMessages.where((message) => !uploadingMessageIds.contains(message.id)).toList();
 
     if (persistedMessages.isEmpty) return;
 
@@ -725,9 +697,6 @@ abstract class _ChatRoomStore with Store {
 
   void initReadMessagePeriodically() {
     _resetUnreadTimer?.cancel();
-    _resetUnreadTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _resetUnread();
-    });
     _resetUnread();
   }
 
@@ -740,8 +709,7 @@ abstract class _ChatRoomStore with Store {
     for (final message in messages) {
       if (message.senderId == currentUid) continue;
 
-      if (!message.deliveredTo.containsKey(currentUid) &&
-          _deliveredMessageIds.add(message.id)) {
+      if (!message.deliveredTo.containsKey(currentUid) && _deliveredMessageIds.add(message.id)) {
         chatRepository
             .markDelivered(
           roomId: roomId!,
@@ -762,8 +730,7 @@ abstract class _ChatRoomStore with Store {
         });
       }
 
-      if (!message.readBy.containsKey(currentUid) &&
-          _readMessageIds.add(message.id)) {
+      if (!message.readBy.containsKey(currentUid) && _readMessageIds.add(message.id)) {
         chatRepository
             .markRead(
           roomId: roomId!,
@@ -784,6 +751,13 @@ abstract class _ChatRoomStore with Store {
         });
       }
     }
+
+    _scheduleResetUnread();
+  }
+
+  void _scheduleResetUnread() {
+    _resetUnreadTimer?.cancel();
+    _resetUnreadTimer = Timer(const Duration(milliseconds: 600), _resetUnread);
   }
 
   // -----------------------

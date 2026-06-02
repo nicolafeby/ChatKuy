@@ -38,6 +38,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     bool closeAppOnEnd,
   })? _pendingCall;
   static bool _isCallKitListenerAttached = false;
+  static bool _isProcessingPendingLaunchNotification = false;
   static final Set<String> _handledAcceptedCallIds = {};
   static final Set<String> _finishedCallIds = {};
   static DateTime? _lastCallKitFinishedAt;
@@ -97,7 +98,11 @@ class LocalNotificationService implements LocalNotificationRepository {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(callChannel);
 
-    if (handleLaunchDetails) {
+    if (handleLaunchDetails) unawaited(_requestRuntimePermissions());
+  }
+
+  static Future<void> _requestRuntimePermissions() async {
+    try {
       final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       final notificationGranted = await androidPlugin?.requestNotificationsPermission();
       final fullScreenGranted = await androidPlugin?.requestFullScreenIntentPermission();
@@ -109,6 +114,13 @@ class LocalNotificationService implements LocalNotificationRepository {
         'postNotificationMessageRequired': 'Silakan izinkan notifikasi agar panggilan masuk bisa muncul.',
       });
       await FlutterCallkitIncoming.requestFullIntentPermission();
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Request notification permissions failed',
+        showBottomSheet: false,
+      );
     }
   }
 
@@ -466,26 +478,32 @@ class LocalNotificationService implements LocalNotificationRepository {
 
   static Future<void> processPendingLaunchNotification() async {
     if (_isInCallKitFinishCooldown()) return;
+    if (_isProcessingPendingLaunchNotification) return;
 
-    final response = _pendingLaunchResponse;
-    if (response != null) {
-      _pendingLaunchResponse = null;
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      await _handleNotificationResponse(response);
+    _isProcessingPendingLaunchNotification = true;
+    try {
+      final response = _pendingLaunchResponse;
+      if (response != null) {
+        _pendingLaunchResponse = null;
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await _handleNotificationResponse(response);
+      }
+
+      final call = _pendingCall;
+      if (call != null) {
+        _pendingCall = null;
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        _openCall(
+          call.data,
+          autoAccept: call.autoAccept,
+          closeAppOnEnd: call.closeAppOnEnd,
+        );
+      }
+
+      await processAcceptedCallKitCalls();
+    } finally {
+      _isProcessingPendingLaunchNotification = false;
     }
-
-    final call = _pendingCall;
-    if (call != null) {
-      _pendingCall = null;
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      _openCall(
-        call.data,
-        autoAccept: call.autoAccept,
-        closeAppOnEnd: call.closeAppOnEnd,
-      );
-    }
-
-    await processAcceptedCallKitCalls();
   }
 
   static Future<CallArgument?> takeInitialAcceptedCallArgument() async {
