@@ -5,10 +5,12 @@ import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:get/get.dart' hide navigator;
 import 'package:mobx/mobx.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -121,7 +123,7 @@ abstract class _CallStore with Store {
   @action
   void _prepareIncomingCall(CallArgument argument) {
     if (argument.callId == null) {
-      _showMessage('Data panggilan tidak lengkap');
+      _showMessage(AppTranslationKey.invalidCallData.tr);
       _close();
       return;
     }
@@ -130,8 +132,8 @@ abstract class _CallStore with Store {
     isIncomingRinging = true;
     isConnecting = false;
     statusText = argument.isVideoCall
-        ? 'Panggilan video masuk'
-        : 'Panggilan suara masuk';
+        ? AppTranslationKey.incomingVideoCall.tr
+        : AppTranslationKey.incomingVoiceCall.tr;
     _listenCall();
   }
 
@@ -751,7 +753,7 @@ abstract class _CallStore with Store {
     if (callId == null || currentArgument == null || isIncomingRinging) return;
 
     if (!isCallActive) {
-      _showMessage('Tunggu sampai panggilan tersambung');
+      _showMessage(AppTranslationKey.waitUntilCallConnected.tr);
       return;
     }
 
@@ -761,12 +763,12 @@ abstract class _CallStore with Store {
     }
 
     if (isVideoUpgradePending) {
-      _showMessage('Permintaan video sedang menunggu persetujuan');
+      _showMessage(AppTranslationKey.videoRequestPending.tr);
       return;
     }
 
     isVideoUpgradePending = true;
-    statusText = 'Meminta izin video...';
+    statusText = AppTranslationKey.requestingVideoPermission.tr;
     await callRepository.requestVideoUpgrade(
       callId: callId,
       requestedBy: currentArgument.currentUid,
@@ -786,7 +788,7 @@ abstract class _CallStore with Store {
         callId: callId,
         accepted: true,
       );
-      _showMessage('Panggilan video dimulai');
+      _showMessage(AppTranslationKey.videoCallStarted.tr);
     } catch (e, stackTrace) {
       AppErrorLogger.recordError(
         e,

@@ -10,6 +10,7 @@ import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -100,7 +101,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: Text(AppTranslationKey.profile.tr),
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 32.h),
@@ -154,7 +155,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
                       ? null
                       : () => _openChat(targetUser, currentUid),
                   icon: const Icon(Icons.chat_outlined),
-                  label: const Text('Chat'),
+                  label: Text(AppTranslationKey.chat.tr),
                 ),
               ),
             ],
@@ -162,27 +163,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
           24.verticalSpace,
           _InfoTile(
             icon: Icons.person_2_outlined,
-            title: 'Username',
+            title: AppTranslationKey.username.tr,
             value: targetUser.username?.isNotEmpty == true
                 ? '@${targetUser.username}'
                 : '-',
           ),
           _InfoTile(
             icon: Icons.email_outlined,
-            title: 'Email',
-            value:
-                targetUser.isEmailVisible ? targetUser.email : 'Disembunyikan',
+            title: AppTranslationKey.email.tr,
+            value: targetUser.isEmailVisible
+                ? targetUser.email
+                : AppTranslationKey.birthDateHidden.tr,
           ),
           _InfoTile(
             icon: Icons.cake_outlined,
-            title: 'Tanggal lahir',
+            title: AppTranslationKey.birthDate.tr,
             value: targetUser.isBirthDateVisible
                 ? _formatBirthDate(targetUser.birthDate)
-                : 'Disembunyikan',
+                : AppTranslationKey.birthDateHidden.tr,
           ),
           _InfoTile(
             icon: Icons.wc_outlined,
-            title: 'Jenis kelamin',
+            title: AppTranslationKey.gender.tr,
             value: targetUser.gender?.value ?? Gender.secret.value,
           ),
         ],
@@ -236,11 +238,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
   }
 
   String _presenceText(UserModel user, bool canViewPresence) {
-    if (!canViewPresence) return 'Status online disembunyikan';
-    if (user.isOnline == true) return 'Online';
+    if (!canViewPresence) return AppTranslationKey.hiddenOnlineStatus.tr;
+    if (user.isOnline == true) return AppTranslationKey.online.tr;
     final lastOnlineAt = user.lastOnlineAt;
-    if (lastOnlineAt == null) return 'Offline';
-    return 'Terakhir online ${lastOnlineAt.daysAndTime}';
+    if (lastOnlineAt == null) return AppTranslationKey.offline.tr;
+    return AppTranslationKey.lastOnlineAt
+        .trParams({'time': lastOnlineAt.daysAndTime});
   }
 
   String _formatBirthDate(DateTime? date) {

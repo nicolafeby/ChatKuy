@@ -27,6 +27,7 @@ import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:chatkuy/data/services/request_friend_service.dart';
 import 'package:chatkuy/data/services/secure_storage_service.dart';
 import 'package:chatkuy/data/services/user_service.dart';
+import 'package:chatkuy/core/config/language/language_controller.dart';
 import 'package:chatkuy/core/config/theme/theme_controller.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
@@ -41,12 +42,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 final getIt = GetIt.I;
 
 Future<void> setupDI() async {
-  getIt.registerLazySingleton<FirebaseFirestore>(
-      () => FirebaseFirestore.instance);
-  getIt.registerLazySingleton<FirebaseMessaging>(
-      () => FirebaseMessaging.instance);
-  getIt.registerLazySingleton<FirebaseRemoteConfig>(
-      () => FirebaseRemoteConfig.instance);
+  getIt.registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance);
+  getIt.registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance);
+  getIt.registerLazySingleton<FirebaseRemoteConfig>(() => FirebaseRemoteConfig.instance);
   getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
 
   registerService();
@@ -55,14 +53,11 @@ Future<void> setupDI() async {
 }
 
 void registerService() {
-  getIt.registerLazySingleton<AuthRepository>(
-      () => AuthService(FirebaseAuth.instance, FirebaseFirestore.instance));
+  getIt.registerLazySingleton<AuthRepository>(() => AuthService(FirebaseAuth.instance, FirebaseFirestore.instance));
 
-  getIt.registerLazySingleton<UserRepository>(
-      () => UserService(FirebaseFirestore.instance));
+  getIt.registerLazySingleton<UserRepository>(() => UserService(FirebaseFirestore.instance));
 
-  getIt.registerLazySingleton<SecureStorageRepository>(
-      () => SecureStorageService());
+  getIt.registerLazySingleton<SecureStorageRepository>(() => SecureStorageService());
 
   getIt.registerLazySingleton<HiveEncryptionRepository>(
     () => HiveEncryptionService(getIt<SecureStorageRepository>()),
@@ -96,8 +91,7 @@ void registerService() {
   );
 
   getIt.registerLazySingleton<FriendRequestRepository>(
-    () =>
-        FriendRequestService(FirebaseAuth.instance, FirebaseFirestore.instance),
+    () => FriendRequestService(FirebaseAuth.instance, FirebaseFirestore.instance),
   );
 
   getIt.registerLazySingleton<ChatUserListRepository>(
@@ -118,6 +112,10 @@ void registerService() {
 
   getIt.registerLazySingleton<ThemeController>(
     () => ThemeController(getIt<SecureStorageRepository>()),
+  );
+
+  getIt.registerLazySingleton<LanguageController>(
+    () => LanguageController(getIt<SecureStorageRepository>()),
   );
 }
 

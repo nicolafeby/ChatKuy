@@ -2,8 +2,10 @@ import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/stores/chat/call/call_history_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class CallHistoryTile extends StatelessWidget {
   const CallHistoryTile({
@@ -71,10 +73,14 @@ class CallHistoryTile extends StatelessWidget {
             ],
           ),
           trailing: IconButton(
-            tooltip: latest.isVideoCall ? 'Panggilan video' : 'Panggilan suara',
+            tooltip: latest.isVideoCall
+                ? AppTranslationKey.videoCall.tr
+                : AppTranslationKey.voiceCall.tr,
             onPressed: onCallTap,
             icon: Icon(
-              latest.isVideoCall ? Icons.videocam_outlined : Icons.call_outlined,
+              latest.isVideoCall
+                  ? Icons.videocam_outlined
+                  : Icons.call_outlined,
             ),
           ),
         );

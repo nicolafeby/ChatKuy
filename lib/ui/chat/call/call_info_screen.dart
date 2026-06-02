@@ -10,6 +10,7 @@ import 'package:chatkuy/ui/chat/call/widget/call_info_action.dart';
 import 'package:chatkuy/ui/chat/call/widget/call_info_row.dart';
 import 'package:chatkuy/ui/chat/call/widget/call_info_skeleton_view.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -29,7 +30,7 @@ class CallInfoScreen extends StatelessWidget with BaseLayout {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Info panggilan'),
+        title: Text(AppTranslationKey.callInfo.tr),
       ),
       body: FutureBuilder<UserModel?>(
         future: _resolvePeerUser(),
@@ -78,7 +79,7 @@ class CallInfoScreen extends StatelessWidget with BaseLayout {
                     Expanded(
                       child: CallInfoAction(
                         icon: Icons.chat_outlined,
-                        label: 'Pesan',
+                        label: AppTranslationKey.message.tr,
                         onTap: () => _openMessage(user),
                       ),
                     ),
@@ -86,7 +87,7 @@ class CallInfoScreen extends StatelessWidget with BaseLayout {
                     Expanded(
                       child: CallInfoAction(
                         icon: Icons.call_outlined,
-                        label: 'Audio',
+                        label: AppTranslationKey.audio.tr,
                         onTap: () => _startCall(isVideoCall: false),
                       ),
                     ),
@@ -94,7 +95,7 @@ class CallInfoScreen extends StatelessWidget with BaseLayout {
                     Expanded(
                       child: CallInfoAction(
                         icon: Icons.videocam_outlined,
-                        label: 'Video',
+                        label: AppTranslationKey.video.tr,
                         onTap: () => _startCall(isVideoCall: true),
                       ),
                     ),

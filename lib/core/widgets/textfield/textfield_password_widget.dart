@@ -1,8 +1,10 @@
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/stores/password_field/password_field_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 enum PasswordType { create, verify }
 
@@ -19,7 +21,8 @@ class TextfieldPasswordWidget extends StatefulWidget {
     this.label,
   });
 
-  factory TextfieldPasswordWidget.create({Key? key, required Function(String? password) onValidPassword}) {
+  factory TextfieldPasswordWidget.create(
+      {Key? key, required Function(String? password) onValidPassword}) {
     return TextfieldPasswordWidget._(
       key: key,
       passwordType: PasswordType.create,
@@ -43,7 +46,8 @@ class TextfieldPasswordWidget extends StatefulWidget {
   }
 
   @override
-  State<TextfieldPasswordWidget> createState() => _TextfieldPasswordWidgetState();
+  State<TextfieldPasswordWidget> createState() =>
+      _TextfieldPasswordWidgetState();
 }
 
 class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
@@ -67,14 +71,18 @@ class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
           cursorColor: AppColor.primaryColor,
           decoration: InputDecoration(
             floatingLabelStyle: TextStyle(
-              color: store.passwordError != null ? Colors.red : AppColor.primaryColor,
+              color: store.passwordError != null
+                  ? Colors.red
+                  : AppColor.primaryColor,
             ),
-            labelText: widget.label ?? 'Password',
-            hintText: widget.hintText ?? 'Masukan password',
+            labelText: widget.label ?? AppTranslationKey.password.tr,
+            hintText: widget.hintText ?? AppTranslationKey.enterPassword.tr,
             errorText: store.passwordError,
             prefixIcon: Icon(Icons.lock),
             suffixIcon: IconButton(
-              icon: Icon(store.isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+              icon: Icon(store.isPasswordVisible
+                  ? Icons.visibility
+                  : Icons.visibility_off),
               onPressed: store.toggleVisibility,
             ),
           ),
@@ -99,14 +107,18 @@ class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 floatingLabelStyle: TextStyle(
-                  color: store.passwordError != null ? Colors.red : AppColor.primaryColor,
+                  color: store.passwordError != null
+                      ? Colors.red
+                      : AppColor.primaryColor,
                 ),
-                labelText: 'Password',
-                hintText: 'Masukan password',
+                labelText: AppTranslationKey.password.tr,
+                hintText: AppTranslationKey.enterPassword.tr,
                 errorText: store.passwordError,
                 prefixIcon: Icon(Icons.lock),
                 suffixIcon: IconButton(
-                  icon: Icon(store.isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                  icon: Icon(store.isPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off),
                   onPressed: store.toggleVisibility,
                 ),
               ),
@@ -126,14 +138,18 @@ class _TextfieldPasswordWidgetState extends State<TextfieldPasswordWidget> {
               cursorColor: AppColor.primaryColor,
               decoration: InputDecoration(
                 floatingLabelStyle: TextStyle(
-                  color: store.confirmPasswordError != null ? Colors.red : AppColor.primaryColor,
+                  color: store.confirmPasswordError != null
+                      ? Colors.red
+                      : AppColor.primaryColor,
                 ),
-                labelText: 'Konfirmasi Password',
-                hintText: 'Masukan konfirmasi password',
+                labelText: AppTranslationKey.confirmPassword.tr,
+                hintText: AppTranslationKey.enterConfirmPassword.tr,
                 errorText: store.confirmPasswordError,
                 prefixIcon: Icon(Icons.lock),
                 suffixIcon: IconButton(
-                  icon: Icon(store.isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                  icon: Icon(store.isPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off),
                   onPressed: store.toggleVisibility,
                 ),
               ),

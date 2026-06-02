@@ -10,6 +10,7 @@ import 'package:chatkuy/data/repositories/presence_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/profile/profile_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -94,7 +95,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
               onPressed: store.canSaveProfileChanged
                   ? () => store.editProfile()
                   : null,
-              title: 'Simpan Perubahan',
+              title: AppTranslationKey.saveChanges.tr,
             ).paddingAll(20.r),
           ),
         ],
@@ -107,7 +108,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Nama',
+          AppTranslationKey.name.tr,
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
@@ -127,7 +128,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Username',
+          AppTranslationKey.username.tr,
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
@@ -152,13 +153,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Jenis Kelamin',
+          AppTranslationKey.gender.tr,
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
         DropdownButtonFormField<Gender>(
           decoration: InputDecoration(
-            hintText: store.argument?.userData.gender.value ?? 'Jenis kelamin',
+            hintText: store.argument?.userData.gender.value ??
+                AppTranslationKey.gender.tr,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.r),
             ),
@@ -207,7 +209,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tanggal Lahir',
+          AppTranslationKey.birthDate.tr,
           style: TextStyle(fontSize: 16.sp),
         ),
         4.verticalSpace,
@@ -231,7 +233,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
             ),
             child: Text(
               birthDate == null
-                  ? 'Pilih tanggal lahir'
+                  ? AppTranslationKey.chooseBirthDate.tr
                   : _formatBirthDate(birthDate),
               style: TextStyle(
                 fontSize: 14.sp,
@@ -263,29 +265,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> with BaseLayout {
   }
 
   String _formatBirthDate(DateTime date) {
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${date.day} ${'month${date.month}'.tr} ${date.year}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppbarWidget(title: 'Ubah Profile'),
+      appBar: AppbarWidget(title: AppTranslationKey.editProfile.tr),
       body: _buildBody(),
     );
   }

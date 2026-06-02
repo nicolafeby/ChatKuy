@@ -1,7 +1,6 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:flutter/material.dart';
 
-
 class ErrorView extends StatelessWidget {
   final String? message;
   final VoidCallback? onRetry;
@@ -30,7 +29,7 @@ class ErrorView extends StatelessWidget {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: onRetry,
-                child: const Text(AppStrings.retry),
+                child: Text(AppStrings.retry),
               ),
             ],
           ],

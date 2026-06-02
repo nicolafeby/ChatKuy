@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:chatkuy/core/widgets/error_bottomsheet_widget.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -47,7 +48,8 @@ class AppErrorLogger {
       'error_ticket_id': ticketId,
       if (error is FirebaseException) 'firebase_code': error.code,
       if (error is FirebaseException) 'firebase_plugin': error.plugin,
-      if (error is FirebaseAuthException && error.email != null) 'auth_email_hash': error.email.hashCode,
+      if (error is FirebaseAuthException && error.email != null)
+        'auth_email_hash': error.email.hashCode,
     });
 
     developer.log(
@@ -86,7 +88,9 @@ class AppErrorLogger {
 
     for (final entry in context.entries) {
       final key = entry.key.toLowerCase();
-      if (key.contains('password') || key.contains('token') || key.contains('secret')) {
+      if (key.contains('password') ||
+          key.contains('token') ||
+          key.contains('secret')) {
         continue;
       }
 
@@ -112,7 +116,7 @@ class AppErrorLogger {
         Get.bottomSheet(
           ErrorBottomsheetWidget(
             ticketId: ticketId,
-            message: 'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
+            message: AppTranslationKey.appIssueMessage.tr,
           ),
           isScrollControlled: true,
         );

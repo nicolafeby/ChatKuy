@@ -7,6 +7,7 @@ import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
@@ -76,7 +77,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         : isDarkMode
             ? const Color(0xFF18232C)
             : Colors.grey.shade200;
-    final replyProgress = (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
+    final replyProgress =
+        (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
     final selectedRowColor = AppColor.primaryColor.withValues(
       alpha: isDarkMode ? 0.22 : 0.12,
     );
@@ -91,7 +93,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           bottom: widget.isSelected ? 1.5.h : 0,
         ),
         child: Row(
-          mainAxisAlignment: widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment:
+              widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
             ConstrainedBox(
               constraints: BoxConstraints(
@@ -111,7 +114,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                           width: 32.r,
                           height: 32.r,
                           decoration: BoxDecoration(
-                            color: AppColor.primaryColor.withValues(alpha: 0.14),
+                            color:
+                                AppColor.primaryColor.withValues(alpha: 0.14),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -129,15 +133,30 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                         : widget.message.status == MessageStatus.failed
                             ? widget.onRetry
                             : null,
-                    onLongPress: widget.onSelect == null && widget.onDelete == null ? null : _handleLongPress,
+                    onLongPress:
+                        widget.onSelect == null && widget.onDelete == null
+                            ? null
+                            : _handleLongPress,
                     onHorizontalDragStart:
-                        widget.onReply == null || widget.selectionMode ? null : _onHorizontalDragStart,
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _onHorizontalDragStart,
                     onHorizontalDragUpdate:
-                        widget.onReply == null || widget.selectionMode ? null : _onHorizontalDragUpdate,
-                    onHorizontalDragEnd: widget.onReply == null || widget.selectionMode ? null : _onHorizontalDragEnd,
-                    onHorizontalDragCancel: widget.onReply == null || widget.selectionMode ? null : _resetDrag,
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _onHorizontalDragUpdate,
+                    onHorizontalDragEnd:
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _onHorizontalDragEnd,
+                    onHorizontalDragCancel:
+                        widget.onReply == null || widget.selectionMode
+                            ? null
+                            : _resetDrag,
                     child: AnimatedContainer(
-                      duration: _isDragging ? Duration.zero : const Duration(milliseconds: 180),
+                      duration: _isDragging
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
                       curve: Curves.easeOutCubic,
                       transform: Matrix4.translationValues(_dragOffset, 0, 0),
                       padding: EdgeInsets.symmetric(
@@ -194,7 +213,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                     Icons.reply,
                     color: colorScheme.onSurface,
                   ),
-                  title: const Text('Balas'),
+                  title: Text(AppTranslationKey.reply.tr),
                   onTap: () {
                     Navigator.of(context).pop();
                     widget.onReply?.call();
@@ -206,7 +225,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                     Icons.delete_outline,
                     color: Colors.redAccent,
                   ),
-                  title: const Text('Hapus untuk saya'),
+                  title: Text(AppTranslationKey.deleteForMe.tr),
                   textColor: Colors.redAccent,
                   onTap: () {
                     Navigator.of(context).pop();
@@ -228,7 +247,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    final nextOffset = (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
+    final nextOffset =
+        (_dragOffset + details.delta.dx).clamp(0.0, _maxDragOffset).toDouble();
     final nextIsReplyArmed = nextOffset >= _replyTriggerOffset;
 
     if (nextIsReplyArmed && !_isReplyArmed) {
@@ -242,7 +262,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   void _onHorizontalDragEnd(DragEndDetails details) {
-    final shouldReply = _dragOffset >= _replyTriggerOffset || (details.primaryVelocity ?? 0) > 480;
+    final shouldReply = _dragOffset >= _replyTriggerOffset ||
+        (details.primaryVelocity ?? 0) > 480;
 
     if (shouldReply) {
       widget.onReply?.call();
@@ -276,13 +297,19 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final type = widget.message.type;
     final imageUrl = widget.message.imageUrl;
     final localImagePath = widget.message.localImagePath;
-    final hasImage = type == MessageType.image && (localImagePath != null || imageUrl != null);
+    final hasImage = type == MessageType.image &&
+        (localImagePath != null || imageUrl != null);
     final videoUrl = widget.message.videoUrl;
     final localVideoPath = widget.message.localVideoPath;
     final playableLocalVideoPath = _existingFilePath(localVideoPath);
-    final hasVideo = type == MessageType.video && (playableLocalVideoPath != null || videoUrl != null);
-    final messageTextColor = widget.isMe ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1) : colorScheme.onSurface;
-    final metaTextColor = widget.isMe ? Colors.white.withValues(alpha: 0.68) : colorScheme.onSurfaceVariant;
+    final hasVideo = type == MessageType.video &&
+        (playableLocalVideoPath != null || videoUrl != null);
+    final messageTextColor = widget.isMe
+        ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
+        : colorScheme.onSurface;
+    final metaTextColor = widget.isMe
+        ? Colors.white.withValues(alpha: 0.68)
+        : colorScheme.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -417,7 +444,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     );
     final query = widget.searchQuery.trim();
 
-    if (query.isEmpty || text.toLowerCase().contains(query.toLowerCase()) == false) {
+    if (query.isEmpty ||
+        text.toLowerCase().contains(query.toLowerCase()) == false) {
       return Text(
         text,
         softWrap: true,
@@ -469,19 +497,21 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   String _messageTypeLabel(MessageType type) {
-    if (type == MessageType.image) return 'Foto';
-    if (type == MessageType.video) return 'Video';
-    if (type == MessageType.call) return 'Panggilan';
-    if (type == MessageType.file) return 'Dokumen';
-    if (type == MessageType.contact) return 'Kontak';
-    return 'Pesan';
+    if (type == MessageType.image) return AppTranslationKey.photo.tr;
+    if (type == MessageType.video) return AppTranslationKey.video.tr;
+    if (type == MessageType.call) return AppTranslationKey.call.tr;
+    if (type == MessageType.file) return AppTranslationKey.document.tr;
+    if (type == MessageType.contact) return AppTranslationKey.contact.tr;
+    return AppTranslationKey.message.tr;
   }
 
   Widget _buildFileContent(Color messageTextColor, Color metaTextColor) {
-    final fileName = widget.message.fileName ?? 'Dokumen';
+    final fileName = widget.message.fileName ?? AppTranslationKey.document.tr;
     final fileMeta = [
-      if (widget.message.fileExtension?.isNotEmpty == true) widget.message.fileExtension,
-      if (widget.message.fileSize != null) _formatBytes(widget.message.fileSize!),
+      if (widget.message.fileExtension?.isNotEmpty == true)
+        widget.message.fileExtension,
+      if (widget.message.fileSize != null)
+        _formatBytes(widget.message.fileSize!),
     ].whereType<String>().join(' • ');
 
     return InkWell(
@@ -494,7 +524,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             width: 36.r,
             height: 36.r,
             decoration: BoxDecoration(
-              color: widget.isMe ? Colors.white.withValues(alpha: 0.16) : AppColor.primaryColor.withValues(alpha: 0.12),
+              color: widget.isMe
+                  ? Colors.white.withValues(alpha: 0.16)
+                  : AppColor.primaryColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -540,11 +572,14 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   Widget _buildContactContent(Color messageTextColor, Color metaTextColor) {
-    final contactName = widget.message.contactName ?? 'Kontak';
+    final contactName =
+        widget.message.contactName ?? AppTranslationKey.contact.tr;
     final contactPhone = widget.message.contactPhone ?? '';
 
     return InkWell(
-      onTap: contactPhone.isEmpty ? null : () => launchUrl(Uri(scheme: 'tel', path: contactPhone)),
+      onTap: contactPhone.isEmpty
+          ? null
+          : () => launchUrl(Uri(scheme: 'tel', path: contactPhone)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,7 +588,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             width: 36.r,
             height: 36.r,
             decoration: BoxDecoration(
-              color: widget.isMe ? Colors.white.withValues(alpha: 0.16) : AppColor.primaryColor.withValues(alpha: 0.12),
+              color: widget.isMe
+                  ? Colors.white.withValues(alpha: 0.16)
+                  : AppColor.primaryColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -609,7 +646,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           width: 32.r,
           height: 32.r,
           decoration: BoxDecoration(
-            color: widget.isMe ? Colors.white.withValues(alpha: 0.16) : AppColor.primaryColor.withValues(alpha: 0.12),
+            color: widget.isMe
+                ? Colors.white.withValues(alpha: 0.16)
+                : AppColor.primaryColor.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -625,7 +664,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isVideo ? 'Panggilan video' : 'Panggilan suara',
+                isVideo
+                    ? AppTranslationKey.videoCall.tr
+                    : AppTranslationKey.voiceCall.tr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -653,17 +694,24 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
   String _callSubtitle() {
     final status = widget.message.callStatus;
-    if (status == 'declined') return 'Ditolak';
-    if (status == 'missed') return 'Tak terjawab';
-    if (status == 'calling' || status == 'ringing') return 'Berlangsung';
+    if (status == 'declined') return AppTranslationKey.declined.tr;
+    if (status == 'missed') return AppTranslationKey.missed.tr;
+    if (status == 'calling' || status == 'ringing') {
+      return AppTranslationKey.ongoing.tr;
+    }
 
     final seconds = widget.message.callDurationSeconds ?? 0;
-    if (seconds <= 0) return 'Berakhir';
+    if (seconds <= 0) return AppTranslationKey.ended.tr;
 
     final minutes = seconds ~/ 60;
     final remainingSeconds = seconds % 60;
-    if (minutes <= 0) return '$remainingSeconds detik';
-    return '$minutes menit ${remainingSeconds.toString().padLeft(2, '0')} detik';
+    if (minutes <= 0) {
+      return AppTranslationKey.seconds.trParams({'count': '$remainingSeconds'});
+    }
+    return AppTranslationKey.minutesSeconds.trParams({
+      'minutes': '$minutes',
+      'seconds': remainingSeconds.toString().padLeft(2, '0'),
+    });
   }
 
   Widget _buildReplyPreview(Color messageTextColor, Color metaTextColor) {
@@ -671,7 +719,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: widget.isMe ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.06),
+        color: widget.isMe
+            ? Colors.white.withValues(alpha: 0.14)
+            : Colors.black.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Row(
@@ -720,19 +770,30 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   String _replyPreviewText() {
     final text = widget.message.replyToText?.trim();
     if (text != null && text.isNotEmpty) return text;
-    if (widget.message.replyToType == MessageType.image) return 'Foto';
-    if (widget.message.replyToType == MessageType.video) return 'Video';
-    if (widget.message.replyToType == MessageType.file) return 'Dokumen';
-    if (widget.message.replyToType == MessageType.contact) return 'Kontak';
-    return 'Pesan';
+    if (widget.message.replyToType == MessageType.image) {
+      return AppTranslationKey.photo.tr;
+    }
+    if (widget.message.replyToType == MessageType.video) {
+      return AppTranslationKey.video.tr;
+    }
+    if (widget.message.replyToType == MessageType.file) {
+      return AppTranslationKey.document.tr;
+    }
+    if (widget.message.replyToType == MessageType.contact) {
+      return AppTranslationKey.contact.tr;
+    }
+    return AppTranslationKey.message.tr;
   }
 
   String _replySenderName() {
-    if (widget.message.replyToSenderId != null && widget.message.replyToSenderId == widget.currentUid) {
-      return 'Anda';
+    if (widget.message.replyToSenderId != null &&
+        widget.message.replyToSenderId == widget.currentUid) {
+      return AppTranslationKey.you.tr;
     }
 
-    return widget.targetName ?? widget.message.replyToSenderName ?? 'Kontak';
+    return widget.targetName ??
+        widget.message.replyToSenderName ??
+        AppTranslationKey.contact.tr;
   }
 
   Widget _buildImagePreview({
@@ -814,7 +875,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                 ),
                 4.horizontalSpace,
                 Text(
-                  'Video',
+                  AppTranslationKey.video.tr,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11.sp,
@@ -866,8 +927,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
       if (!mounted) return;
       Get.snackbar(
-        'Chat',
-        result.message.isEmpty ? 'File tidak bisa dibuka' : result.message,
+        AppTranslationKey.chat.tr,
+        result.message.isEmpty
+            ? AppTranslationKey.fileOpenFailed.tr
+            : result.message,
         snackPosition: SnackPosition.BOTTOM,
       );
       return;

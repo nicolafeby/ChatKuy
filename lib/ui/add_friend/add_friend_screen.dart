@@ -2,8 +2,10 @@ import 'package:chatkuy/core/widgets/appbar_widget.dart';
 import 'package:chatkuy/data/repositories/friend_request_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/friend/add_friend_store.dart';
+import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:get/get.dart';
 
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
@@ -22,15 +24,15 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        appBar: AppbarWidget(title: 'Tambah Teman'),
+        appBar: AppbarWidget(title: AppTranslationKey.addFriend.tr),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Cari teman dengan username',
-                style: TextStyle(
+              Text(
+                AppTranslationKey.findFriendByUsername.tr,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -40,7 +42,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               const SizedBox(height: 12),
               Observer(
                 builder: (_) {
-                  if (store.errorMessage == null) return const SizedBox.shrink();
+                  if (store.errorMessage == null) {
+                    return const SizedBox.shrink();
+                  }
                   return Text(
                     store.errorMessage!,
                     style: const TextStyle(color: Colors.red),
@@ -60,8 +64,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
                               if (success) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Teman berhasil ditambahkan'),
+                                  SnackBar(
+                                    content:
+                                        Text(AppTranslationKey.friendAdded.tr),
                                   ),
                                 );
                                 Navigator.pop(context);
@@ -77,7 +82,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Tambah Teman'),
+                          : Text(AppTranslationKey.addFriend.tr),
                     ),
                   );
                 },
@@ -105,7 +110,7 @@ class _UsernameInput extends StatelessWidget {
           onChanged: store.setUsername,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: 'contoh: nicola123',
+            hintText: AppTranslationKey.usernameExample.tr,
             prefixIcon: const Icon(Icons.search),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

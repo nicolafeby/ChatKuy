@@ -11,6 +11,7 @@ class SecureStorageService implements SecureStorageRepository {
   static const _keyUserID = 'user_id';
   static const _keyFcmToken = 'fcmToken';
   static const _keyThemeMode = 'theme_mode';
+  static const _keyLanguageCode = 'language_code';
   static const _hiveEncryptionKeyName = 'hive_encryption_key_v1';
 
   @override
@@ -71,6 +72,19 @@ class SecureStorageService implements SecureStorageRepository {
   Future<void> setThemeModeName(String value) async {
     await _storage.write(
       key: _keyThemeMode,
+      value: value,
+    );
+  }
+
+  @override
+  Future<String?> getLanguageCode() async {
+    return _storage.read(key: _keyLanguageCode);
+  }
+
+  @override
+  Future<void> setLanguageCode(String value) async {
+    await _storage.write(
+      key: _keyLanguageCode,
       value: value,
     );
   }

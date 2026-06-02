@@ -222,12 +222,14 @@ class _FakeSecureStorageRepository implements SecureStorageRepository {
   String? userId;
   String? fcmToken;
   String? themeModeName;
+  String? languageCode;
 
   @override
   Future<void> clear() async {
     isLogin = false;
     userId = null;
     fcmToken = null;
+    languageCode = null;
   }
 
   @override
@@ -241,6 +243,9 @@ class _FakeSecureStorageRepository implements SecureStorageRepository {
 
   @override
   Future<String?> getThemeModeName() async => themeModeName;
+
+  @override
+  Future<String?> getLanguageCode() async => languageCode;
 
   @override
   Future<String?> getUserId() async => userId;
@@ -258,6 +263,11 @@ class _FakeSecureStorageRepository implements SecureStorageRepository {
   @override
   Future<void> setThemeModeName(String value) async {
     themeModeName = value;
+  }
+
+  @override
+  Future<void> setLanguageCode(String value) async {
+    languageCode = value;
   }
 
   @override
