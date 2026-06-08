@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:chatkuy/core/constants/app_strings.dart';
@@ -22,6 +23,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 class ChatField extends StatelessWidget with BaseLayout {
   final ChatRoomStore store;
@@ -244,22 +246,42 @@ class _ChatFieldV2State extends State<ChatFieldV2>
     with WidgetsBindingObserver, BaseLayout {
   bool _showAboveSheet = false;
   bool _showEmojiPicker = false;
+  bool _isRecording = false;
+  bool _hasText = false;
   bool isFocused = false;
   final FocusNode _focusNode = FocusNode();
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  Timer? _recordingTimer;
+  DateTime? _recordingStartedAt;
+  File? _recordingFile;
+  Duration _recordingDuration = Duration.zero;
   double? _keyboardHeight = 259.0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.controller.addListener(_handleTextControllerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => didChangeMetrics());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.controller.removeListener(_handleTextControllerChanged);
+    _recordingTimer?.cancel();
+    _audioRecorder.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _handleTextControllerChanged() {
+    final nextHasText = widget.controller.text.trim().isNotEmpty;
+    if (nextHasText == _hasText) return;
+
+    setState(() {
+      _hasText = nextHasText;
+    });
   }
 
   @override
@@ -495,6 +517,192 @@ class _ChatFieldV2State extends State<ChatFieldV2>
     );
   }
 
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      await _stopAndSendRecording();
+      return;
+    }
+
+    await _startRecording();
+  }
+
+  Future<void> _startRecording() async {
+    FocusScope.of(context).unfocus();
+
+    final permission = await Permission.microphone.request();
+    if (!permission.isGranted) {
+      Get.bottomSheet(BottomsheetWidget(
+        asset: AppAsset.imgFaceSad,
+        title: AppStrings.oopsTerjadiKesalahan,
+        message: AppTranslationKey.microphonePermissionDenied.tr,
+      ));
+      return;
+    }
+
+    final hasPermission = await _audioRecorder.hasPermission();
+    if (!hasPermission) return;
+
+    final file = await widget.store.createAudioRecordingFile();
+    await _audioRecorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 64000,
+        sampleRate: 44100,
+      ),
+      path: file.path,
+    );
+
+    _recordingTimer?.cancel();
+    _recordingStartedAt = DateTime.now();
+    _recordingFile = file;
+    setState(() {
+      _isRecording = true;
+      _recordingDuration = Duration.zero;
+      _showAboveSheet = false;
+      _showEmojiPicker = false;
+    });
+    ChatFieldV2.setEmojiShowing(false);
+
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final startedAt = _recordingStartedAt;
+      if (startedAt == null || !mounted) return;
+      setState(() {
+        _recordingDuration = DateTime.now().difference(startedAt);
+      });
+    });
+  }
+
+  Future<void> _stopAndSendRecording() async {
+    final startedAt = _recordingStartedAt;
+    final fallbackFile = _recordingFile;
+    _recordingTimer?.cancel();
+
+    final path = await _audioRecorder.stop();
+    final duration = startedAt == null
+        ? _recordingDuration
+        : DateTime.now().difference(startedAt);
+
+    if (!mounted) return;
+    setState(() {
+      _isRecording = false;
+      _recordingStartedAt = null;
+      _recordingFile = null;
+      _recordingDuration = Duration.zero;
+    });
+
+    final audioPath = path ?? fallbackFile?.path;
+    if (audioPath == null || duration.inMilliseconds < 800) return;
+
+    try {
+      await widget.store.sendAudioMessage(
+        audioFile: File(audioPath),
+        duration: duration,
+      );
+    } catch (_) {
+      Get.snackbar(
+        AppTranslationKey.chat.tr,
+        AppTranslationKey.voiceMessageSendFailed.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    _recordingTimer?.cancel();
+    await _audioRecorder.cancel();
+
+    final file = _recordingFile;
+    if (file != null && await file.exists()) {
+      await file.delete();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isRecording = false;
+      _recordingStartedAt = null;
+      _recordingFile = null;
+      _recordingDuration = Duration.zero;
+    });
+  }
+
+  String _formatRecordingDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  Widget _buildRecordingBar(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: AppTranslationKey.cancel.tr,
+            onPressed: _cancelRecording,
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+          ),
+          Expanded(
+            child: Container(
+              height: 46.h,
+              padding: EdgeInsets.symmetric(horizontal: 14.w),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(widget.textFieldRadius),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 9.r,
+                    height: 9.r,
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  10.horizontalSpace,
+                  Text(
+                    _formatRecordingDuration(_recordingDuration),
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  10.horizontalSpace,
+                  Expanded(
+                    child: Text(
+                      AppTranslationKey.recording.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 13.sp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: widget.sendButtonRadius * 2,
+            height: widget.sendButtonRadius * 2,
+            decoration: BoxDecoration(
+              color: widget.sendButtonColor,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              tooltip: AppTranslationKey.send.tr,
+              icon: const Icon(Icons.send, color: Colors.white),
+              onPressed: _stopAndSendRecording,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = colorSchemeOf(context);
@@ -518,9 +726,12 @@ class _ChatFieldV2State extends State<ChatFieldV2>
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
+              if (_isRecording)
+                _buildRecordingBar(colorScheme)
+              else
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
@@ -607,13 +818,17 @@ class _ChatFieldV2State extends State<ChatFieldV2>
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: Icon(widget.sendIcon, color: Colors.white),
-                        onPressed: widget.onSendTap,
+                        icon: Icon(
+                          _hasText ? widget.sendIcon : Icons.mic,
+                          color: Colors.white,
+                        ),
+                        onPressed:
+                            _hasText ? widget.onSendTap : _toggleRecording,
                       ),
                     ),
                   ],
+                  ),
                 ),
-              ),
               if (_showEmojiPicker) SizedBox(height: _keyboardHeight ?? 0),
             ],
           ),

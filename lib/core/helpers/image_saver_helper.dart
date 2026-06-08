@@ -66,6 +66,24 @@ Future<String> saveFileToLocal({
   return newFile.path;
 }
 
+Future<String> saveAudioToLocal({
+  required File audioFile,
+  required String roomId,
+}) async {
+  final directory = await getApplicationDocumentsDirectory();
+
+  final chatDir = Directory('${directory.path}/${StorageCollection.chatAudios}');
+  if (!await chatDir.exists()) {
+    await chatDir.create(recursive: true);
+  }
+
+  final fileName = mediaNameFormat(roomId, audioFile);
+  final newPath = '${chatDir.path}/$fileName';
+  final newFile = await audioFile.copy(newPath);
+
+  return newFile.path;
+}
+
 Future<String> getOrDownloadImage({required String imageUrl}) async {
   final directory = await getApplicationDocumentsDirectory();
 

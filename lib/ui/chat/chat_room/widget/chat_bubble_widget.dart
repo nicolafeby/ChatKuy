@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:chatkuy/core/constants/color.dart';
@@ -8,6 +9,7 @@ import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
@@ -64,9 +66,68 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   static const double _maxDragOffset = 72;
   static const double _replyTriggerOffset = 46;
 
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  StreamSubscription<PlayerState>? _playerStateSubscription;
+  StreamSubscription<Duration>? _positionSubscription;
+  StreamSubscription<Duration>? _durationSubscription;
+  StreamSubscription<void>? _playerCompleteSubscription;
   double _dragOffset = 0;
   bool _isDragging = false;
   bool _isReplyArmed = false;
+  bool _isAudioPlaying = false;
+  Duration _audioPosition = Duration.zero;
+  Duration _audioDuration = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _playerStateSubscription =
+        _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() {
+        _isAudioPlaying = state == PlayerState.playing;
+      });
+    });
+    _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
+      if (!mounted) return;
+      setState(() {
+        _audioPosition = position;
+      });
+    });
+    _durationSubscription = _audioPlayer.onDurationChanged.listen((duration) {
+      if (!mounted) return;
+      setState(() {
+        _audioDuration = duration;
+      });
+    });
+    _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _isAudioPlaying = false;
+        _audioPosition = Duration.zero;
+      });
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatBubbleWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message.id == widget.message.id) return;
+    _audioPlayer.stop();
+    _audioPosition = Duration.zero;
+    _audioDuration = Duration.zero;
+    _isAudioPlaying = false;
+  }
+
+  @override
+  void dispose() {
+    _playerStateSubscription?.cancel();
+    _positionSubscription?.cancel();
+    _durationSubscription?.cancel();
+    _playerCompleteSubscription?.cancel();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -304,18 +365,30 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final playableLocalVideoPath = _existingFilePath(localVideoPath);
     final hasVideo = type == MessageType.video &&
         (playableLocalVideoPath != null || videoUrl != null);
+    final audioUrl = widget.message.audioUrl;
+    final localAudioPath = _existingFilePath(widget.message.localAudioPath);
+    final hasAudio = type == MessageType.audio &&
+        (localAudioPath != null || audioUrl != null);
     final messageTextColor = widget.isMe
         ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
         : colorScheme.onSurface;
     final metaTextColor = widget.isMe
         ? Colors.white.withValues(alpha: 0.68)
         : colorScheme.onSurfaceVariant;
+    final isTextMessage = type != MessageType.call &&
+        type != MessageType.file &&
+        type != MessageType.contact &&
+        !hasAudio &&
+        !hasImage &&
+        !hasVideo;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    final hasReply = widget.message.replyToMessageId != null;
+    final content = Column(
+      crossAxisAlignment:
+          hasReply ? CrossAxisAlignment.stretch : CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.message.replyToMessageId != null) ...[
+        if (hasReply) ...[
           _buildReplyPreview(messageTextColor, metaTextColor),
           6.verticalSpace,
         ],
@@ -325,6 +398,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           _buildFileContent(messageTextColor, metaTextColor),
         ] else if (type == MessageType.contact) ...[
           _buildContactContent(messageTextColor, metaTextColor),
+        ] else if (hasAudio) ...[
+          _buildAudioContent(
+            messageTextColor,
+            metaTextColor,
+            localAudioPath: localAudioPath,
+            audioUrl: audioUrl,
+          ),
         ] else if (hasImage) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,27 +469,102 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
               ),
             ],
           )
+        ] else if (isTextMessage) ...[
+          _buildTextContent(
+            widget.message.text ?? '',
+            messageTextColor,
+            metaTextColor,
+          ),
         ] else ...[
           _buildMessageText(
             widget.message.text ?? '',
             messageTextColor,
           ),
         ],
-        Wrap(
-          alignment: WrapAlignment.end,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 6.w,
-          children: [
-            Text(
-              widget.message.createdAt.hhmm,
-              style: TextStyle(
-                color: metaTextColor,
-                fontSize: 10.sp,
-              ),
-            ),
-            if (widget.isMe) _buildStatusIcon(),
-          ],
+        if (!isTextMessage) _buildMessageMeta(metaTextColor),
+      ],
+    );
+
+    if (hasReply) {
+      return IntrinsicWidth(child: content);
+    }
+
+    return content;
+  }
+
+  Widget _buildTextContent(
+    String text,
+    Color messageTextColor,
+    Color metaTextColor,
+  ) {
+    if (_shouldShowInlineMeta(text)) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _buildMessageText(text, messageTextColor),
+          8.horizontalSpace,
+          _buildMessageMeta(metaTextColor),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildMessageText(text, messageTextColor),
+        _buildMessageMeta(metaTextColor),
+      ],
+    );
+  }
+
+  bool _shouldShowInlineMeta(String text) {
+    if (text.trim().isEmpty || text.contains('\n')) return false;
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: 14.sp),
+      ),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    )..layout();
+    final maxContentWidth = (MediaQuery.of(context).size.width * 0.8) - 24.w;
+    final metaWidth = _messageMetaEstimatedWidth();
+
+    return textPainter.width + 8.w + metaWidth <= maxContentWidth;
+  }
+
+  double _messageMetaEstimatedWidth() {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: widget.message.createdAt.hhmm,
+        style: TextStyle(fontSize: 10.sp),
+      ),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    )..layout();
+
+    return textPainter.width + (widget.isMe ? 6.w + 12.sp : 0);
+  }
+
+  Widget _buildMessageMeta(Color metaTextColor) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          widget.message.createdAt.hhmm,
+          style: TextStyle(
+            color: metaTextColor,
+            fontSize: 10.sp,
+          ),
         ),
+        if (widget.isMe) ...[
+          6.horizontalSpace,
+          _buildStatusIcon(),
+        ],
       ],
     );
   }
@@ -502,7 +657,118 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     if (type == MessageType.call) return AppTranslationKey.call.tr;
     if (type == MessageType.file) return AppTranslationKey.document.tr;
     if (type == MessageType.contact) return AppTranslationKey.contact.tr;
+    if (type == MessageType.audio) return AppTranslationKey.voiceMessage.tr;
     return AppTranslationKey.message.tr;
+  }
+
+  Widget _buildAudioContent(
+    Color messageTextColor,
+    Color metaTextColor, {
+    required String? localAudioPath,
+    required String? audioUrl,
+  }) {
+    final duration = _resolvedAudioDuration();
+    final position = _audioPosition > duration ? duration : _audioPosition;
+    final progress = duration.inMilliseconds <= 0
+        ? 0.0
+        : position.inMilliseconds / duration.inMilliseconds;
+
+    return SizedBox(
+      width: 220.w,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38.r,
+            height: 38.r,
+            decoration: BoxDecoration(
+              color: widget.isMe
+                  ? Colors.white.withValues(alpha: 0.16)
+                  : AppColor.primaryColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: widget.message.status == MessageStatus.pending
+                  ? null
+                  : () => _toggleAudioPlayback(
+                        localAudioPath: localAudioPath,
+                        audioUrl: audioUrl,
+                      ),
+              icon: Icon(
+                _isAudioPlaying ? Icons.pause : Icons.play_arrow,
+                size: 22.r,
+                color: widget.isMe ? Colors.white : AppColor.primaryColor,
+              ),
+            ),
+          ),
+          10.horizontalSpace,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4.r),
+                  child: LinearProgressIndicator(
+                    minHeight: 4.h,
+                    value: widget.message.status == MessageStatus.pending
+                        ? null
+                        : progress.clamp(0.0, 1.0),
+                    backgroundColor: widget.isMe
+                        ? Colors.white.withValues(alpha: 0.24)
+                        : Colors.black.withValues(alpha: 0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      widget.isMe ? Colors.white : AppColor.primaryColor,
+                    ),
+                  ),
+                ),
+                6.verticalSpace,
+                Text(
+                  _formatDuration(_isAudioPlaying ? position : duration),
+                  style: TextStyle(
+                    color: metaTextColor,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Duration _resolvedAudioDuration() {
+    if (_audioDuration.inMilliseconds > 0) return _audioDuration;
+    final seconds = widget.message.audioDurationSeconds ?? 0;
+    return Duration(seconds: seconds);
+  }
+
+  Future<void> _toggleAudioPlayback({
+    required String? localAudioPath,
+    required String? audioUrl,
+  }) async {
+    if (_isAudioPlaying) {
+      await _audioPlayer.pause();
+      return;
+    }
+
+    if (_audioPosition.inMilliseconds > 0 &&
+        _audioPosition < _resolvedAudioDuration()) {
+      await _audioPlayer.resume();
+      return;
+    }
+
+    if (localAudioPath != null) {
+      await _audioPlayer.play(DeviceFileSource(localAudioPath));
+      return;
+    }
+
+    if (audioUrl != null) {
+      await _audioPlayer.play(UrlSource(audioUrl));
+    }
   }
 
   Widget _buildFileContent(Color messageTextColor, Color metaTextColor) {
@@ -716,7 +982,6 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
   Widget _buildReplyPreview(Color messageTextColor, Color metaTextColor) {
     return Container(
-      width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: widget.isMe
@@ -725,6 +990,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -736,7 +1002,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             ),
           ),
           6.horizontalSpace,
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -781,6 +1047,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     }
     if (widget.message.replyToType == MessageType.contact) {
       return AppTranslationKey.contact.tr;
+    }
+    if (widget.message.replyToType == MessageType.audio) {
+      return AppTranslationKey.voiceMessage.tr;
     }
     return AppTranslationKey.message.tr;
   }
@@ -952,6 +1221,12 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
     final gb = mb / 1024;
     return '${gb.toStringAsFixed(gb < 10 ? 1 : 0)} GB';
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   String? _existingFilePath(String? path) {

@@ -75,9 +75,13 @@ class AppTranslationKey {
   static const chat = 'chat';
   static const documentSendFailed = 'documentSendFailed';
   static const contactSendFailed = 'contactSendFailed';
+  static const voiceMessage = 'voiceMessage';
+  static const voiceMessageSendFailed = 'voiceMessageSendFailed';
+  static const recording = 'recording';
   static const galleryPermissionDenied = 'galleryPermissionDenied';
   static const cameraPermissionDenied = 'cameraPermissionDenied';
   static const contactPermissionDenied = 'contactPermissionDenied';
+  static const microphonePermissionDenied = 'microphonePermissionDenied';
   static const copyTicketId = 'copyTicketId';
   static const errorTicketId = 'errorTicketId';
   static const errorTicketCopied = 'errorTicketCopied';
@@ -87,6 +91,7 @@ class AppTranslationKey {
   static const deleteMessagesTitle = 'deleteMessagesTitle';
   static const deleteMessagesContent = 'deleteMessagesContent';
   static const cancel = 'cancel';
+  static const send = 'send';
   static const delete = 'delete';
   static const reply = 'reply';
   static const videoCall = 'videoCall';
@@ -301,9 +306,13 @@ const Map<String, String> _id = {
   AppTranslationKey.chat: 'Chat',
   AppTranslationKey.documentSendFailed: 'Dokumen gagal dikirim',
   AppTranslationKey.contactSendFailed: 'Kontak gagal dikirim',
+  AppTranslationKey.voiceMessage: 'Pesan suara',
+  AppTranslationKey.voiceMessageSendFailed: 'Pesan suara gagal dikirim',
+  AppTranslationKey.recording: 'Merekam...',
   AppTranslationKey.galleryPermissionDenied: 'Kami tidak mendapatkan akses galeri untuk action ini',
   AppTranslationKey.cameraPermissionDenied: 'Kami tidak mendapatkan akses kamera untuk action ini',
   AppTranslationKey.contactPermissionDenied: 'Kami tidak mendapatkan akses kontak untuk action ini',
+  AppTranslationKey.microphonePermissionDenied: 'Kami tidak mendapatkan akses mikrofon untuk action ini',
   AppTranslationKey.copyTicketId: 'Salin ID tiket',
   AppTranslationKey.errorTicketId: 'ID tiket error',
   AppTranslationKey.errorTicketCopied: 'ID tiket error berhasil disalin',
@@ -313,6 +322,7 @@ const Map<String, String> _id = {
   AppTranslationKey.deleteMessagesTitle: 'Hapus @count pesan?',
   AppTranslationKey.deleteMessagesContent: 'Pesan akan dihapus hanya dari chat Anda.',
   AppTranslationKey.cancel: 'Batal',
+  AppTranslationKey.send: 'Kirim',
   AppTranslationKey.delete: 'Hapus',
   AppTranslationKey.reply: 'Balas',
   AppTranslationKey.videoCall: 'Panggilan video',
@@ -518,9 +528,13 @@ const Map<String, String> _en = {
   AppTranslationKey.chat: 'Chat',
   AppTranslationKey.documentSendFailed: 'Failed to send document',
   AppTranslationKey.contactSendFailed: 'Failed to send contact',
+  AppTranslationKey.voiceMessage: 'Voice message',
+  AppTranslationKey.voiceMessageSendFailed: 'Failed to send voice message',
+  AppTranslationKey.recording: 'Recording...',
   AppTranslationKey.galleryPermissionDenied: 'We could not access your gallery for this action',
   AppTranslationKey.cameraPermissionDenied: 'We could not access your camera for this action',
   AppTranslationKey.contactPermissionDenied: 'We could not access your contacts for this action',
+  AppTranslationKey.microphonePermissionDenied: 'We could not access your microphone for this action',
   AppTranslationKey.copyTicketId: 'Copy ticket ID',
   AppTranslationKey.errorTicketId: 'Error ticket ID',
   AppTranslationKey.errorTicketCopied: 'Error ticket ID copied',
@@ -531,6 +545,7 @@ const Map<String, String> _en = {
   AppTranslationKey.deleteMessagesTitle: 'Delete @count messages?',
   AppTranslationKey.deleteMessagesContent: 'Messages will only be deleted from your chat.',
   AppTranslationKey.cancel: 'Cancel',
+  AppTranslationKey.send: 'Send',
   AppTranslationKey.delete: 'Delete',
   AppTranslationKey.reply: 'Reply',
   AppTranslationKey.videoCall: 'Video call',

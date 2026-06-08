@@ -106,6 +106,11 @@ class ChatService implements ChatRepository {
             contactName: existing.contactName ?? data[MessageField.contactName],
             contactPhone:
                 existing.contactPhone ?? data[MessageField.contactPhone],
+            audioUrl: existing.audioUrl ?? data[MessageField.audioUrl],
+            localAudioPath: _existingFilePath(existing.localAudioPath),
+            audioDurationSeconds:
+                (data[MessageField.audioDurationSeconds] as num?)?.toInt() ??
+                    existing.audioDurationSeconds,
             type: existing.type,
             createdAt: existing.createdAt,
             createdAtClient: existing.createdAtClient,
@@ -156,6 +161,10 @@ class ChatService implements ChatRepository {
           fileExtension: data[MessageField.fileExtension],
           contactName: data[MessageField.contactName],
           contactPhone: data[MessageField.contactPhone],
+          audioUrl: data[MessageField.audioUrl],
+          localAudioPath: _existingFilePath(data[MessageField.localAudioPath]),
+          audioDurationSeconds:
+              (data[MessageField.audioDurationSeconds] as num?)?.toInt(),
           type: _messageTypeFromString(data[MessageField.type]),
           createdAt: _dateFromFirestore(data[MessageField.createdAt]) ??
               _dateFromFirestore(data[MessageField.createdAtClient]) ??
@@ -239,6 +248,10 @@ class ChatService implements ChatRepository {
     String? fileExtension,
     String? contactName,
     String? contactPhone,
+    String? audioUrl,
+    File? audioFile,
+    String? localAudioPath,
+    int? audioDurationSeconds,
     required MessageType type,
     String? clientMessageId,
     String? localImagePath,
@@ -300,6 +313,10 @@ class ChatService implements ChatRepository {
                 .extension(resolvedFileName)
                 .replaceFirst('.', '')
                 .toUpperCase());
+    final resolvedLocalAudioPath = localAudioPath ??
+        (audioFile != null
+            ? await saveAudioToLocal(audioFile: audioFile, roomId: roomId)
+            : null);
 
     /// OPTIMISTIC LOCAL MESSAGE
     final localMessage = ChatMessageModel(
@@ -316,6 +333,9 @@ class ChatService implements ChatRepository {
       fileExtension: resolvedFileExtension,
       contactName: contactName,
       contactPhone: contactPhone,
+      audioUrl: audioUrl,
+      localAudioPath: resolvedLocalAudioPath,
+      audioDurationSeconds: audioDurationSeconds,
       type: type,
       createdAt: createdAtClient,
       createdAtClient: createdAtClient,
@@ -338,6 +358,7 @@ class ChatService implements ChatRepository {
       String? uploadedImageUrl = imageUrl;
       String? uploadedVideoUrl = videoUrl;
       String? uploadedFileUrl = fileUrl;
+      String? uploadedAudioUrl = audioUrl;
 
       if (imageFile != null) {
         final ref = firebaseStorage
@@ -423,6 +444,34 @@ class ChatService implements ChatRepository {
         );
       }
 
+      if (audioFile != null) {
+        final ref = firebaseStorage
+            .ref()
+            .child(StorageCollection.chatAudios)
+            .child(mediaNameFormat(roomId, audioFile));
+
+        final uploadTask = ref.putFile(audioFile);
+
+        await for (final snapshot in uploadTask.snapshotEvents) {
+          final totalBytes = snapshot.totalBytes;
+
+          if (totalBytes > 0) {
+            final progress = ((snapshot.bytesTransferred / totalBytes) * 100)
+                .round()
+                .clamp(0, 100);
+            onUploadProgress?.call(progress);
+          }
+        }
+
+        onUploadProgress?.call(100);
+        uploadedAudioUrl = await ref.getDownloadURL();
+
+        await _messageBox.put(
+          localMessage.id,
+          localMessage.copyWith(audioUrl: uploadedAudioUrl),
+        );
+      }
+
       final batch = firestore.batch();
 
       batch.set(messageRef, {
@@ -439,6 +488,9 @@ class ChatService implements ChatRepository {
         MessageField.fileExtension: resolvedFileExtension,
         MessageField.contactName: contactName,
         MessageField.contactPhone: contactPhone,
+        MessageField.audioUrl: uploadedAudioUrl,
+        MessageField.localAudioPath: resolvedLocalAudioPath,
+        MessageField.audioDurationSeconds: audioDurationSeconds,
         MessageField.createdAt: FieldValue.serverTimestamp(),
         MessageField.createdAtClient: createdAtClient,
         MessageField.clientMessageId: clientMessageId,
@@ -477,6 +529,7 @@ class ChatService implements ChatRepository {
           'has_image': imageFile != null,
           'has_video': videoFile != null,
           'has_file': file != null,
+          'has_audio': audioFile != null,
           'has_text': text?.trim().isNotEmpty == true,
         },
       );
@@ -494,6 +547,7 @@ class ChatService implements ChatRepository {
     if (type == MessageType.call) return 'Panggilan';
     if (type == MessageType.file) return 'Dokumen';
     if (type == MessageType.contact) return 'Kontak';
+    if (type == MessageType.audio) return 'Pesan suara';
     return '';
   }
 
@@ -509,6 +563,7 @@ class ChatService implements ChatRepository {
     if (value == MessageType.call.name) return MessageType.call;
     if (value == MessageType.file.name) return MessageType.file;
     if (value == MessageType.contact.name) return MessageType.contact;
+    if (value == MessageType.audio.name) return MessageType.audio;
     return MessageType.text;
   }
 
