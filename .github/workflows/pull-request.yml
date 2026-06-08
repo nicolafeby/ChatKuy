@@ -20,7 +20,7 @@ jobs:
 
     env:
       FLUTTER_VERSION: "3.41.6"
-      PREINSTALLED_FLUTTER_ROOT: /home/ncladr/actions-runner/_work/_tool/flutter/stable-3.41.6-x64/flutter
+      PREINSTALLED_FLUTTER_ROOT: /home/ncladr/actions-runner/chatkuy/_work/_tool/flutter/stable-3.41.6-x64/flutter
 
     steps:
       - name: Checkout
