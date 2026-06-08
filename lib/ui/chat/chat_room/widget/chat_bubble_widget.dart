@@ -81,7 +81,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   @override
   void initState() {
     super.initState();
-    _playerStateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
+    _playerStateSubscription =
+        _audioPlayer.onPlayerStateChanged.listen((state) {
       if (!mounted) return;
       setState(() {
         _isAudioPlaying = state == PlayerState.playing;
@@ -366,20 +367,28 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         (playableLocalVideoPath != null || videoUrl != null);
     final audioUrl = widget.message.audioUrl;
     final localAudioPath = _existingFilePath(widget.message.localAudioPath);
-    final hasAudio =
-        type == MessageType.audio && (localAudioPath != null || audioUrl != null);
+    final hasAudio = type == MessageType.audio &&
+        (localAudioPath != null || audioUrl != null);
     final messageTextColor = widget.isMe
         ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
         : colorScheme.onSurface;
     final metaTextColor = widget.isMe
         ? Colors.white.withValues(alpha: 0.68)
         : colorScheme.onSurfaceVariant;
+    final isTextMessage = type != MessageType.call &&
+        type != MessageType.file &&
+        type != MessageType.contact &&
+        !hasAudio &&
+        !hasImage &&
+        !hasVideo;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    final hasReply = widget.message.replyToMessageId != null;
+    final content = Column(
+      crossAxisAlignment:
+          hasReply ? CrossAxisAlignment.stretch : CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.message.replyToMessageId != null) ...[
+        if (hasReply) ...[
           _buildReplyPreview(messageTextColor, metaTextColor),
           6.verticalSpace,
         ],
@@ -460,27 +469,102 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
               ),
             ],
           )
+        ] else if (isTextMessage) ...[
+          _buildTextContent(
+            widget.message.text ?? '',
+            messageTextColor,
+            metaTextColor,
+          ),
         ] else ...[
           _buildMessageText(
             widget.message.text ?? '',
             messageTextColor,
           ),
         ],
-        Wrap(
-          alignment: WrapAlignment.end,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 6.w,
-          children: [
-            Text(
-              widget.message.createdAt.hhmm,
-              style: TextStyle(
-                color: metaTextColor,
-                fontSize: 10.sp,
-              ),
-            ),
-            if (widget.isMe) _buildStatusIcon(),
-          ],
+        if (!isTextMessage) _buildMessageMeta(metaTextColor),
+      ],
+    );
+
+    if (hasReply) {
+      return IntrinsicWidth(child: content);
+    }
+
+    return content;
+  }
+
+  Widget _buildTextContent(
+    String text,
+    Color messageTextColor,
+    Color metaTextColor,
+  ) {
+    if (_shouldShowInlineMeta(text)) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _buildMessageText(text, messageTextColor),
+          8.horizontalSpace,
+          _buildMessageMeta(metaTextColor),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildMessageText(text, messageTextColor),
+        _buildMessageMeta(metaTextColor),
+      ],
+    );
+  }
+
+  bool _shouldShowInlineMeta(String text) {
+    if (text.trim().isEmpty || text.contains('\n')) return false;
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: 14.sp),
+      ),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    )..layout();
+    final maxContentWidth = (MediaQuery.of(context).size.width * 0.8) - 24.w;
+    final metaWidth = _messageMetaEstimatedWidth();
+
+    return textPainter.width + 8.w + metaWidth <= maxContentWidth;
+  }
+
+  double _messageMetaEstimatedWidth() {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: widget.message.createdAt.hhmm,
+        style: TextStyle(fontSize: 10.sp),
+      ),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    )..layout();
+
+    return textPainter.width + (widget.isMe ? 6.w + 12.sp : 0);
+  }
+
+  Widget _buildMessageMeta(Color metaTextColor) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          widget.message.createdAt.hhmm,
+          style: TextStyle(
+            color: metaTextColor,
+            fontSize: 10.sp,
+          ),
         ),
+        if (widget.isMe) ...[
+          6.horizontalSpace,
+          _buildStatusIcon(),
+        ],
       ],
     );
   }
@@ -898,7 +982,6 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
   Widget _buildReplyPreview(Color messageTextColor, Color metaTextColor) {
     return Container(
-      width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: widget.isMe
@@ -907,6 +990,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -918,7 +1002,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             ),
           ),
           6.horizontalSpace,
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
