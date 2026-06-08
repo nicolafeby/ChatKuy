@@ -34,6 +34,9 @@ enum MessageType {
 
   @HiveField(5)
   contact,
+
+  @HiveField(6)
+  audio,
 }
 
 @HiveType(typeId: 0)
@@ -139,6 +142,15 @@ class ChatMessageModel {
   @HiveField(31)
   final String? contactPhone;
 
+  @HiveField(32)
+  final String? audioUrl;
+
+  @HiveField(33)
+  final String? localAudioPath;
+
+  @HiveField(34)
+  final int? audioDurationSeconds;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -172,6 +184,9 @@ class ChatMessageModel {
     this.fileExtension,
     this.contactName,
     this.contactPhone,
+    this.audioUrl,
+    this.localAudioPath,
+    this.audioDurationSeconds,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
@@ -186,9 +201,12 @@ class ChatMessageModel {
     String? videoUrl,
     String? localFilePath,
     String? fileUrl,
+    String? localAudioPath,
+    String? audioUrl,
     Map<String, bool>? deletedFor,
     String? callStatus,
     int? callDurationSeconds,
+    int? audioDurationSeconds,
   }) {
     return ChatMessageModel(
       id: id,
@@ -213,6 +231,9 @@ class ChatMessageModel {
       fileExtension: fileExtension,
       contactName: contactName,
       contactPhone: contactPhone,
+      audioUrl: audioUrl ?? this.audioUrl,
+      localAudioPath: localAudioPath ?? this.localAudioPath,
+      audioDurationSeconds: audioDurationSeconds ?? this.audioDurationSeconds,
       replyToMessageId: replyToMessageId,
       replyToSenderId: replyToSenderId,
       replyToSenderName: replyToSenderName,

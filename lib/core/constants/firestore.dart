@@ -95,6 +95,9 @@ abstract class MessageField {
   static const fileExtension = 'fileExtension';
   static const contactName = 'contactName';
   static const contactPhone = 'contactPhone';
+  static const audioUrl = 'audioUrl';
+  static const localAudioPath = 'localAudioPath';
+  static const audioDurationSeconds = 'audioDurationSeconds';
 }
 
 /// ==============================
@@ -170,4 +173,5 @@ abstract class StorageCollection {
   static const chatImages = 'chat_images';
   static const chatVideos = 'chat_videos';
   static const chatFiles = 'chat_files';
+  static const chatAudios = 'chat_audios';
 }

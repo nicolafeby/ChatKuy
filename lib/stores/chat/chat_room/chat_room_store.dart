@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:mobx/mobx.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 part 'chat_room_store.g.dart';
 
@@ -517,6 +518,92 @@ abstract class _ChatRoomStore with Store {
     }
   }
 
+  Future<void> sendAudioMessage({
+    required File audioFile,
+    required Duration duration,
+  }) async {
+    if (roomId == null || currentUid == null) return;
+
+    messageController.clear();
+    onTypingChanged('');
+    final replyMessage = replyToMessage.value;
+    final replySenderName = _replySenderName(replyMessage);
+    clearReplyToMessage();
+
+    final now = DateTime.now();
+    final localAudioPath = await saveAudioToLocal(
+      audioFile: audioFile,
+      roomId: roomId!,
+    );
+    final durationSeconds = duration.inSeconds <= 0 ? 1 : duration.inSeconds;
+    final uploadingMessage = ChatMessageModel(
+      id: 'uploading_${now.microsecondsSinceEpoch}',
+      roomId: roomId!,
+      senderId: currentUid!,
+      createdAt: now,
+      createdAtClient: now,
+      deliveredTo: {},
+      readBy: {},
+      status: MessageStatus.pending,
+      type: MessageType.audio,
+      localAudioPath: localAudioPath,
+      audioDurationSeconds: durationSeconds,
+      replyToMessageId: replyMessage?.id,
+      replyToSenderId: replyMessage?.senderId,
+      replyToSenderName: replySenderName,
+      replyToText: _replyPreviewText(replyMessage),
+      replyToType: replyMessage?.type,
+    );
+
+    uploadingMessages.add(uploadingMessage);
+    uploadProgressByMessageId[uploadingMessage.id] = 0;
+    uploadProgressByLocalPath[localAudioPath] = 0;
+
+    try {
+      await chatRepository.sendMessage(
+        roomId: roomId!,
+        audioFile: File(localAudioPath),
+        localAudioPath: localAudioPath,
+        audioDurationSeconds: durationSeconds,
+        type: MessageType.audio,
+        replyToMessage: replyMessage,
+        replyToSenderName: replySenderName,
+        onUploadProgress: (progress) {
+          runInAction(() {
+            uploadProgressByMessageId[uploadingMessage.id] = progress;
+            uploadProgressByLocalPath[localAudioPath] = progress;
+          });
+        },
+      );
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Send audio chat message failed',
+        context: {
+          'room_id': roomId,
+          'current_uid': currentUid,
+          'duration_seconds': durationSeconds,
+        },
+      );
+      final index = uploadingMessages.indexWhere(
+        (message) => message.id == uploadingMessage.id,
+      );
+
+      if (index != -1) {
+        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+      }
+
+      rethrow;
+    }
+  }
+
+  Future<File> createAudioRecordingFile() async {
+    final directory = await getTemporaryDirectory();
+    final fileName = 'voice_${DateTime.now().microsecondsSinceEpoch}.m4a';
+    return File(p.join(directory.path, fileName));
+  }
+
   Future<void> sendContactMessage({
     required String name,
     required String phone,
@@ -560,6 +647,7 @@ abstract class _ChatRoomStore with Store {
   String? _localMediaPath(ChatMessageModel message) {
     if (message.type == MessageType.file) return message.localFilePath;
     if (message.type == MessageType.video) return message.localVideoPath;
+    if (message.type == MessageType.audio) return message.localAudioPath;
     return message.localImagePath;
   }
 
@@ -579,6 +667,7 @@ abstract class _ChatRoomStore with Store {
     if (message.type == MessageType.call) return 'Panggilan';
     if (message.type == MessageType.file) return 'Dokumen';
     if (message.type == MessageType.contact) return 'Kontak';
+    if (message.type == MessageType.audio) return 'Pesan suara';
     return null;
   }
 
@@ -588,6 +677,7 @@ abstract class _ChatRoomStore with Store {
     if (type == MessageType.call) return 'Panggilan';
     if (type == MessageType.file) return 'Dokumen';
     if (type == MessageType.contact) return 'Kontak';
+    if (type == MessageType.audio) return 'Pesan suara';
     return 'Pesan';
   }
 
@@ -599,6 +689,7 @@ abstract class _ChatRoomStore with Store {
     if (message.type == MessageType.call) return 'Panggilan';
     if (message.type == MessageType.file) return 'Dokumen';
     if (message.type == MessageType.contact) return 'Kontak';
+    if (message.type == MessageType.audio) return 'Pesan suara';
     return null;
   }
 

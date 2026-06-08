@@ -539,10 +539,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   String? _localMediaPath(ChatMessageModel message) {
     if (message.type == MessageType.file) return message.localFilePath;
     if (message.type == MessageType.video) return message.localVideoPath;
+    if (message.type == MessageType.audio) return message.localAudioPath;
     return message.localImagePath;
   }
 
   void _retryMessage(ChatMessageModel message) {
+    if (message.type == MessageType.audio && message.localAudioPath != null) {
+      store.sendAudioMessage(
+        audioFile: File(message.localAudioPath!),
+        duration: Duration(seconds: message.audioDurationSeconds ?? 1),
+      );
+      return;
+    }
+
     if (message.type == MessageType.file && message.localFilePath != null) {
       store.sendFileMessage(File(message.localFilePath!));
       return;
@@ -734,6 +743,9 @@ class _ReplyPreviewBar extends StatelessWidget {
     if (message.type == MessageType.video) return AppTranslationKey.video.tr;
     if (message.type == MessageType.call) return AppTranslationKey.call.tr;
     if (message.type == MessageType.file) return AppTranslationKey.document.tr;
+    if (message.type == MessageType.audio) {
+      return AppTranslationKey.voiceMessage.tr;
+    }
     if (message.type == MessageType.contact) {
       return AppTranslationKey.contact.tr;
     }
