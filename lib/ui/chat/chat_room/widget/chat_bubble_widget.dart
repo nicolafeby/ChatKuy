@@ -33,10 +33,12 @@ class ChatBubbleWidget extends StatefulWidget {
     this.isFirstInGroup = true,
     this.isSameGroup = false,
     this.onReply,
+    this.onReplyPreviewTap,
     this.onDelete,
     this.onSelect,
     this.selectionMode = false,
     this.isSelected = false,
+    this.isJumpHighlighted = false,
     this.currentUid,
     this.targetName,
     this.searchQuery = '',
@@ -47,10 +49,12 @@ class ChatBubbleWidget extends StatefulWidget {
   final VoidCallback? onRetry;
   final int? uploadProgress;
   final VoidCallback? onReply;
+  final VoidCallback? onReplyPreviewTap;
   final VoidCallback? onDelete;
   final VoidCallback? onSelect;
   final bool selectionMode;
   final bool isSelected;
+  final bool isJumpHighlighted;
   final String? currentUid;
   final String? targetName;
   final String searchQuery;
@@ -143,6 +147,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final selectedRowColor = AppColor.primaryColor.withValues(
       alpha: isDarkMode ? 0.22 : 0.12,
     );
+    final highlightBorderColor =
+        widget.isJumpHighlighted ? AppColor.primaryColor : Colors.amber;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
@@ -227,10 +233,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                       decoration: BoxDecoration(
                         color: bubbleColor,
                         borderRadius: _bubbleRadius(),
-                        border: _isSearchMatch()
+                        border: widget.isJumpHighlighted || _isSearchMatch()
                             ? Border.all(
-                                color: Colors.amber,
-                                width: 1.5,
+                                color: highlightBorderColor,
+                                width: widget.isJumpHighlighted ? 2 : 1.5,
                               )
                             : null,
                       ),
@@ -981,7 +987,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   Widget _buildReplyPreview(Color messageTextColor, Color metaTextColor) {
-    return Container(
+    final preview = Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: widget.isMe
@@ -1030,6 +1036,14 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           ),
         ],
       ),
+    );
+
+    if (widget.onReplyPreviewTap == null) return preview;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onReplyPreviewTap,
+      child: preview,
     );
   }
 
