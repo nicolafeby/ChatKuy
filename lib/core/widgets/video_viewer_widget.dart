@@ -200,6 +200,6 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     if (controller == null || !controller.value.isInitialized) return;
 
     controller.value.isPlaying ? controller.pause() : controller.play();
-    _controller.notifyListeners();
+    if (mounted) setState(() {});
   }
 }

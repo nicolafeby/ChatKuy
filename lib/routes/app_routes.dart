@@ -6,6 +6,7 @@ import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/add_friend/add_friend_screen.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_attach_image_screen.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_attach_video_screen.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_media_gallery_screen.dart';
 import 'package:chatkuy/ui/friend_request_list/friend_request_list_screen.dart';
 import 'package:chatkuy/ui/profile/user_profile_screen.dart';
 import 'package:get/get_navigation/get_navigation.dart';
@@ -64,6 +65,10 @@ class AppRoute {
     GetPage(
       name: AppRouteName.VIDEO_VIEWER_SCREEN,
       page: () => VideoViewerScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.CHAT_MEDIA_GALLERY_SCREEN,
+      page: () => ChatMediaGalleryScreen(),
     ),
     GetPage(
       name: AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,

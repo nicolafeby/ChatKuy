@@ -230,7 +230,7 @@ class _ChatAttachVideoScreenState extends State<ChatAttachVideoScreen> {
     if (controller == null || !controller.value.isInitialized) return;
 
     controller.value.isPlaying ? controller.pause() : controller.play();
-    _controller.notifyListeners();
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadThumbnail(File video) async {
