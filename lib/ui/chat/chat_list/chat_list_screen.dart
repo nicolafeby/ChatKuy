@@ -115,8 +115,6 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               }
 
               final isSearching = store.searchQuery.trim().isNotEmpty;
-              final chatUsers = store.filteredChatUsers;
-              final searchResults = store.searchResults;
 
               if (store.chatUsers.isEmpty) {
                 return Center(
@@ -125,6 +123,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               }
 
               if (isSearching) {
+                final searchResults = store.searchResults;
                 if (searchResults.isEmpty) {
                   return Center(
                     child: Text(AppTranslationKey.messageNotFound.tr),
@@ -219,6 +218,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 );
               }
 
+              final chatUsers = store.filteredChatUsers;
               if (chatUsers.isEmpty) {
                 return Center(
                   child: Text(AppTranslationKey.chatNotFound.tr),

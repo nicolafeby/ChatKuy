@@ -70,7 +70,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   static const double _maxDragOffset = 72;
   static const double _replyTriggerOffset = 46;
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  AudioPlayer? _audioPlayer;
   StreamSubscription<PlayerState>? _playerStateSubscription;
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration>? _durationSubscription;
@@ -83,41 +83,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   Duration _audioDuration = Duration.zero;
 
   @override
-  void initState() {
-    super.initState();
-    _playerStateSubscription =
-        _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (!mounted) return;
-      setState(() {
-        _isAudioPlaying = state == PlayerState.playing;
-      });
-    });
-    _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
-      if (!mounted) return;
-      setState(() {
-        _audioPosition = position;
-      });
-    });
-    _durationSubscription = _audioPlayer.onDurationChanged.listen((duration) {
-      if (!mounted) return;
-      setState(() {
-        _audioDuration = duration;
-      });
-    });
-    _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
-      if (!mounted) return;
-      setState(() {
-        _isAudioPlaying = false;
-        _audioPosition = Duration.zero;
-      });
-    });
-  }
-
-  @override
   void didUpdateWidget(covariant ChatBubbleWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.message.id == widget.message.id) return;
-    _audioPlayer.stop();
+    _audioPlayer?.stop();
     _audioPosition = Duration.zero;
     _audioDuration = Duration.zero;
     _isAudioPlaying = false;
@@ -129,8 +98,44 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     _positionSubscription?.cancel();
     _durationSubscription?.cancel();
     _playerCompleteSubscription?.cancel();
-    _audioPlayer.dispose();
+    _audioPlayer?.dispose();
     super.dispose();
+  }
+
+  AudioPlayer _ensureAudioPlayer() {
+    final existingPlayer = _audioPlayer;
+    if (existingPlayer != null) return existingPlayer;
+
+    final player = AudioPlayer();
+    _audioPlayer = player;
+
+    _playerStateSubscription = player.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() {
+        _isAudioPlaying = state == PlayerState.playing;
+      });
+    });
+    _positionSubscription = player.onPositionChanged.listen((position) {
+      if (!mounted) return;
+      setState(() {
+        _audioPosition = position;
+      });
+    });
+    _durationSubscription = player.onDurationChanged.listen((duration) {
+      if (!mounted) return;
+      setState(() {
+        _audioDuration = duration;
+      });
+    });
+    _playerCompleteSubscription = player.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _isAudioPlaying = false;
+        _audioPosition = Duration.zero;
+      });
+    });
+
+    return player;
   }
 
   @override
@@ -756,24 +761,26 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     required String? localAudioPath,
     required String? audioUrl,
   }) async {
+    final audioPlayer = _ensureAudioPlayer();
+
     if (_isAudioPlaying) {
-      await _audioPlayer.pause();
+      await audioPlayer.pause();
       return;
     }
 
     if (_audioPosition.inMilliseconds > 0 &&
         _audioPosition < _resolvedAudioDuration()) {
-      await _audioPlayer.resume();
+      await audioPlayer.resume();
       return;
     }
 
     if (localAudioPath != null) {
-      await _audioPlayer.play(DeviceFileSource(localAudioPath));
+      await audioPlayer.play(DeviceFileSource(localAudioPath));
       return;
     }
 
     if (audioUrl != null) {
-      await _audioPlayer.play(UrlSource(audioUrl));
+      await audioPlayer.play(UrlSource(audioUrl));
     }
   }
 
@@ -1091,6 +1098,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             File(localImagePath),
             height: 200.h,
             width: double.infinity,
+            cacheWidth: _previewCacheWidth(),
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => _buildBrokenImage(),
           )
@@ -1099,6 +1107,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             height: 200.h,
             width: double.infinity,
             imageUrl,
+            cacheWidth: _previewCacheWidth(),
             fit: BoxFit.cover,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -1119,6 +1128,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           ),
       ],
     );
+  }
+
+  int _previewCacheWidth() {
+    final logicalWidth = MediaQuery.of(context).size.width * 0.8;
+    final physicalWidth =
+        logicalWidth * MediaQuery.of(context).devicePixelRatio;
+    return physicalWidth.round().clamp(320, 1080);
   }
 
   Widget _buildVideoPreview({

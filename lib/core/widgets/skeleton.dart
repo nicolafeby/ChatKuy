@@ -17,7 +17,8 @@ class SkeletonBlock extends StatefulWidget {
   State<SkeletonBlock> createState() => _SkeletonBlockState();
 }
 
-class _SkeletonBlockState extends State<SkeletonBlock> with SingleTickerProviderStateMixin {
+class _SkeletonBlockState extends State<SkeletonBlock>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
@@ -159,6 +160,67 @@ class ListTileSkeletonList extends StatelessWidget {
         showSubtitleIcon: showSubtitleIcon,
         showTrailing: showTrailing,
       ),
+    );
+  }
+}
+
+class ChatRoomSkeletonView extends StatelessWidget {
+  const ChatRoomSkeletonView({
+    super.key,
+    this.itemCount = 9,
+  });
+
+  final int itemCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.all(16.r),
+      reverse: true,
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        final isMe = index.isEven;
+        final hasMedia = index % 5 == 0;
+        final bubbleWidth = hasMedia ? 220.w : (index % 3 == 0 ? 184.w : 132.w);
+
+        return Align(
+          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+          child: Padding(
+            padding: EdgeInsets.only(top: index == itemCount - 1 ? 0 : 8.h),
+            child: Column(
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (hasMedia)
+                  SkeletonBlock(
+                    width: bubbleWidth,
+                    height: 142.h,
+                    borderRadius: BorderRadius.circular(8.r),
+                  )
+                else
+                  SkeletonBlock(
+                    width: bubbleWidth,
+                    height: 42.h,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(isMe ? 8.r : 2.r),
+                      topRight: Radius.circular(isMe ? 2.r : 8.r),
+                      bottomLeft: Radius.circular(8.r),
+                      bottomRight: Radius.circular(8.r),
+                    ),
+                  ),
+                4.verticalSpace,
+                SkeletonBlock(
+                  width: 42.w,
+                  height: 9.h,
+                  borderRadius: BorderRadius.circular(5.r),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -7,6 +7,8 @@ import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
 import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
+import 'package:chatkuy/data/repositories/chat_repository.dart';
+import 'package:chatkuy/di/injection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -17,10 +19,12 @@ class ChatMediaGalleryArgument {
   const ChatMediaGalleryArgument({
     required this.roomName,
     required this.messages,
+    this.roomId,
   });
 
   final String roomName;
   final List<ChatMessageModel> messages;
+  final String? roomId;
 }
 
 class ChatMediaGalleryScreen extends StatefulWidget {
@@ -32,6 +36,7 @@ class ChatMediaGalleryScreen extends StatefulWidget {
 
 class _ChatMediaGalleryScreenState extends State<ChatMediaGalleryScreen> {
   ChatMediaGalleryArgument? argument;
+  final ChatRepository _chatRepository = getIt<ChatRepository>();
 
   @override
   void initState() {
@@ -41,7 +46,21 @@ class _ChatMediaGalleryScreenState extends State<ChatMediaGalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = List<ChatMessageModel>.of(argument?.messages ?? [])
+    final roomId = argument?.roomId;
+    if (roomId != null) {
+      return StreamBuilder<List<ChatMessageModel>>(
+        stream: _chatRepository.watchMessages(roomId: roomId),
+        builder: (context, snapshot) {
+          return _buildGallery(snapshot.data ?? argument?.messages ?? const []);
+        },
+      );
+    }
+
+    return _buildGallery(argument?.messages ?? const []);
+  }
+
+  Widget _buildGallery(List<ChatMessageModel> sourceMessages) {
+    final messages = List<ChatMessageModel>.of(sourceMessages)
       ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
     final mediaMessages = messages.where(_isMediaMessage).toList();
     final fileMessages = messages.where(_isFileMessage).toList();

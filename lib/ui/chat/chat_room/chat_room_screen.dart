@@ -6,6 +6,7 @@ import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/chat_field/attachment_overlay.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/chat_field/chat_field.dart';
+import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -149,12 +150,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
             user?.isOnlineStatusVisible != false;
 
         final messages = _isSearching ? store.visibleMessages : store.messages;
+        final isInitialMessagesLoading =
+            !_isSearching && store.isInitialMessagesLoading.value;
         _scheduleTargetMessageScroll(messages);
-        final visibleMessageIds = messages.map((message) => message.id).toSet();
-        _selectedMessageIds.removeWhere(
-          (messageId) => !visibleMessageIds.contains(messageId),
-        );
         final isSelectionMode = _selectedMessageIds.isNotEmpty;
+        if (isSelectionMode) {
+          final visibleMessageIds =
+              messages.map((message) => message.id).toSet();
+          _selectedMessageIds.removeWhere(
+            (messageId) => !visibleMessageIds.contains(messageId),
+          );
+        }
         final hasSearchQuery =
             _isSearching && store.searchQuery.trim().isNotEmpty;
 
@@ -205,89 +211,99 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
             body: Column(
               children: [
                 Expanded(
-                  child: messages.isEmpty && hasSearchQuery
-                      ? Center(
-                          child: Text(AppTranslationKey.messageNotFound.tr),
-                        )
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16).r,
-                          reverse: true,
-                          cacheExtent: 600,
-                          itemCount: messages.length,
-                          itemBuilder: (context, index) {
-                            final realIndex = messages.length - 1 - index;
+                  child: isInitialMessagesLoading
+                      ? const ChatRoomSkeletonView()
+                      : messages.isEmpty && hasSearchQuery
+                          ? Center(
+                              child: Text(AppTranslationKey.messageNotFound.tr),
+                            )
+                          : ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(16).r,
+                              reverse: true,
+                              cacheExtent: 600,
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final realIndex = messages.length - 1 - index;
 
-                            final message = messages[realIndex];
-                            final localMediaPath = _localMediaPath(message);
-                            final isMe =
-                                message.senderId == argument!.currentUid;
-                            final isSelected =
-                                _selectedMessageIds.contains(message.id);
+                                final message = messages[realIndex];
+                                final localMediaPath = _localMediaPath(message);
+                                final isMe =
+                                    message.senderId == argument!.currentUid;
+                                final isSelected =
+                                    _selectedMessageIds.contains(message.id);
 
-                            final prevMessage =
-                                realIndex > 0 ? messages[realIndex - 1] : null;
+                                final prevMessage = realIndex > 0
+                                    ? messages[realIndex - 1]
+                                    : null;
 
-                            final isSameGroup = prevMessage != null &&
-                                prevMessage.senderId == message.senderId;
+                                final isSameGroup = prevMessage != null &&
+                                    prevMessage.senderId == message.senderId;
 
-                            final showDateSeparator = prevMessage == null ||
-                                !message.createdAt
-                                    .isSameDay(prevMessage.createdAt);
-                            final showUnreadDivider = !_isSearching &&
-                                store.unreadDividerMessageId.value ==
-                                    message.id;
-                            final uploadProgress =
-                                store.uploadProgressByMessageId[message.id] ??
-                                    (localMediaPath == null
-                                        ? null
-                                        : store.uploadProgressByLocalPath[
-                                            localMediaPath]);
+                                final showDateSeparator = prevMessage == null ||
+                                    !message.createdAt
+                                        .isSameDay(prevMessage.createdAt);
+                                final showUnreadDivider = !_isSearching &&
+                                    store.unreadDividerMessageId.value ==
+                                        message.id;
+                                final uploadProgress =
+                                    store.uploadProgressByMessageId[
+                                            message.id] ??
+                                        (localMediaPath == null
+                                            ? null
+                                            : store.uploadProgressByLocalPath[
+                                                localMediaPath]);
 
-                            return Column(
-                              key: _keyForMessage(message.id),
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (showDateSeparator)
-                                  ChatDateSeparator(
-                                    label: message.createdAt.chatDayLabel,
-                                  ).paddingOnly(top: 8.h),
-                                if (showUnreadDivider)
-                                  ChatUnreadSeparator(
-                                    label: AppTranslationKey.unreadMessages.tr,
-                                  ),
-                                ChatBubbleWidget(
-                                  message: message,
-                                  isMe: isMe,
-                                  uploadProgress: uploadProgress,
-                                  isSameGroup: isSameGroup,
-                                  isFirstInGroup: !isSameGroup,
-                                  currentUid: argument!.currentUid,
-                                  targetName: user?.name,
-                                  searchQuery: _activeHighlightQuery,
-                                  isJumpHighlighted:
-                                      _jumpHighlightedMessageId == message.id,
-                                  onRetry:
-                                      message.status == MessageStatus.failed
-                                          ? () => _retryMessage(message)
+                                return Column(
+                                  key: _keyForMessage(message.id),
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (showDateSeparator)
+                                      ChatDateSeparator(
+                                        label: message.createdAt.chatDayLabel,
+                                      ).paddingOnly(top: 8.h),
+                                    if (showUnreadDivider)
+                                      ChatUnreadSeparator(
+                                        label:
+                                            AppTranslationKey.unreadMessages.tr,
+                                      ),
+                                    ChatBubbleWidget(
+                                      message: message,
+                                      isMe: isMe,
+                                      uploadProgress: uploadProgress,
+                                      isSameGroup: isSameGroup,
+                                      isFirstInGroup: !isSameGroup,
+                                      currentUid: argument!.currentUid,
+                                      targetName: user?.name,
+                                      searchQuery: _activeHighlightQuery,
+                                      isJumpHighlighted:
+                                          _jumpHighlightedMessageId ==
+                                              message.id,
+                                      onRetry:
+                                          message.status == MessageStatus.failed
+                                              ? () => _retryMessage(message)
+                                              : null,
+                                      onReply: !isSelectionMode &&
+                                              message.status ==
+                                                  MessageStatus.sent
+                                          ? () =>
+                                              store.setReplyToMessage(message)
                                           : null,
-                                  onReply: !isSelectionMode &&
-                                          message.status == MessageStatus.sent
-                                      ? () => store.setReplyToMessage(message)
-                                      : null,
-                                  onReplyPreviewTap: !isSelectionMode
-                                      ? () => _jumpToRepliedMessage(message)
-                                      : null,
-                                  onDelete: () => _deleteMessageForMe(message),
-                                  onSelect: () =>
-                                      _toggleSelectedMessage(message.id),
-                                  selectionMode: isSelectionMode,
-                                  isSelected: isSelected,
-                                ),
-                              ],
-                            );
-                          },
-                        ),
+                                      onReplyPreviewTap: !isSelectionMode
+                                          ? () => _jumpToRepliedMessage(message)
+                                          : null,
+                                      onDelete: () =>
+                                          _deleteMessageForMe(message),
+                                      onSelect: () =>
+                                          _toggleSelectedMessage(message.id),
+                                      selectionMode: isSelectionMode,
+                                      isSelected: isSelected,
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                 ),
                 if (!_isSearching)
                   Observer(

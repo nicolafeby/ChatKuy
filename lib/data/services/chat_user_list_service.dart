@@ -35,6 +35,7 @@ class ChatUserListService implements ChatUserListRepository {
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? roomsSubscription;
     StreamSubscription<BoxEvent>? localSubscription;
     StreamSubscription<BoxEvent>? messageSubscription;
+    var isApplyingRemoteRooms = false;
 
     List<ChatUserItemModel> localItems() {
       final localData = _chatListBox.values.toList()
@@ -60,14 +61,15 @@ class ChatUserListService implements ChatUserListRepository {
       emitLocal();
 
       localSubscription = _chatListBox.watch().listen((_) {
+        if (isApplyingRemoteRooms) return;
         emitLocal();
       });
 
       messageSubscription = _messageBox.watch().listen((event) async {
         final message = event.value;
         if (message is! ChatMessageModel) return;
-        await _syncLocalChatListItemFromLatestMessage(
-          roomId: message.roomId,
+        await _syncLocalChatListItemFromMessage(
+          message: message,
           myUid: myUid,
         );
       });
@@ -77,96 +79,90 @@ class ChatUserListService implements ChatUserListRepository {
           .orderBy(ChatRoomField.lastMessageAt, descending: true)
           .snapshots()
           .listen((snapshot) async {
-        final rooms = snapshot.docs
-            .map((doc) => ChatRoomModel.fromJson({
-                  'id': doc.id,
-                  ...doc.data(),
-                }))
-            .toList();
+        isApplyingRemoteRooms = true;
+        try {
+          final rooms = snapshot.docs
+              .map((doc) => ChatRoomModel.fromJson({
+                    'id': doc.id,
+                    ...doc.data(),
+                  }))
+              .toList();
 
-        final localItemsByRoomId = {
-          for (final item in _chatListBox.values) item.roomId: item,
-        };
-        final targetUids = rooms
-            .map((room) => room.participants.firstWhere((uid) => uid != myUid))
-            .toSet();
-        final missingTargetUids =
-            targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
+          final localItemsByRoomId = {
+            for (final item in _chatListBox.values) item.roomId: item,
+          };
+          final targetUids = rooms
+              .map(
+                  (room) => room.participants.firstWhere((uid) => uid != myUid))
+              .toSet();
+          final missingTargetUids =
+              targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
 
-        final userSnaps = await Future.wait(
-          missingTargetUids.map((uid) => _usersRef.doc(uid).get()),
-        );
-        for (final snap in userSnaps) {
-          if (!snap.exists) continue;
-          _userCache[snap.id] = UserModel.fromJson({
-            'id': snap.id,
-            ...snap.data()!,
-          });
-        }
-
-        final items = <ChatUserItemModel>[];
-
-        for (final room in rooms) {
-          final targetUid = room.participants.firstWhere((uid) => uid != myUid);
-
-          final user =
-              _userCache[targetUid] ?? localItemsByRoomId[room.id]?.user;
-          if (user == null) continue;
-          final latestLocalMessage = _latestLocalMessageForRoom(
-            roomId: room.id,
-            myUid: myUid,
+          final userSnaps = await Future.wait(
+            missingTargetUids.map((uid) => _usersRef.doc(uid).get()),
           );
-          final localMatchesRoomLatest = latestLocalMessage != null &&
-              latestLocalMessage.senderId == room.lastSenderId &&
-              latestLocalMessage.type == room.type &&
-              _resolveLastMessage(latestLocalMessage) == room.lastMessage;
-          final useLocalLatest = latestLocalMessage != null &&
-              (room.lastMessageAt == null ||
-                  latestLocalMessage.status == MessageStatus.pending ||
-                  localMatchesRoomLatest ||
-                  latestLocalMessage.createdAtClient
-                      .isAfter(room.lastMessageAt!));
+          for (final snap in userSnaps) {
+            if (!snap.exists) continue;
+            _userCache[snap.id] = UserModel.fromJson({
+              'id': snap.id,
+              ...snap.data()!,
+            });
+          }
 
-          final item = ChatUserItemModel(
-            roomId: room.id,
-            user: user,
-            lastMessage: useLocalLatest
-                ? _resolveLastMessage(latestLocalMessage)
-                : room.lastMessage,
-            lastMessageAt: useLocalLatest
-                ? latestLocalMessage.createdAtClient
-                : room.lastMessageAt,
-            unreadCount: room.unreadCount?[myUid] ?? 0,
-            imageUrl:
-                useLocalLatest ? latestLocalMessage.imageUrl : room.imageUrl,
-            type: useLocalLatest ? latestLocalMessage.type : room.type,
-            lastSenderId: useLocalLatest
-                ? latestLocalMessage.senderId
-                : room.lastSenderId,
-            lastMessageStatus:
-                useLocalLatest ? latestLocalMessage.status : null,
-            lastMessageDeliveredTo:
-                useLocalLatest ? latestLocalMessage.deliveredTo : const {},
-            lastMessageReadBy:
-                useLocalLatest ? latestLocalMessage.readBy : const {},
-          );
+          final items = <ChatUserItemModel>[];
 
-          items.add(item);
+          for (final room in rooms) {
+            final targetUid =
+                room.participants.firstWhere((uid) => uid != myUid);
 
-          /// 3️⃣ Simpan / update ke Hive pakai roomId sebagai key
-          await _chatListBox.put(item.roomId, item);
+            final user =
+                _userCache[targetUid] ?? localItemsByRoomId[room.id]?.user;
+            if (user == null) continue;
+            final localItem = localItemsByRoomId[room.id];
+            final useLocalLatest = localItem?.lastMessageAt != null &&
+                (localItem!.lastMessageStatus == MessageStatus.pending ||
+                    room.lastMessageAt == null ||
+                    localItem.lastMessageAt!.isAfter(room.lastMessageAt!));
+
+            final item = ChatUserItemModel(
+              roomId: room.id,
+              user: user,
+              lastMessage:
+                  useLocalLatest ? localItem.lastMessage : room.lastMessage,
+              lastMessageAt:
+                  useLocalLatest ? localItem.lastMessageAt : room.lastMessageAt,
+              unreadCount: room.unreadCount?[myUid] ?? 0,
+              imageUrl: useLocalLatest ? localItem.imageUrl : room.imageUrl,
+              type: useLocalLatest ? localItem.type : room.type,
+              lastSenderId:
+                  useLocalLatest ? localItem.lastSenderId : room.lastSenderId,
+              lastMessageStatus:
+                  useLocalLatest ? localItem.lastMessageStatus : null,
+              lastMessageDeliveredTo:
+                  useLocalLatest ? localItem.lastMessageDeliveredTo : const {},
+              lastMessageReadBy:
+                  useLocalLatest ? localItem.lastMessageReadBy : const {},
+            );
+
+            items.add(item);
+
+            /// 3️⃣ Simpan / update ke Hive pakai roomId sebagai key
+            await _chatListBox.put(item.roomId, item);
+          }
+
+          /// Optional: hapus room yang sudah tidak ada
+          final remoteRoomIds = items.map((e) => e.roomId).toSet();
+          final localRoomIds = _chatListBox.keys.cast<String>().toSet();
+
+          final deletedIds = localRoomIds.difference(remoteRoomIds);
+          for (final id in deletedIds) {
+            await _chatListBox.delete(id);
+          }
+
+          emitLocal();
+        } finally {
+          isApplyingRemoteRooms = false;
         }
-
-        /// Optional: hapus room yang sudah tidak ada
-        final remoteRoomIds = items.map((e) => e.roomId).toSet();
-        final localRoomIds = _chatListBox.keys.cast<String>().toSet();
-
-        final deletedIds = localRoomIds.difference(remoteRoomIds);
-        for (final id in deletedIds) {
-          await _chatListBox.delete(id);
-        }
-
-        emitLocal();
       }, onError: controller.addError);
     };
 
@@ -177,21 +173,6 @@ class ChatUserListService implements ChatUserListRepository {
     };
 
     return controller.stream;
-  }
-
-  ChatMessageModel? _latestLocalMessageForRoom({
-    required String roomId,
-    required String myUid,
-  }) {
-    final messages = _messageBox.values
-        .where(
-          (message) =>
-              message.roomId == roomId && message.deletedFor[myUid] != true,
-        )
-        .toList()
-      ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
-
-    return messages.isEmpty ? null : messages.first;
   }
 
   String? _resolveLastMessage(ChatMessageModel message) {
@@ -205,39 +186,35 @@ class ChatUserListService implements ChatUserListRepository {
     return null;
   }
 
-  Future<void> _syncLocalChatListItemFromLatestMessage({
-    required String roomId,
+  Future<void> _syncLocalChatListItemFromMessage({
+    required ChatMessageModel message,
     required String myUid,
   }) async {
-    final existing = _chatListBox.get(roomId);
+    if (message.deletedFor[myUid] == true) return;
+
+    final existing = _chatListBox.get(message.roomId);
     if (existing == null) return;
 
-    final latestMessage = _latestLocalMessageForRoom(
-      roomId: roomId,
-      myUid: myUid,
-    );
-    if (latestMessage == null) return;
-
     final existingDate = existing.lastMessageAt ?? DateTime(0);
-    if (latestMessage.status != MessageStatus.pending &&
-        latestMessage.createdAtClient.isBefore(existingDate)) {
+    if (message.status != MessageStatus.pending &&
+        message.createdAtClient.isBefore(existingDate)) {
       return;
     }
 
     await _chatListBox.put(
-      roomId,
+      message.roomId,
       ChatUserItemModel(
         roomId: existing.roomId,
         user: existing.user,
-        lastMessage: _resolveLastMessage(latestMessage),
-        lastMessageAt: latestMessage.createdAtClient,
+        lastMessage: _resolveLastMessage(message),
+        lastMessageAt: message.createdAtClient,
         unreadCount: existing.unreadCount,
-        imageUrl: latestMessage.imageUrl ?? existing.imageUrl,
-        type: latestMessage.type,
-        lastSenderId: latestMessage.senderId,
-        lastMessageStatus: latestMessage.status,
-        lastMessageDeliveredTo: latestMessage.deliveredTo,
-        lastMessageReadBy: latestMessage.readBy,
+        imageUrl: message.imageUrl ?? existing.imageUrl,
+        type: message.type,
+        lastSenderId: message.senderId,
+        lastMessageStatus: message.status,
+        lastMessageDeliveredTo: message.deliveredTo,
+        lastMessageReadBy: message.readBy,
       ),
     );
   }

@@ -4,7 +4,6 @@ import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/utils/extension/string.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
-import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
@@ -70,7 +69,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
                 targetUser: targetUser,
                 canViewPresence: false,
                 currentUid: null,
-                galleryMessages: const [],
               );
             }
 
@@ -82,26 +80,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
                     currentUser?.isOnlineStatusVisible == true &&
                         targetUser.isOnlineStatusVisible;
 
-                final roomId = argument!.roomId;
-                if (roomId == null) {
-                  return _buildScaffold(
-                    targetUser: targetUser,
-                    canViewPresence: canViewPresence,
-                    currentUid: currentUid,
-                    galleryMessages: const [],
-                  );
-                }
-
-                return StreamBuilder<List<ChatMessageModel>>(
-                  stream: _chatRepository.watchMessages(roomId: roomId),
-                  builder: (context, messagesSnapshot) {
-                    return _buildScaffold(
-                      targetUser: targetUser,
-                      canViewPresence: canViewPresence,
-                      currentUid: currentUid,
-                      galleryMessages: messagesSnapshot.data ?? const [],
-                    );
-                  },
+                return _buildScaffold(
+                  targetUser: targetUser,
+                  canViewPresence: canViewPresence,
+                  currentUid: currentUid,
                 );
               },
             );
@@ -115,7 +97,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
     required UserModel targetUser,
     required bool canViewPresence,
     required String? currentUid,
-    required List<ChatMessageModel> galleryMessages,
   }) {
     final colorScheme = colorSchemeOf(context);
 
@@ -185,8 +166,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
             _ActionTile(
               icon: Icons.collections_outlined,
               title: AppTranslationKey.mediaGallery.tr,
-              subtitle: _gallerySummary(galleryMessages),
-              onTap: () => _openMediaGallery(targetUser, galleryMessages),
+              subtitle:
+                  '${AppTranslationKey.media.tr} • ${AppTranslationKey.files.tr} • ${AppTranslationKey.links.tr}',
+              onTap: () => _openMediaGallery(targetUser),
             ),
             12.verticalSpace,
           ],
@@ -243,39 +225,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
     );
   }
 
-  void _openMediaGallery(
-    UserModel targetUser,
-    List<ChatMessageModel> messages,
-  ) {
+  void _openMediaGallery(UserModel targetUser) {
+    final roomId = argument?.roomId;
+    if (roomId == null) return;
+
     Get.toNamed(
       AppRouteName.CHAT_MEDIA_GALLERY_SCREEN,
       arguments: ChatMediaGalleryArgument(
         roomName: targetUser.name,
-        messages: List<ChatMessageModel>.of(messages),
+        roomId: roomId,
+        messages: const [],
       ),
     );
-  }
-
-  String _gallerySummary(List<ChatMessageModel> messages) {
-    final mediaCount = messages.where((message) {
-      return message.type == MessageType.image ||
-          message.type == MessageType.video;
-    }).length;
-    final fileCount =
-        messages.where((message) => message.type == MessageType.file).length;
-    final linkCount =
-        messages.where((message) => _hasLink(message.text ?? '')).length;
-
-    return '${AppTranslationKey.media.tr}: $mediaCount • '
-        '${AppTranslationKey.files.tr}: $fileCount • '
-        '${AppTranslationKey.links.tr}: $linkCount';
-  }
-
-  bool _hasLink(String text) {
-    return RegExp(
-      r'((https?:\/\/|www\.)[^\s<>()]+)',
-      caseSensitive: false,
-    ).hasMatch(text);
   }
 
   void _showProfilePhoto(UserModel user) {

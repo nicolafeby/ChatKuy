@@ -97,6 +97,7 @@ Future<void> chatServiceTest() async {
     when(messageQuery.snapshots(includeMetadataChanges: true))
         .thenAnswer((_) => Stream.value(messageQuerySnapshot));
 
+    when(messageQuerySnapshot.docChanges).thenReturn([]);
     when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
 
     when(messageSnapshot.id).thenReturn('msg-1');
@@ -134,6 +135,7 @@ Future<void> chatServiceTest() async {
         .thenReturn(messageQuery);
     when(messageQuery.snapshots(includeMetadataChanges: true))
         .thenAnswer((_) => Stream.value(messageQuerySnapshot));
+    when(messageQuerySnapshot.docChanges).thenReturn([]);
     when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
     when(messageSnapshot.id).thenReturn('msg-1');
     when(mockMetadata.hasPendingWrites).thenReturn(false);

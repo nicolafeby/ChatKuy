@@ -27,7 +27,8 @@ abstract class _ChatUserListStore with Store {
   // STATE
   // -----------------------------
   @observable
-  ObservableList<ChatUserItemModel> chatUsers = ObservableList<ChatUserItemModel>();
+  ObservableList<ChatUserItemModel> chatUsers =
+      ObservableList<ChatUserItemModel>();
 
   @observable
   bool isLoading = false;
@@ -47,12 +48,10 @@ abstract class _ChatUserListStore with Store {
       final name = item.user.name.toLowerCase();
       final email = item.user.email.toLowerCase();
       final lastMessage = item.lastMessage?.toLowerCase() ?? '';
-      final matchingMessage = matchedMessageText(item)?.toLowerCase() ?? '';
 
       return name.contains(query) ||
           email.contains(query) ||
-          lastMessage.contains(query) ||
-          matchingMessage.contains(query);
+          lastMessage.contains(query);
     }).toList();
   }
 
@@ -62,8 +61,35 @@ abstract class _ChatUserListStore with Store {
 
     final results = <ChatSearchResult>[];
 
+    final itemByRoomId = {
+      for (final item in chatUsers) item.roomId: item,
+    };
+    final matchingMessagesByRoomId = <String, List<ChatMessageModel>>{};
+
+    if (Hive.isBoxOpen('chat_messages')) {
+      final roomIds = itemByRoomId.keys.toSet();
+      final matchingMessages = Hive.box<ChatMessageModel>('chat_messages')
+          .values
+          .where(
+            (message) =>
+                roomIds.contains(message.roomId) &&
+                (currentUid == null ||
+                    message.deletedFor[currentUid] != true) &&
+                _searchableMessageText(message).toLowerCase().contains(query),
+          )
+          .toList()
+        ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
+
+      for (final message in matchingMessages) {
+        matchingMessagesByRoomId
+            .putIfAbsent(message.roomId, () => <ChatMessageModel>[])
+            .add(message);
+      }
+    }
+
     for (final item in chatUsers) {
-      final matchingMessages = _matchingMessages(item, query);
+      final matchingMessages =
+          matchingMessagesByRoomId[item.roomId] ?? const <ChatMessageModel>[];
 
       for (final message in matchingMessages) {
         results.add(
@@ -81,12 +107,15 @@ abstract class _ChatUserListStore with Store {
       final hasProfileMatch = name.contains(query) || email.contains(query);
       final hasLastMessageMatch = lastMessage.contains(query);
 
-      if (matchingMessages.isEmpty && (hasProfileMatch || hasLastMessageMatch)) {
+      if (matchingMessages.isEmpty &&
+          (hasProfileMatch || hasLastMessageMatch)) {
         results.add(
           ChatSearchResult(
             item: item,
             message: null,
-            previewText: item.lastMessage?.isNotEmpty == true ? item.lastMessage! : item.user.email,
+            previewText: item.lastMessage?.isNotEmpty == true
+                ? item.lastMessage!
+                : item.user.email,
           ),
         );
       }
@@ -120,14 +149,17 @@ abstract class _ChatUserListStore with Store {
     final messages = Hive.box<ChatMessageModel>('chat_messages')
         .values
         .where(
-          (message) => message.roomId == item.roomId && (currentUid == null || message.deletedFor[currentUid] != true),
+          (message) =>
+              message.roomId == item.roomId &&
+              (currentUid == null || message.deletedFor[currentUid] != true),
         )
         .toList()
       ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
 
     return messages
         .where(
-          (message) => _searchableMessageText(message).toLowerCase().contains(query),
+          (message) =>
+              _searchableMessageText(message).toLowerCase().contains(query),
         )
         .toList();
   }
@@ -182,7 +214,9 @@ abstract class _ChatUserListStore with Store {
   }
 
   bool _isExpectedLogoutStreamError(Object error) {
-    return FirebaseAuth.instance.currentUser == null && error is FirebaseException && error.code == 'permission-denied';
+    return FirebaseAuth.instance.currentUser == null &&
+        error is FirebaseException &&
+        error.code == 'permission-denied';
   }
 
   String? currentUid;
