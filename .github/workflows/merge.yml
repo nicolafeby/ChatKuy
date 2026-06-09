@@ -235,8 +235,8 @@ jobs:
 
   deploy-firebase:
     name: Deploy Firebase Functions & Firestore
-    needs: quality-check
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs['quality-check'].result == 'success') }}
+    needs: cd
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.cd.result == 'success') }}
     runs-on: ubuntu-latest
 
     steps:
