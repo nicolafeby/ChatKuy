@@ -12,6 +12,7 @@ import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/core/widgets/skeleton.dart';
+import 'package:chatkuy/core/widgets/textfield/textfield_password_widget.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
@@ -118,7 +119,77 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           leading: Icon(Icons.password_outlined, size: 20.r),
           onTap: () => Get.toNamed(AppRouteName.CHANGE_PASSWORD_SCREEN),
         ),
+        ProfileButtonWidget(
+          title: Text(
+            'Hapus Akun',
+            style: TextStyle(fontSize: 12.sp, color: Colors.red),
+          ),
+          leading: Icon(Icons.delete_forever_outlined,
+              size: 20.r, color: Colors.red),
+          onTap: _showDeleteAccountDialog,
+        ),
       ],
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    String? password;
+
+    Get.dialog(
+      StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Hapus Akun?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Masukkan password untuk konfirmasi. Setelah diproses, akses akun akan dimatikan dan seluruh data akun akan dibersihkan.',
+                ),
+                16.verticalSpace,
+                TextfieldPasswordWidget.verify(
+                  label: AppTranslationKey.password.tr,
+                  hintText: AppTranslationKey.enterPassword.tr,
+                  onValidPassword: (value) {
+                    setDialogState(() => password = value);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: Text(AppTranslationKey.cancel.tr),
+              ),
+              TextButton(
+                onPressed: password == null
+                    ? null
+                    : () async {
+                        Get.back();
+                        showLoading(text: 'Menghapus akun...');
+                        await store.deleteAccount(
+                          password: password!,
+                          onSuccess: () {
+                            Get.offAllNamed(AppRouteName.LOGIN_SCREEN);
+                          },
+                        );
+                        dismissLoading();
+
+                        final message = store.error.general?.message;
+                        if (message != null) {
+                          showSnackbar(message: message);
+                        }
+                      },
+                child: Text(
+                  AppTranslationKey.delete.tr,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/utils/error_ticket_visibility.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,10 @@ class ErrorBottomsheetWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final resolvedErrorTicketId = ErrorTicketVisibility.visibleTicketId(
+      ticketId: ticketId,
+      message: message,
+    );
 
     return Container(
       width: double.infinity,
@@ -60,63 +65,74 @@ class ErrorBottomsheetWidget extends StatelessWidget {
               ),
             ),
             20.verticalSpace,
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
-              child: Row(
+            Visibility(
+              visible: resolvedErrorTicketId != null,
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color:
+                          colorScheme.primaryContainer.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          AppTranslationKey.errorTicketId.tr,
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppTranslationKey.errorTicketId.tr,
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              4.verticalSpace,
+                              SelectableText(
+                                resolvedErrorTicketId ?? '',
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        4.verticalSpace,
-                        SelectableText(
-                          ticketId,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.onSurface,
-                          ),
+                        IconButton(
+                          tooltip: AppTranslationKey.copyTicketId.tr,
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: resolvedErrorTicketId ?? ''),
+                            );
+                            if (Get.isSnackbarOpen) return;
+                            Get.showSnackbar(
+                              GetSnackBar(
+                                message: AppTranslationKey.errorTicketCopied.tr,
+                                duration: const Duration(milliseconds: 1600),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.copy),
+                          color: AppColor.primaryColor,
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: AppTranslationKey.copyTicketId.tr,
-                    onPressed: () async {
-                      await Clipboard.setData(ClipboardData(text: ticketId));
-                      if (Get.isSnackbarOpen) return;
-                      Get.showSnackbar(
-                        GetSnackBar(
-                          message: AppTranslationKey.errorTicketCopied.tr,
-                          duration: const Duration(milliseconds: 1600),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.copy),
-                    color: AppColor.primaryColor,
+                  12.verticalSpace,
+                  Text(
+                    AppTranslationKey.errorTicketHelp.tr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
-              ),
-            ),
-            12.verticalSpace,
-            Text(
-              AppTranslationKey.errorTicketHelp.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: colorScheme.onSurfaceVariant,
               ),
             ),
             24.verticalSpace,

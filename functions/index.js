@@ -9,6 +9,10 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
+const ACCOUNT_STATUS_PENDING_DELETE = 'pending_delete';
+const ACCOUNT_STATUS_DELETED = 'deleted';
+const DELETE_BATCH_LIMIT = 450;
+
 function callKitAvatarUrl(value) {
   if (!value || typeof value !== 'string') {
     return '';
@@ -37,6 +41,242 @@ async function clearInvalidFcmToken(uid, token, error) {
     logger.info('🧹 Cleared invalid FCM token:', uid);
   }
 }
+
+async function commitBatchIfNeeded(batchState, force = false) {
+  if (batchState.count === 0 || (!force && batchState.count < DELETE_BATCH_LIMIT)) {
+    return;
+  }
+
+  await batchState.batch.commit();
+  batchState.batch = admin.firestore().batch();
+  batchState.count = 0;
+}
+
+async function queueDelete(batchState, ref) {
+  batchState.batch.delete(ref);
+  batchState.count += 1;
+  await commitBatchIfNeeded(batchState);
+}
+
+async function deleteQuery(query) {
+  const batchState = {
+    batch: admin.firestore().batch(),
+    count: 0,
+  };
+
+  const snap = await query.get();
+  for (const doc of snap.docs) {
+    await queueDelete(batchState, doc.ref);
+  }
+
+  await commitBatchIfNeeded(batchState, true);
+}
+
+async function deleteCollection(collectionRef) {
+  await deleteQuery(collectionRef);
+}
+
+function storagePathFromDownloadUrl(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    const marker = '/o/';
+    const markerIndex = url.pathname.indexOf(marker);
+
+    if (markerIndex >= 0) {
+      return decodeURIComponent(url.pathname.substring(markerIndex + marker.length));
+    }
+
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 1) {
+      return decodeURIComponent(pathParts.slice(1).join('/'));
+    }
+  } catch (error) {
+    logger.warn('⚠️ Failed to parse storage URL', {
+      error: error?.message,
+    });
+  }
+
+  return null;
+}
+
+async function deleteStorageFileFromUrl(bucket, url) {
+  const storagePath = storagePathFromDownloadUrl(url);
+  if (!storagePath) {
+    return;
+  }
+
+  try {
+    await bucket.file(storagePath).delete({ ignoreNotFound: true });
+  } catch (error) {
+    logger.warn('⚠️ Failed to delete storage file', {
+      storagePath,
+      error: error?.message,
+    });
+  }
+}
+
+async function cleanupMessageStorage(bucket, message) {
+  await Promise.all([
+    deleteStorageFileFromUrl(bucket, message.imageUrl),
+    deleteStorageFileFromUrl(bucket, message.videoUrl),
+    deleteStorageFileFromUrl(bucket, message.fileUrl),
+    deleteStorageFileFromUrl(bucket, message.audioUrl),
+  ]);
+}
+
+async function deleteRoomMessagesAndStorage(roomRef, bucket) {
+  const batchState = {
+    batch: admin.firestore().batch(),
+    count: 0,
+  };
+  const snap = await roomRef.collection('messages').get();
+
+  for (const doc of snap.docs) {
+    await cleanupMessageStorage(bucket, doc.data());
+    await queueDelete(batchState, doc.ref);
+  }
+
+  await commitBatchIfNeeded(batchState, true);
+}
+
+async function cleanupFriendData(db, uid) {
+  const ownFriendsSnap = await db
+    .collection('users')
+    .doc(uid)
+    .collection('friends')
+    .get();
+
+  const batchState = {
+    batch: db.batch(),
+    count: 0,
+  };
+
+  for (const doc of ownFriendsSnap.docs) {
+    const friendUid = doc.data().uid || doc.id;
+    await queueDelete(batchState, doc.ref);
+    if (friendUid) {
+      await queueDelete(
+        batchState,
+        db.collection('users').doc(friendUid).collection('friends').doc(uid)
+      );
+    }
+  }
+
+  await commitBatchIfNeeded(batchState, true);
+
+  await deleteQuery(
+    db.collectionGroup('friend_requests').where('fromUid', '==', uid)
+  );
+  await deleteQuery(
+    db.collectionGroup('friend_requests').where('toUid', '==', uid)
+  );
+  await deleteQuery(
+    db.collectionGroup('outgoing_friend_requests').where('fromUid', '==', uid)
+  );
+  await deleteQuery(
+    db.collectionGroup('outgoing_friend_requests').where('toUid', '==', uid)
+  );
+
+  await deleteCollection(
+    db.collection('users').doc(uid).collection('friend_requests')
+  );
+  await deleteCollection(
+    db.collection('users').doc(uid).collection('outgoing_friend_requests')
+  );
+}
+
+async function cleanupChatData(db, uid) {
+  const bucket = admin.storage().bucket();
+  const roomSnap = await db
+    .collection('chat_rooms')
+    .where('participants', 'array-contains', uid)
+    .get();
+
+  for (const roomDoc of roomSnap.docs) {
+    await deleteRoomMessagesAndStorage(roomDoc.ref, bucket);
+    await roomDoc.ref.delete();
+  }
+}
+
+async function cleanupCallData(db, uid) {
+  const callSnap = await db
+    .collection('calls')
+    .where('participants', 'array-contains', uid)
+    .get();
+
+  for (const callDoc of callSnap.docs) {
+    await deleteCollection(callDoc.ref.collection('caller_candidates'));
+    await deleteCollection(callDoc.ref.collection('callee_candidates'));
+    await callDoc.ref.delete();
+  }
+}
+
+exports.onAccountDeletionRequested = onDocumentUpdated(
+  'users/{uid}',
+  async (event) => {
+    if (!event.data) {
+      logger.error('❌ account deletion event.data is null');
+      return;
+    }
+
+    const uid = event.params.uid;
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    if (
+      before.accountStatus === after.accountStatus ||
+      after.accountStatus !== ACCOUNT_STATUS_PENDING_DELETE
+    ) {
+      return;
+    }
+
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(uid);
+
+    logger.info('🧹 Account deletion cleanup started:', uid);
+
+    await userRef.set(
+      {
+        accountStatus: ACCOUNT_STATUS_DELETED,
+        deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+        name: 'Deleted User',
+        username: admin.firestore.FieldValue.delete(),
+        email: admin.firestore.FieldValue.delete(),
+        pendingEmail: admin.firestore.FieldValue.delete(),
+        photoUrl: admin.firestore.FieldValue.delete(),
+        fcmToken: '',
+        isOnline: false,
+        birthDate: admin.firestore.FieldValue.delete(),
+        gender: admin.firestore.FieldValue.delete(),
+      },
+      { merge: true }
+    );
+
+    await cleanupFriendData(db, uid);
+    await cleanupChatData(db, uid);
+    await cleanupCallData(db, uid);
+
+    await deleteCollection(userRef.collection('friends'));
+    await deleteCollection(userRef.collection('friend_requests'));
+    await deleteCollection(userRef.collection('outgoing_friend_requests'));
+
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (error) {
+      if (error?.code !== 'auth/user-not-found') {
+        throw error;
+      }
+    }
+
+    await userRef.delete();
+
+    logger.info('✅ Account deletion cleanup completed:', uid);
+  }
+);
 
 exports.onNewMessage = onDocumentCreated(
   'chat_rooms/{roomId}/messages/{messageId}',

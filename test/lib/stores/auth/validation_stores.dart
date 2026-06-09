@@ -137,6 +137,11 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> requestAccountDeletion({required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
   String? get currentUid => null;
 
   @override

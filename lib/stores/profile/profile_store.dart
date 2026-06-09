@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'dart:ui';
 
+import 'package:chatkuy/app_context.dart';
 import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
@@ -491,6 +492,51 @@ abstract class _ProfileStore with Store {
       );
       error.general = FirebaseException(plugin: e.toString());
       rethrow;
+    }
+  }
+
+  Future<void> deleteAccount({
+    required String password,
+    required VoidCallback onSuccess,
+  }) async {
+    error.general = null;
+    loading = true;
+
+    try {
+      await authRepository.requestAccountDeletion(password: password);
+      await AppContext.sessionStore.logout();
+      await AppErrorLogger.setUserId(null);
+      onSuccess();
+    } on FirebaseAuthException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete account failed with FirebaseAuthException',
+        context: {'auth_code': e.code},
+        showBottomSheet: false,
+      );
+      _handleFirebaseAuthError(e);
+    } on FirebaseException catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete account failed with FirebaseException',
+        showBottomSheet: false,
+      );
+      error.general = e;
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete account failed with unknown error',
+        showBottomSheet: false,
+      );
+      error.general = FirebaseException(
+        plugin: e.toString(),
+        message: AppTranslationKey.tryAgainError.tr,
+      );
+    } finally {
+      loading = false;
     }
   }
 
