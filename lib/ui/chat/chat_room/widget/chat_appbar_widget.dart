@@ -68,7 +68,8 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  Widget _buildAvatarSection(UserModel user) => ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
+  Widget _buildAvatarSection(UserModel user) =>
+      ProfileAvatarWidget(base64Image: user.photoUrl, size: 36);
 
   Widget _buildDisplayNameSections(
     UserModel user, {

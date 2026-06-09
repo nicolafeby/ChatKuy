@@ -67,6 +67,14 @@ class AppTranslationKey {
   static const writeMessage = 'writeMessage';
   static const camera = 'camera';
   static const gallery = 'gallery';
+  static const mediaGallery = 'mediaGallery';
+  static const media = 'media';
+  static const files = 'files';
+  static const links = 'links';
+  static const noMediaYet = 'noMediaYet';
+  static const noFilesYet = 'noFilesYet';
+  static const noLinksYet = 'noLinksYet';
+  static const openLink = 'openLink';
   static const video = 'video';
   static const document = 'document';
   static const contact = 'contact';
@@ -204,7 +212,8 @@ class AppTranslationKey {
   static const enterPassword = 'enterPassword';
   static const enterConfirmPassword = 'enterConfirmPassword';
   static const enterCurrentPassword = 'enterCurrentPassword';
-  static const mustLoginAgainAfterPasswordChange = 'mustLoginAgainAfterPasswordChange';
+  static const mustLoginAgainAfterPasswordChange =
+      'mustLoginAgainAfterPasswordChange';
   static const changeEmailAddress = 'changeEmailAddress';
   static const newEmail = 'newEmail';
   static const enterNewEmail = 'enterNewEmail';
@@ -250,7 +259,8 @@ const Map<String, String> _id = {
   AppTranslationKey.noData: 'Data tidak tersedia',
   AppTranslationKey.retry: 'Coba lagi',
   AppTranslationKey.oopsError: 'Ooops!! Terjadi Kesalahan',
-  AppTranslationKey.appIssueMessage: 'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
+  AppTranslationKey.appIssueMessage:
+      'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
   AppTranslationKey.userNotFound: 'Akun tidak ditemukan',
   AppTranslationKey.loading: 'Loading',
   AppTranslationKey.today: 'Hari ini',
@@ -299,6 +309,14 @@ const Map<String, String> _id = {
   AppTranslationKey.writeMessage: 'Tulis pesan...',
   AppTranslationKey.camera: 'Kamera',
   AppTranslationKey.gallery: 'Galeri',
+  AppTranslationKey.mediaGallery: 'Media chat',
+  AppTranslationKey.media: 'Media',
+  AppTranslationKey.files: 'File',
+  AppTranslationKey.links: 'Link',
+  AppTranslationKey.noMediaYet: 'Belum ada foto atau video',
+  AppTranslationKey.noFilesYet: 'Belum ada file',
+  AppTranslationKey.noLinksYet: 'Belum ada link',
+  AppTranslationKey.openLink: 'Buka link',
   AppTranslationKey.video: 'Video',
   AppTranslationKey.document: 'Dokumen',
   AppTranslationKey.contact: 'Kontak',
@@ -311,18 +329,24 @@ const Map<String, String> _id = {
   AppTranslationKey.voiceMessage: 'Pesan suara',
   AppTranslationKey.voiceMessageSendFailed: 'Pesan suara gagal dikirim',
   AppTranslationKey.recording: 'Merekam...',
-  AppTranslationKey.galleryPermissionDenied: 'Kami tidak mendapatkan akses galeri untuk action ini',
-  AppTranslationKey.cameraPermissionDenied: 'Kami tidak mendapatkan akses kamera untuk action ini',
-  AppTranslationKey.contactPermissionDenied: 'Kami tidak mendapatkan akses kontak untuk action ini',
-  AppTranslationKey.microphonePermissionDenied: 'Kami tidak mendapatkan akses mikrofon untuk action ini',
+  AppTranslationKey.galleryPermissionDenied:
+      'Kami tidak mendapatkan akses galeri untuk action ini',
+  AppTranslationKey.cameraPermissionDenied:
+      'Kami tidak mendapatkan akses kamera untuk action ini',
+  AppTranslationKey.contactPermissionDenied:
+      'Kami tidak mendapatkan akses kontak untuk action ini',
+  AppTranslationKey.microphonePermissionDenied:
+      'Kami tidak mendapatkan akses mikrofon untuk action ini',
   AppTranslationKey.copyTicketId: 'Salin ID tiket',
   AppTranslationKey.errorTicketId: 'ID tiket error',
   AppTranslationKey.errorTicketCopied: 'ID tiket error berhasil disalin',
-  AppTranslationKey.errorTicketHelp: 'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem',
+  AppTranslationKey.errorTicketHelp:
+      'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem',
   AppTranslationKey.ok: 'Oke',
   AppTranslationKey.deleteForMe: 'Hapus untuk saya',
   AppTranslationKey.deleteMessagesTitle: 'Hapus @count pesan?',
-  AppTranslationKey.deleteMessagesContent: 'Pesan akan dihapus hanya dari chat Anda.',
+  AppTranslationKey.deleteMessagesContent:
+      'Pesan akan dihapus hanya dari chat Anda.',
   AppTranslationKey.cancel: 'Batal',
   AppTranslationKey.send: 'Kirim',
   AppTranslationKey.delete: 'Hapus',
@@ -332,8 +356,10 @@ const Map<String, String> _id = {
   AppTranslationKey.incomingVideoCall: 'Panggilan video masuk',
   AppTranslationKey.incomingVoiceCall: 'Panggilan suara masuk',
   AppTranslationKey.invalidCallData: 'Data panggilan tidak lengkap',
-  AppTranslationKey.waitUntilCallConnected: 'Tunggu sampai panggilan tersambung',
-  AppTranslationKey.videoRequestPending: 'Permintaan video sedang menunggu persetujuan',
+  AppTranslationKey.waitUntilCallConnected:
+      'Tunggu sampai panggilan tersambung',
+  AppTranslationKey.videoRequestPending:
+      'Permintaan video sedang menunggu persetujuan',
   AppTranslationKey.requestingVideoPermission: 'Meminta izin video...',
   AppTranslationKey.videoCallStarted: 'Panggilan video dimulai',
   AppTranslationKey.online: 'Online',
@@ -376,12 +402,15 @@ const Map<String, String> _id = {
   AppTranslationKey.dontHaveAccount: 'Tidak punya akun? ',
   AppTranslationKey.register: 'Daftar',
   AppTranslationKey.welcome: 'Selamat Datang',
-  AppTranslationKey.registerSubtitle: 'Yuk, buat akun sekarang agar kita tetap nyambung!!',
+  AppTranslationKey.registerSubtitle:
+      'Yuk, buat akun sekarang agar kita tetap nyambung!!',
   AppTranslationKey.alreadyHaveAccount: 'Sudah punya akun? ',
   AppTranslationKey.verifyNow: 'Verifikasi Sekarang',
-  AppTranslationKey.verifyEmailToAccessFeatures: 'Yuk, verifikasi email kamu agar bisa mengakses semua fitur kami',
+  AppTranslationKey.verifyEmailToAccessFeatures:
+      'Yuk, verifikasi email kamu agar bisa mengakses semua fitur kami',
   AppTranslationKey.verifyEmail: 'Verifikasi Email',
-  AppTranslationKey.verifyEmailInstruction: 'Buka email @email dan klik link verifikasi yang kami kirim',
+  AppTranslationKey.verifyEmailInstruction:
+      'Buka email @email dan klik link verifikasi yang kami kirim',
   AppTranslationKey.newEmailVerifiedMessage:
       'Email baru kamu sudah berhasil diverifikasi. Untuk keamanan akun, silakan login ulang menggunakan username dan password kamu.',
   AppTranslationKey.relogin: 'Login Ulang',
@@ -391,7 +420,8 @@ const Map<String, String> _id = {
   AppTranslationKey.enterName: 'Masukan Nama',
   AppTranslationKey.enterUsername: 'Masukan Username',
   AppTranslationKey.enterEmail: 'Masukan Email',
-  AppTranslationKey.emailVerificationRequired: 'Mohon verifikasi email kamu agar bisa mengakses seluruh fitur',
+  AppTranslationKey.emailVerificationRequired:
+      'Mohon verifikasi email kamu agar bisa mengakses seluruh fitur',
   AppTranslationKey.registrationSuccessTitle: 'Horee!! Registrasi Berhasil',
   AppTranslationKey.resendLink: 'Kirim Ulang Link',
   AppTranslationKey.emailChangedTitle: 'Email Berhasil Diubah',
@@ -421,9 +451,11 @@ const Map<String, String> _id = {
   AppTranslationKey.phoneNumber: 'Nomor HP',
   AppTranslationKey.privacy: 'Privasi',
   AppTranslationKey.showEmail: 'Tampilkan email',
-  AppTranslationKey.showEmailSubtitle: 'Izinkan teman melihat alamat email kamu',
+  AppTranslationKey.showEmailSubtitle:
+      'Izinkan teman melihat alamat email kamu',
   AppTranslationKey.showBirthDate: 'Tampilkan tanggal lahir',
-  AppTranslationKey.showBirthDateSubtitle: 'Izinkan teman melihat tanggal lahir kamu',
+  AppTranslationKey.showBirthDateSubtitle:
+      'Izinkan teman melihat tanggal lahir kamu',
   AppTranslationKey.showOnlineStatus: 'Tampilkan status online',
   AppTranslationKey.showOnlineStatusSubtitle:
       'Izinkan teman melihat status online kamu. Jika dimatikan, kamu juga tidak bisa melihat status online teman.',
@@ -438,7 +470,8 @@ const Map<String, String> _id = {
   AppTranslationKey.enterPassword: 'Masukan password',
   AppTranslationKey.enterConfirmPassword: 'Masukan konfirmasi password',
   AppTranslationKey.enterCurrentPassword: 'Masukan password sekarang',
-  AppTranslationKey.mustLoginAgainAfterPasswordChange: 'Kamu harus login ulang setelah mengganti password',
+  AppTranslationKey.mustLoginAgainAfterPasswordChange:
+      'Kamu harus login ulang setelah mengganti password',
   AppTranslationKey.changeEmailAddress: 'Ubah Alamat Email',
   AppTranslationKey.newEmail: 'Email Baru',
   AppTranslationKey.enterNewEmail: 'Masukan email baru kamu',
@@ -447,11 +480,13 @@ const Map<String, String> _id = {
   AppTranslationKey.currentPasswordWrong: 'Password lama salah',
   AppTranslationKey.invalidUser: 'User tidak valid',
   AppTranslationKey.failedChangePassword: 'Gagal mengganti password',
-  AppTranslationKey.emailVerifiedLoginAgain: 'Email berhasil diverifikasi. Silakan login ulang.',
+  AppTranslationKey.emailVerifiedLoginAgain:
+      'Email berhasil diverifikasi. Silakan login ulang.',
   AppTranslationKey.birthDateHidden: 'Disembunyikan',
   AppTranslationKey.updateRequired: 'Update Diperlukan',
   AppTranslationKey.updateAvailable: 'Update Tersedia',
-  AppTranslationKey.updateRequiredMessage: 'Versi ChatKuy yang kamu pakai sudah berada di bawah minimum yang didukung.',
+  AppTranslationKey.updateRequiredMessage:
+      'Versi ChatKuy yang kamu pakai sudah berada di bawah minimum yang didukung.',
   AppTranslationKey.updateAvailableMessage:
       'Ada versi ChatKuy yang lebih baru. Kamu bisa update sekarang atau lanjut dulu.',
   AppTranslationKey.openAppTester: 'Buka App Tester',
@@ -473,7 +508,8 @@ const Map<String, String> _en = {
   AppTranslationKey.noData: 'No data available',
   AppTranslationKey.retry: 'Try again',
   AppTranslationKey.oopsError: 'Ooops!! Something Went Wrong',
-  AppTranslationKey.appIssueMessage: 'Sorry, the app ran into a problem. Please try again in a moment.',
+  AppTranslationKey.appIssueMessage:
+      'Sorry, the app ran into a problem. Please try again in a moment.',
   AppTranslationKey.userNotFound: 'Account not found',
   AppTranslationKey.loading: 'Loading',
   AppTranslationKey.today: 'Today',
@@ -522,6 +558,14 @@ const Map<String, String> _en = {
   AppTranslationKey.writeMessage: 'Write a message...',
   AppTranslationKey.camera: 'Camera',
   AppTranslationKey.gallery: 'Gallery',
+  AppTranslationKey.mediaGallery: 'Chat media',
+  AppTranslationKey.media: 'Media',
+  AppTranslationKey.files: 'Files',
+  AppTranslationKey.links: 'Links',
+  AppTranslationKey.noMediaYet: 'No photos or videos yet',
+  AppTranslationKey.noFilesYet: 'No files yet',
+  AppTranslationKey.noLinksYet: 'No links yet',
+  AppTranslationKey.openLink: 'Open link',
   AppTranslationKey.video: 'Video',
   AppTranslationKey.document: 'Document',
   AppTranslationKey.contact: 'Contact',
@@ -534,10 +578,14 @@ const Map<String, String> _en = {
   AppTranslationKey.voiceMessage: 'Voice message',
   AppTranslationKey.voiceMessageSendFailed: 'Failed to send voice message',
   AppTranslationKey.recording: 'Recording...',
-  AppTranslationKey.galleryPermissionDenied: 'We could not access your gallery for this action',
-  AppTranslationKey.cameraPermissionDenied: 'We could not access your camera for this action',
-  AppTranslationKey.contactPermissionDenied: 'We could not access your contacts for this action',
-  AppTranslationKey.microphonePermissionDenied: 'We could not access your microphone for this action',
+  AppTranslationKey.galleryPermissionDenied:
+      'We could not access your gallery for this action',
+  AppTranslationKey.cameraPermissionDenied:
+      'We could not access your camera for this action',
+  AppTranslationKey.contactPermissionDenied:
+      'We could not access your contacts for this action',
+  AppTranslationKey.microphonePermissionDenied:
+      'We could not access your microphone for this action',
   AppTranslationKey.copyTicketId: 'Copy ticket ID',
   AppTranslationKey.errorTicketId: 'Error ticket ID',
   AppTranslationKey.errorTicketCopied: 'Error ticket ID copied',
@@ -546,7 +594,8 @@ const Map<String, String> _en = {
   AppTranslationKey.ok: 'OK',
   AppTranslationKey.deleteForMe: 'Delete for me',
   AppTranslationKey.deleteMessagesTitle: 'Delete @count messages?',
-  AppTranslationKey.deleteMessagesContent: 'Messages will only be deleted from your chat.',
+  AppTranslationKey.deleteMessagesContent:
+      'Messages will only be deleted from your chat.',
   AppTranslationKey.cancel: 'Cancel',
   AppTranslationKey.send: 'Send',
   AppTranslationKey.delete: 'Delete',
@@ -557,7 +606,8 @@ const Map<String, String> _en = {
   AppTranslationKey.incomingVoiceCall: 'Incoming voice call',
   AppTranslationKey.invalidCallData: 'Call data is incomplete',
   AppTranslationKey.waitUntilCallConnected: 'Wait until the call is connected',
-  AppTranslationKey.videoRequestPending: 'Video request is waiting for approval',
+  AppTranslationKey.videoRequestPending:
+      'Video request is waiting for approval',
   AppTranslationKey.requestingVideoPermission: 'Requesting video permission...',
   AppTranslationKey.videoCallStarted: 'Video call started',
   AppTranslationKey.online: 'Online',
@@ -600,12 +650,15 @@ const Map<String, String> _en = {
   AppTranslationKey.dontHaveAccount: 'Do not have an account? ',
   AppTranslationKey.register: 'Sign up',
   AppTranslationKey.welcome: 'Welcome',
-  AppTranslationKey.registerSubtitle: 'Create an account now so we can stay connected!!',
+  AppTranslationKey.registerSubtitle:
+      'Create an account now so we can stay connected!!',
   AppTranslationKey.alreadyHaveAccount: 'Already have an account? ',
   AppTranslationKey.verifyNow: 'Verify Now',
-  AppTranslationKey.verifyEmailToAccessFeatures: 'Please verify your email to access all our features',
+  AppTranslationKey.verifyEmailToAccessFeatures:
+      'Please verify your email to access all our features',
   AppTranslationKey.verifyEmail: 'Verify Email',
-  AppTranslationKey.verifyEmailInstruction: 'Open @email and click the verification link we sent',
+  AppTranslationKey.verifyEmailInstruction:
+      'Open @email and click the verification link we sent',
   AppTranslationKey.newEmailVerifiedMessage:
       'Your new email has been verified. For account security, please sign in again with your username and password.',
   AppTranslationKey.relogin: 'Sign In Again',
@@ -615,7 +668,8 @@ const Map<String, String> _en = {
   AppTranslationKey.enterName: 'Enter name',
   AppTranslationKey.enterUsername: 'Enter username',
   AppTranslationKey.enterEmail: 'Enter email',
-  AppTranslationKey.emailVerificationRequired: 'Please verify your email so you can access all features',
+  AppTranslationKey.emailVerificationRequired:
+      'Please verify your email so you can access all features',
   AppTranslationKey.registrationSuccessTitle: 'Yay!! Registration Successful',
   AppTranslationKey.resendLink: 'Resend Link',
   AppTranslationKey.emailChangedTitle: 'Email Changed',
@@ -645,9 +699,11 @@ const Map<String, String> _en = {
   AppTranslationKey.phoneNumber: 'Phone number',
   AppTranslationKey.privacy: 'Privacy',
   AppTranslationKey.showEmail: 'Show email',
-  AppTranslationKey.showEmailSubtitle: 'Allow friends to see your email address',
+  AppTranslationKey.showEmailSubtitle:
+      'Allow friends to see your email address',
   AppTranslationKey.showBirthDate: 'Show birth date',
-  AppTranslationKey.showBirthDateSubtitle: 'Allow friends to see your birth date',
+  AppTranslationKey.showBirthDateSubtitle:
+      'Allow friends to see your birth date',
   AppTranslationKey.showOnlineStatus: 'Show online status',
   AppTranslationKey.showOnlineStatusSubtitle:
       'Allow friends to see your online status. If disabled, you also cannot see your friends online status.',
@@ -662,7 +718,8 @@ const Map<String, String> _en = {
   AppTranslationKey.enterPassword: 'Enter password',
   AppTranslationKey.enterConfirmPassword: 'Enter password confirmation',
   AppTranslationKey.enterCurrentPassword: 'Enter current password',
-  AppTranslationKey.mustLoginAgainAfterPasswordChange: 'You need to sign in again after changing your password',
+  AppTranslationKey.mustLoginAgainAfterPasswordChange:
+      'You need to sign in again after changing your password',
   AppTranslationKey.changeEmailAddress: 'Change Email Address',
   AppTranslationKey.newEmail: 'New Email',
   AppTranslationKey.enterNewEmail: 'Enter your new email',
@@ -671,11 +728,13 @@ const Map<String, String> _en = {
   AppTranslationKey.currentPasswordWrong: 'Current password is incorrect',
   AppTranslationKey.invalidUser: 'Invalid user',
   AppTranslationKey.failedChangePassword: 'Failed to change password',
-  AppTranslationKey.emailVerifiedLoginAgain: 'Email verified. Please sign in again.',
+  AppTranslationKey.emailVerifiedLoginAgain:
+      'Email verified. Please sign in again.',
   AppTranslationKey.birthDateHidden: 'Hidden',
   AppTranslationKey.updateRequired: 'Update Required',
   AppTranslationKey.updateAvailable: 'Update Available',
-  AppTranslationKey.updateRequiredMessage: 'Your ChatKuy version is below the minimum supported version.',
+  AppTranslationKey.updateRequiredMessage:
+      'Your ChatKuy version is below the minimum supported version.',
   AppTranslationKey.updateAvailableMessage:
       'A newer version of ChatKuy is available. You can update now or continue for now.',
   AppTranslationKey.openAppTester: 'Open App Tester',

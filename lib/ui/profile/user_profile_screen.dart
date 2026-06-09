@@ -4,11 +4,13 @@ import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/utils/extension/string.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
+import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/di/injection.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_media_gallery_screen.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +70,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
                 targetUser: targetUser,
                 canViewPresence: false,
                 currentUid: null,
+                galleryMessages: const [],
               );
             }
 
@@ -79,10 +82,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
                     currentUser?.isOnlineStatusVisible == true &&
                         targetUser.isOnlineStatusVisible;
 
-                return _buildScaffold(
-                  targetUser: targetUser,
-                  canViewPresence: canViewPresence,
-                  currentUid: currentUid,
+                final roomId = argument!.roomId;
+                if (roomId == null) {
+                  return _buildScaffold(
+                    targetUser: targetUser,
+                    canViewPresence: canViewPresence,
+                    currentUid: currentUid,
+                    galleryMessages: const [],
+                  );
+                }
+
+                return StreamBuilder<List<ChatMessageModel>>(
+                  stream: _chatRepository.watchMessages(roomId: roomId),
+                  builder: (context, messagesSnapshot) {
+                    return _buildScaffold(
+                      targetUser: targetUser,
+                      canViewPresence: canViewPresence,
+                      currentUid: currentUid,
+                      galleryMessages: messagesSnapshot.data ?? const [],
+                    );
+                  },
                 );
               },
             );
@@ -96,6 +115,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
     required UserModel targetUser,
     required bool canViewPresence,
     required String? currentUid,
+    required List<ChatMessageModel> galleryMessages,
   }) {
     final colorScheme = colorSchemeOf(context);
 
@@ -161,6 +181,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
             ],
           ),
           24.verticalSpace,
+          if (argument?.roomId != null) ...[
+            _ActionTile(
+              icon: Icons.collections_outlined,
+              title: AppTranslationKey.mediaGallery.tr,
+              subtitle: _gallerySummary(galleryMessages),
+              onTap: () => _openMediaGallery(targetUser, galleryMessages),
+            ),
+            12.verticalSpace,
+          ],
           _InfoTile(
             icon: Icons.person_2_outlined,
             title: AppTranslationKey.username.tr,
@@ -214,6 +243,41 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
     );
   }
 
+  void _openMediaGallery(
+    UserModel targetUser,
+    List<ChatMessageModel> messages,
+  ) {
+    Get.toNamed(
+      AppRouteName.CHAT_MEDIA_GALLERY_SCREEN,
+      arguments: ChatMediaGalleryArgument(
+        roomName: targetUser.name,
+        messages: List<ChatMessageModel>.of(messages),
+      ),
+    );
+  }
+
+  String _gallerySummary(List<ChatMessageModel> messages) {
+    final mediaCount = messages.where((message) {
+      return message.type == MessageType.image ||
+          message.type == MessageType.video;
+    }).length;
+    final fileCount =
+        messages.where((message) => message.type == MessageType.file).length;
+    final linkCount =
+        messages.where((message) => _hasLink(message.text ?? '')).length;
+
+    return '${AppTranslationKey.media.tr}: $mediaCount • '
+        '${AppTranslationKey.files.tr}: $fileCount • '
+        '${AppTranslationKey.links.tr}: $linkCount';
+  }
+
+  bool _hasLink(String text) {
+    return RegExp(
+      r'((https?:\/\/|www\.)[^\s<>()]+)',
+      caseSensitive: false,
+    ).hasMatch(text);
+  }
+
   void _showProfilePhoto(UserModel user) {
     final image = user.photoUrl;
     if (image == null) return;
@@ -249,6 +313,45 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
   String _formatBirthDate(DateTime? date) {
     if (date == null) return '-';
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8.r),
+        side: BorderSide(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+        ),
+      ),
+      leading: CircleAvatar(
+        backgroundColor: AppColor.primaryColor.withValues(alpha: 0.12),
+        child: Icon(icon, color: AppColor.primaryColor),
+      ),
+      title: Text(title),
+      subtitle: Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
   }
 }
 

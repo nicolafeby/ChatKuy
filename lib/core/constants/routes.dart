@@ -14,6 +14,7 @@ abstract class AppRouteName {
   static const USER_PROFILE_SCREEN = '/user_profile_screen';
   static const IMAGE_VIEWER_SCREEN = '/image_viewer_screen';
   static const VIDEO_VIEWER_SCREEN = '/video_viewer_screen';
+  static const CHAT_MEDIA_GALLERY_SCREEN = '/chat_media_gallery_screen';
   static const CHAT_ATTACH_IMAGE_SCREEN = '/chat_attach_image_screen';
   static const CHAT_ATTACH_VIDEO_SCREEN = '/chat_attach_video_screen';
   static const CALL_SCREEN = '/call_screen';
