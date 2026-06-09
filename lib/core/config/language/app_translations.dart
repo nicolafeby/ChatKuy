@@ -190,6 +190,8 @@ class AppTranslationKey {
   static const success = 'success';
   static const profileUpdated = 'profileUpdated';
   static const logout = 'logout';
+  static const logoutConfirmationTitle = 'logoutConfirmationTitle';
+  static const logoutConfirmationMessage = 'logoutConfirmationMessage';
   static const yearsOld = 'yearsOld';
   static const gender = 'gender';
   static const birthDate = 'birthDate';
@@ -445,6 +447,9 @@ const Map<String, String> _id = {
   AppTranslationKey.success: 'Sukses',
   AppTranslationKey.profileUpdated: 'Berhasil Mengubah Profile',
   AppTranslationKey.logout: 'Keluar',
+  AppTranslationKey.logoutConfirmationTitle: 'Keluar dari akun?',
+  AppTranslationKey.logoutConfirmationMessage:
+      'Kamu perlu login kembali untuk menggunakan ChatKuy.',
   AppTranslationKey.yearsOld: '@age tahun',
   AppTranslationKey.gender: 'Jenis kelamin',
   AppTranslationKey.birthDate: 'Tanggal lahir',
@@ -693,6 +698,9 @@ const Map<String, String> _en = {
   AppTranslationKey.success: 'Success',
   AppTranslationKey.profileUpdated: 'Profile updated successfully',
   AppTranslationKey.logout: 'Logout',
+  AppTranslationKey.logoutConfirmationTitle: 'Logout from account?',
+  AppTranslationKey.logoutConfirmationMessage:
+      'You need to sign in again to use ChatKuy.',
   AppTranslationKey.yearsOld: '@age years old',
   AppTranslationKey.gender: 'Gender',
   AppTranslationKey.birthDate: 'Birth date',

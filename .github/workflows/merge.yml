@@ -22,21 +22,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
-  ci:
-    name: Test & Build
+  quality-check:
+    name: Prepare & Test
     if: github.event_name == 'push'
     runs-on: self-hosted
-    timeout-minutes: 60
-
-    concurrency:
-      group: flutter-ci
-      cancel-in-progress: true
+    timeout-minutes: 30
 
     env:
       FLUTTER_VERSION: "3.41.6"
       PREINSTALLED_FLUTTER_ROOT: /home/ncladr/actions-runner/chatkuy/_work/_tool/flutter/stable-3.41.6-x64/flutter
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Dorg.gradle.parallel=false"
 
     steps:
       - name: Checkout
@@ -72,8 +71,50 @@ jobs:
       - name: Generate with Build Runner
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Verify generated files are committed
+        run: |
+          if ! git diff --quiet; then
+            git status --short
+            echo "::error::Generated files are out of date. Run build_runner locally and commit the generated changes."
+            exit 1
+          fi
+
       - name: Run flutter test
         run: flutter test --no-pub
+
+  build-apk:
+    name: Build APK
+    needs: quality-check
+    if: github.event_name == 'push'
+    runs-on: self-hosted
+    timeout-minutes: 60
+
+    env:
+      FLUTTER_VERSION: "3.41.6"
+      PREINSTALLED_FLUTTER_ROOT: /home/ncladr/actions-runner/chatkuy/_work/_tool/flutter/stable-3.41.6-x64/flutter
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Dorg.gradle.parallel=false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Use preinstalled Flutter
+        run: |
+          if [ ! -x "$PREINSTALLED_FLUTTER_ROOT/bin/flutter" ]; then
+            echo "::error::Flutter $FLUTTER_VERSION not found at $PREINSTALLED_FLUTTER_ROOT"
+            ls -la "$(dirname "$PREINSTALLED_FLUTTER_ROOT")" || true
+            exit 1
+          fi
+
+          echo "FLUTTER_ROOT=$PREINSTALLED_FLUTTER_ROOT" >> "$GITHUB_ENV"
+          echo "$PREINSTALLED_FLUTTER_ROOT/bin" >> "$GITHUB_PATH"
+          echo "$PREINSTALLED_FLUTTER_ROOT/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+          "$PREINSTALLED_FLUTTER_ROOT/bin/flutter" --version
+
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Build APK
         run: |
@@ -140,7 +181,7 @@ jobs:
 
   cd:
     name: Distribute APK
-    needs: ci
+    needs: build-apk
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
@@ -169,8 +210,8 @@ jobs:
 
   deploy-firebase:
     name: Deploy Firebase Functions & Firestore
-    needs: ci
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.ci.result == 'success') }}
+    needs: quality-check
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs['quality-check'].result == 'success') }}
     runs-on: ubuntu-latest
 
     steps:
