@@ -71,13 +71,30 @@ jobs:
       - name: Generate with Build Runner
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Verify generated files are committed
+      - name: Verify generated files are valid
         run: |
-          if ! git diff --quiet; then
-            git status --short
-            echo "::error::Generated files are out of date. Run build_runner locally and commit the generated changes."
+          if find lib -name '*.g.dart' -print -quit | grep -q .; then
+            missing_part_of="$(find lib -name '*.g.dart' -type f -exec grep -L '^part of ' {} \;)"
+            if [ -n "$missing_part_of" ]; then
+              echo "$missing_part_of"
+              echo "::error::Generated files are invalid. Run build_runner locally or check generator output."
+              exit 1
+            fi
+          else
+            echo "::error::No generated Dart files found after build_runner."
             exit 1
           fi
+
+      - name: Pack generated Dart files
+        run: |
+          find lib -name '*.g.dart' -print0 \
+            | tar --null -czf generated-dart-files.tar.gz --files-from -
+
+      - name: Upload generated Dart files
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-dart-files
+          path: generated-dart-files.tar.gz
 
       - name: Run flutter test
         run: flutter test --no-pub
@@ -115,6 +132,14 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Download generated Dart files
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-dart-files
+
+      - name: Restore generated Dart files
+        run: tar -xzf generated-dart-files.tar.gz
 
       - name: Build APK
         run: |
