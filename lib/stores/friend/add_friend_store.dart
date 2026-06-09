@@ -52,11 +52,12 @@ abstract class _AddFriendStore with Store {
       await repository.sendFriendRequestByUsername(username.trim());
       return true;
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Send friend request failed',
         context: {'username_length': username.trim().length},
+        showBottomSheet: false,
       );
       errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;

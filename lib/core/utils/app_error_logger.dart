@@ -40,6 +40,7 @@ class AppErrorLogger {
     bool fatal = false,
     Map<String, Object?> context = const {},
     bool showBottomSheet = true,
+    String? userMessage,
   }) async {
     final ticketId = _createTicketId(error);
     latestErrorTicketId = ticketId;
@@ -60,7 +61,10 @@ class AppErrorLogger {
     );
 
     if (showBottomSheet) {
-      _showErrorBottomSheet(ticketId);
+      _showErrorBottomSheet(
+        ticketId,
+        message: userMessage ?? AppTranslationKey.appIssueMessage.tr,
+      );
     }
 
     try {
@@ -106,7 +110,10 @@ class AppErrorLogger {
     return 'ERR-$timestamp-$hash';
   }
 
-  static void _showErrorBottomSheet(String ticketId) {
+  static void _showErrorBottomSheet(
+    String ticketId, {
+    required String message,
+  }) {
     if (Get.context == null) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -116,7 +123,7 @@ class AppErrorLogger {
         Get.bottomSheet(
           ErrorBottomsheetWidget(
             ticketId: ticketId,
-            message: AppTranslationKey.appIssueMessage.tr,
+            message: message,
           ),
           isScrollControlled: true,
         );

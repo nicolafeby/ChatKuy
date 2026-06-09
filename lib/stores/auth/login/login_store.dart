@@ -103,7 +103,7 @@ abstract class _LoginStore with Store {
       onSuccess.call();
     } on FirebaseAuthException catch (e, stackTrace) {
       email = e.email;
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Login failed with FirebaseAuthException',
@@ -111,14 +111,16 @@ abstract class _LoginStore with Store {
           'auth_code': e.code,
           'username_length': username?.length,
         },
+        showBottomSheet: false,
       );
 
       error.general = e;
     } on FirebaseException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Login failed with FirebaseException',
+        showBottomSheet: false,
       );
 
       error.general = FirebaseAuthException(
@@ -126,10 +128,11 @@ abstract class _LoginStore with Store {
         message: e.message,
       );
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Login failed with unknown error',
+        showBottomSheet: false,
       );
 
       error.general = FirebaseAuthException(
@@ -139,7 +142,8 @@ abstract class _LoginStore with Store {
     }
   }
 
-  bool get isValid => error.username == null && password != null && username != null;
+  bool get isValid =>
+      error.username == null && password != null && username != null;
 }
 
 class LoginErrorStore = _LoginErrorStore with _$LoginErrorStore;
