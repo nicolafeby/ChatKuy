@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:chatkuy/core/constants/color.dart';
@@ -64,6 +65,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _messageKeys = {};
   String _highlightQuery = '';
+  String? _jumpHighlightedMessageId;
   bool _isSearching = false;
   bool _targetScrollScheduled = false;
   bool _didScrollToTarget = false;
@@ -255,6 +257,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   currentUid: argument!.currentUid,
                                   targetName: user?.name,
                                   searchQuery: _activeHighlightQuery,
+                                  isJumpHighlighted:
+                                      _jumpHighlightedMessageId == message.id,
                                   onRetry:
                                       message.status == MessageStatus.failed
                                           ? () => _retryMessage(message)
@@ -262,6 +266,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   onReply: !isSelectionMode &&
                                           message.status == MessageStatus.sent
                                       ? () => store.setReplyToMessage(message)
+                                      : null,
+                                  onReplyPreviewTap: !isSelectionMode
+                                      ? () => _jumpToRepliedMessage(message)
                                       : null,
                                   onDelete: () => _deleteMessageForMe(message),
                                   onSelect: () =>
@@ -343,25 +350,32 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     if (realIndex == -1) return;
 
     _targetScrollScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToTargetMessage(
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final didScroll = await _scrollToMessage(
         targetMessageId: targetMessageId,
         realIndex: realIndex,
         visibleMessageCount: messages.length,
       );
+
+      if (!mounted) return;
+      if (didScroll) {
+        _didScrollToTarget = true;
+        _flashJumpHighlight(targetMessageId);
+      } else {
+        _targetScrollScheduled = false;
+      }
     });
   }
 
-  Future<void> _scrollToTargetMessage({
+  Future<bool> _scrollToMessage({
     required String targetMessageId,
     required int realIndex,
     required int visibleMessageCount,
   }) async {
-    if (!mounted) return;
+    if (!mounted) return false;
 
     if (!_scrollController.hasClients) {
-      _targetScrollScheduled = false;
-      return;
+      return false;
     }
 
     final builderIndex = visibleMessageCount - 1 - realIndex;
@@ -377,11 +391,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     );
 
     for (var attempt = 0; attempt < 8; attempt++) {
-      if (!mounted) return;
+      if (!mounted) return false;
 
       final context = _messageKeys[targetMessageId]?.currentContext;
       if (context != null) {
-        if (!context.mounted) return;
+        if (!context.mounted) return false;
 
         await Scrollable.ensureVisible(
           context,
@@ -389,14 +403,76 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           curve: Curves.easeOutCubic,
           alignment: 0.48,
         );
-        _didScrollToTarget = true;
-        return;
+        return true;
       }
 
       await Future<void>.delayed(const Duration(milliseconds: 80));
     }
 
-    _targetScrollScheduled = false;
+    return false;
+  }
+
+  void _jumpToRepliedMessage(ChatMessageModel message) {
+    final targetMessageId = message.replyToMessageId;
+    if (targetMessageId == null) return;
+
+    final messages = store.messages;
+    final realIndex = messages.indexWhere(
+      (message) => message.id == targetMessageId,
+    );
+    if (realIndex == -1) {
+      Get.snackbar(
+        AppTranslationKey.chat.tr,
+        AppTranslationKey.messageNotFound.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    setState(() {
+      _highlightQuery = '';
+      _jumpHighlightedMessageId = null;
+      _selectedMessageIds.clear();
+
+      if (_isSearching) {
+        _isSearching = false;
+        _searchController.clear();
+        store.clearSearch();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final didScroll = await _scrollToMessage(
+        targetMessageId: targetMessageId,
+        realIndex: realIndex,
+        visibleMessageCount: messages.length,
+      );
+
+      if (!mounted) return;
+      if (didScroll) {
+        _flashJumpHighlight(targetMessageId);
+        return;
+      }
+
+      Get.snackbar(
+        AppTranslationKey.chat.tr,
+        AppTranslationKey.messageNotFound.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    });
+  }
+
+  void _flashJumpHighlight(String messageId) {
+    setState(() {
+      _jumpHighlightedMessageId = messageId;
+    });
+
+    Timer(const Duration(milliseconds: 1600), () {
+      if (!mounted || _jumpHighlightedMessageId != messageId) return;
+      setState(() {
+        _jumpHighlightedMessageId = null;
+      });
+    });
   }
 
   PreferredSizeWidget _buildSelectionAppBar(List<ChatMessageModel> messages) {
