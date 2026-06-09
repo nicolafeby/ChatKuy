@@ -123,11 +123,12 @@ abstract class _RegisterStore with Store {
         error.username = 'Username sudah digunakan';
       }
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Register username availability check failed',
         context: {'username_length': username?.length},
+        showBottomSheet: false,
       );
       error.username = 'Gagal mengecek username';
       isUsernameAvailable = null;
@@ -155,11 +156,12 @@ abstract class _RegisterStore with Store {
       registerResponse = resp;
       onSuccessRegister.call();
     } on FirebaseAuthException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Register operation failed with FirebaseAuthException',
         context: {'auth_code': e.code},
+        showBottomSheet: false,
       );
       log('🔥 FirebaseAuthException');
       log('➡️ code    : ${e.code}');
@@ -167,10 +169,11 @@ abstract class _RegisterStore with Store {
 
       error.general = e;
     } on FirebaseException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Register operation failed with FirebaseException',
+        showBottomSheet: false,
       );
       log('🔥 FirebaseException');
       log('➡️ plugin  : ${e.plugin}');
@@ -179,10 +182,11 @@ abstract class _RegisterStore with Store {
 
       error.general = e;
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Register operation failed with unknown error',
+        showBottomSheet: false,
       );
       // ❌ UNKNOWN ERROR
       log('❌ Unknown error: $e');
@@ -208,11 +212,13 @@ abstract class _RegisterStore with Store {
         registerResponse = registerResponse!.copyWith(isEmailVerified: true);
       }
     } on FirebaseAuthException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
-        reason: 'Email verification operation failed with FirebaseAuthException',
+        reason:
+            'Email verification operation failed with FirebaseAuthException',
         context: {'auth_code': e.code},
+        showBottomSheet: false,
       );
       log('🔥 FirebaseAuthException');
       log('➡️ code    : ${e.code}');
@@ -220,10 +226,11 @@ abstract class _RegisterStore with Store {
 
       error.general = e;
     } on FirebaseException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Email verification operation failed with FirebaseException',
+        showBottomSheet: false,
       );
       log('🔥 FirebaseException');
       log('➡️ plugin  : ${e.plugin}');
@@ -235,10 +242,11 @@ abstract class _RegisterStore with Store {
         message: e.message,
       );
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Email verification operation failed with unknown error',
+        showBottomSheet: false,
       );
       log('❌ Unknown error: $e');
 
@@ -260,11 +268,12 @@ abstract class _RegisterStore with Store {
 
       onSuccess?.call();
     } on FirebaseAuthException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Resend email verification failed with FirebaseAuthException',
         context: {'auth_code': e.code},
+        showBottomSheet: false,
       );
       log('🔥 FirebaseAuthException');
       log('➡️ code    : ${e.code}');
@@ -272,10 +281,11 @@ abstract class _RegisterStore with Store {
 
       error.general = e;
     } on FirebaseException catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Resend email verification failed with FirebaseException',
+        showBottomSheet: false,
       );
       log('🔥 FirebaseException');
       log('➡️ plugin  : ${e.plugin}');
@@ -287,10 +297,11 @@ abstract class _RegisterStore with Store {
         message: e.message,
       );
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Resend email verification failed with unknown error',
+        showBottomSheet: false,
       );
       log('❌ Unknown error: $e');
 
@@ -305,7 +316,11 @@ abstract class _RegisterStore with Store {
     _authSub?.cancel();
   }
 
-  bool get isValid => error.name == null && error.email == null && email != null && password != null;
+  bool get isValid =>
+      error.name == null &&
+      error.email == null &&
+      email != null &&
+      password != null;
 }
 
 class RegisterErrorStore = _RegisterErrorStore with _$RegisterErrorStore;

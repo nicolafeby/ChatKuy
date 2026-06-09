@@ -85,7 +85,7 @@ abstract class _FriendRequestStore with Store {
         fromUid: fromUid,
       );
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Accept friend request failed',
@@ -93,6 +93,7 @@ abstract class _FriendRequestStore with Store {
           'request_id': requestId,
           'from_uid': fromUid,
         },
+        showBottomSheet: false,
       );
       errorMessage = e.toString();
       rethrow;
@@ -110,11 +111,12 @@ abstract class _FriendRequestStore with Store {
     try {
       await repository.cancelFriendRequest(targetUid: targetUid);
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Cancel friend request failed',
         context: {'target_uid': targetUid},
+        showBottomSheet: false,
       );
       errorMessage = e.toString();
       rethrow;
@@ -133,11 +135,12 @@ abstract class _FriendRequestStore with Store {
     try {
       await repository.rejectFriendRequest(senderUid: senderUid);
     } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
+      await AppErrorLogger.recordError(
         e,
         stackTrace,
         reason: 'Reject friend request failed',
         context: {'sender_uid': senderUid},
+        showBottomSheet: false,
       );
       errorMessage = e.toString();
       rethrow;

@@ -109,6 +109,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Profile operation failed with FirebaseException',
+        showBottomSheet: false,
       );
       error.general = e;
     } catch (e, stackTrace) {
@@ -116,6 +117,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Profile operation failed with unknown error',
+        showBottomSheet: false,
       );
       error.general = FirebaseException(plugin: e.toString());
 
@@ -228,6 +230,7 @@ abstract class _ProfileStore with Store {
         stackTrace,
         reason: 'Check username availability failed',
         context: {'username_length': username?.length},
+        showBottomSheet: false,
       );
       error.username = 'Gagal mengecek username';
       isUsernameAvailable = null;
@@ -274,6 +277,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Profile operation failed with FirebaseException',
+        showBottomSheet: false,
       );
       error.general = e;
     } catch (e, stackTrace) {
@@ -281,6 +285,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Profile operation failed with unknown error',
+        showBottomSheet: false,
       );
       error.general = FirebaseException(plugin: e.toString());
       rethrow;
@@ -330,6 +335,7 @@ abstract class _ProfileStore with Store {
         stackTrace,
         reason: 'Check email availability failed',
         context: {'email_length': value.length},
+        showBottomSheet: false,
       );
 
       if (email == value) {
@@ -378,6 +384,7 @@ abstract class _ProfileStore with Store {
         stackTrace,
         reason: 'Change password failed with FirebaseAuthException',
         context: {'auth_code': e.code},
+        showBottomSheet: false,
       );
       _handleFirebaseAuthError(e);
     } catch (e, stackTrace) {
@@ -385,6 +392,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Change password failed with unknown error',
+        showBottomSheet: false,
       );
       error.general = FirebaseException(
         plugin: e.toString(),
@@ -471,6 +479,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Profile operation failed with FirebaseException',
+        showBottomSheet: false,
       );
       error.general = e;
     } catch (e, stackTrace) {
@@ -478,6 +487,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Profile operation failed with unknown error',
+        showBottomSheet: false,
       );
       error.general = FirebaseException(plugin: e.toString());
       rethrow;
@@ -551,6 +561,7 @@ abstract class _ProfileStore with Store {
         stackTrace,
         reason: 'Request email change failed with FirebaseAuthException',
         context: {'auth_code': e.code},
+        showBottomSheet: false,
       );
       if (e.code == 'email-already-in-use') {
         error.email = 'Email sudah digunakan';
@@ -562,6 +573,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Request email change failed with FirebaseException',
+        showBottomSheet: false,
       );
       error.general = e;
     } catch (e, stackTrace) {
@@ -569,6 +581,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Request email change failed with unknown error',
+        showBottomSheet: false,
       );
       error.general = FirebaseException(
         plugin: e.toString(),
@@ -616,6 +629,7 @@ abstract class _ProfileStore with Store {
         stackTrace,
         reason: 'Sync changed email failed with FirebaseAuthException',
         context: {'auth_code': e.code},
+        showBottomSheet: false,
       );
       error.general = e;
       return false;
@@ -624,6 +638,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Sync changed email failed with FirebaseException',
+        showBottomSheet: false,
       );
       error.general = e;
       return false;
@@ -632,6 +647,7 @@ abstract class _ProfileStore with Store {
         e,
         stackTrace,
         reason: 'Sync changed email failed with unknown error',
+        showBottomSheet: false,
       );
       error.general = FirebaseException(plugin: e.toString());
       return false;
