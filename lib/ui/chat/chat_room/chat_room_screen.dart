@@ -150,11 +150,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
         final messages = _isSearching ? store.visibleMessages : store.messages;
         _scheduleTargetMessageScroll(messages);
-        final visibleMessageIds = messages.map((message) => message.id).toSet();
-        _selectedMessageIds.removeWhere(
-          (messageId) => !visibleMessageIds.contains(messageId),
-        );
         final isSelectionMode = _selectedMessageIds.isNotEmpty;
+        if (isSelectionMode) {
+          final visibleMessageIds =
+              messages.map((message) => message.id).toSet();
+          _selectedMessageIds.removeWhere(
+            (messageId) => !visibleMessageIds.contains(messageId),
+          );
+        }
         final hasSearchQuery =
             _isSearching && store.searchQuery.trim().isNotEmpty;
 

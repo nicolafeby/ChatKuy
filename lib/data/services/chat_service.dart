@@ -70,17 +70,19 @@ class ChatService implements ChatRepository {
         .asyncMap((snapshot) async {
       final updates = <String, ChatMessageModel>{};
 
-      for (final doc in snapshot.docs) {
+      final changedDocs = snapshot.docChanges
+          .where((change) => change.type != DocumentChangeType.removed)
+          .map((change) => change.doc)
+          .toList();
+      final docsToProcess = changedDocs.isEmpty ? snapshot.docs : changedDocs;
+
+      for (final doc in docsToProcess) {
         final messageId = doc.id;
         final existing = _messageBox.get(messageId);
-
-        if (doc.metadata.hasPendingWrites) {
-          continue;
-        }
+        final data = doc.data();
+        if (data == null) continue;
 
         if (existing != null) {
-          final data = doc.data();
-
           final newDelivered =
               Map<String, bool>.from(data[MessageField.deliveredTo] ?? {});
           final newRead =
@@ -142,7 +144,6 @@ class ChatService implements ChatRepository {
           continue;
         }
 
-        final data = doc.data();
         final deletedFor = _deletedForFromData(data);
 
         updates[messageId] = ChatMessageModel(
