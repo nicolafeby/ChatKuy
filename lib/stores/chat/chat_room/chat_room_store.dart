@@ -36,6 +36,7 @@ abstract class _ChatRoomStore with Store {
   ObservableStream<UserModel>? currentUser;
   ObservableStream<Map<String, bool>>? typing;
   final Observable<ChatMessageModel?> replyToMessage = Observable<ChatMessageModel?>(null);
+  final Observable<String?> unreadDividerMessageId = Observable<String?>(null);
 
   @observable
   String? roomId;
@@ -61,6 +62,7 @@ abstract class _ChatRoomStore with Store {
   Timer? _typingTimer;
   ReactionDisposer? _messageStatusDisposer;
   bool _isTyping = false;
+  bool _didCaptureUnreadDivider = false;
   final Set<String> _deliveredMessageIds = {};
   final Set<String> _readMessageIds = {};
 
@@ -132,6 +134,8 @@ abstract class _ChatRoomStore with Store {
   }) {
     this.roomId = roomId;
     this.currentUid = currentUid;
+    _didCaptureUnreadDivider = false;
+    unreadDividerMessageId.value = null;
 
     _serverMessages = chatRepository.watchMessages(roomId: roomId).asObservable();
 
@@ -797,6 +801,8 @@ abstract class _ChatRoomStore with Store {
   void _syncMessageStatus(List<ChatMessageModel> messages) {
     if (roomId == null || currentUid == null) return;
 
+    _captureUnreadDivider(messages);
+
     for (final message in messages) {
       if (message.senderId == currentUid) continue;
 
@@ -844,6 +850,21 @@ abstract class _ChatRoomStore with Store {
     }
 
     _scheduleResetUnread();
+  }
+
+  void _captureUnreadDivider(List<ChatMessageModel> messages) {
+    if (_didCaptureUnreadDivider || currentUid == null || messages.isEmpty) {
+      return;
+    }
+
+    _didCaptureUnreadDivider = true;
+
+    final firstUnreadIndex = messages.indexWhere(
+      (message) => message.senderId != currentUid && !message.readBy.containsKey(currentUid),
+    );
+    if (firstUnreadIndex == -1) return;
+
+    unreadDividerMessageId.value = messages[firstUnreadIndex].id;
   }
 
   void _scheduleResetUnread() {
@@ -959,12 +980,14 @@ abstract class _ChatRoomStore with Store {
     _messageStatusDisposer = null;
     _deliveredMessageIds.clear();
     _readMessageIds.clear();
+    _didCaptureUnreadDivider = false;
     roomId = null;
     _serverMessages = null;
     targetUser = null;
     currentUser = null;
     typing = null;
     replyToMessage.value = null;
+    unreadDividerMessageId.value = null;
     searchQuery = '';
     messageController.dispose();
   }

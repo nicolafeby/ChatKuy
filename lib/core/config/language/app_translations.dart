@@ -56,6 +56,7 @@ class AppTranslationKey {
   static const searchChats = 'searchChats';
   static const searchCallHistory = 'searchCallHistory';
   static const messageNotFound = 'messageNotFound';
+  static const unreadMessages = 'unreadMessages';
   static const chatNotFound = 'chatNotFound';
   static const noChats = 'noChats';
   static const pleaseLoginAgain = 'pleaseLoginAgain';
@@ -287,6 +288,7 @@ const Map<String, String> _id = {
   AppTranslationKey.searchChats: 'Cari percakapan',
   AppTranslationKey.searchCallHistory: 'Cari riwayat panggilan',
   AppTranslationKey.messageNotFound: 'Pesan tidak ditemukan',
+  AppTranslationKey.unreadMessages: 'Pesan belum dibaca',
   AppTranslationKey.chatNotFound: 'Percakapan tidak ditemukan',
   AppTranslationKey.noChats: 'Belum ada percakapan',
   AppTranslationKey.pleaseLoginAgain: 'Silakan masuk kembali',
@@ -509,6 +511,7 @@ const Map<String, String> _en = {
   AppTranslationKey.searchChats: 'Search chats',
   AppTranslationKey.searchCallHistory: 'Search call history',
   AppTranslationKey.messageNotFound: 'Message not found',
+  AppTranslationKey.unreadMessages: 'Unread messages',
   AppTranslationKey.chatNotFound: 'Chat not found',
   AppTranslationKey.noChats: 'No chats yet',
   AppTranslationKey.pleaseLoginAgain: 'Please sign in again',

@@ -17,6 +17,7 @@ import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
+import 'package:chatkuy/ui/chat/chat_room/widget/chat_unread_separator.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:chatkuy/ui/profile/user_profile_screen.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
@@ -233,6 +234,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                             final showDateSeparator = prevMessage == null ||
                                 !message.createdAt
                                     .isSameDay(prevMessage.createdAt);
+                            final showUnreadDivider = !_isSearching &&
+                                store.unreadDividerMessageId.value ==
+                                    message.id;
                             final uploadProgress =
                                 store.uploadProgressByMessageId[message.id] ??
                                     (localMediaPath == null
@@ -248,6 +252,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   ChatDateSeparator(
                                     label: message.createdAt.chatDayLabel,
                                   ).paddingOnly(top: 8.h),
+                                if (showUnreadDivider)
+                                  ChatUnreadSeparator(
+                                    label: AppTranslationKey.unreadMessages.tr,
+                                  ),
                                 ChatBubbleWidget(
                                   message: message,
                                   isMe: isMe,
