@@ -108,7 +108,9 @@ class FriendRequestService implements FriendRequestRepository {
     // CEK REQUEST PENDING (DARI SAYA KE DIA)
     // ============================
     final existingRequest = await firestore
-        .collection(FirestorePaths.userFriendRequests(targetUid))
+        .doc(FirestorePaths.user(_uid))
+        .collection(FirestoreCollection.outgoingFriendRequests)
+        .where(FriendRequestField.toUid, isEqualTo: targetUid)
         .where(FriendRequestField.fromUid, isEqualTo: _uid)
         .where(
           FriendRequestField.status,
@@ -177,10 +179,12 @@ class FriendRequestService implements FriendRequestRepository {
   @override
   Future<void> cancelFriendRequest({required String targetUid}) async {
     // ============================
-    // CARI REQUEST PENDING
+    // CARI REQUEST PENDING (MILIK SAYA)
     // ============================
-    final incomingQuery = await firestore
-        .collection(FirestorePaths.userFriendRequests(targetUid))
+    final outgoingQuery = await firestore
+        .doc(FirestorePaths.user(_uid))
+        .collection(FirestoreCollection.outgoingFriendRequests)
+        .where(FriendRequestField.toUid, isEqualTo: targetUid)
         .where(FriendRequestField.fromUid, isEqualTo: _uid)
         .where(
           FriendRequestField.status,
@@ -189,12 +193,12 @@ class FriendRequestService implements FriendRequestRepository {
         .limit(1)
         .get();
 
-    if (incomingQuery.docs.isEmpty) {
+    if (outgoingQuery.docs.isEmpty) {
       throw Exception('Permintaan pertemanan tidak ditemukan');
     }
 
-    final incomingDoc = incomingQuery.docs.first;
-    final requestId = incomingDoc.id;
+    final outgoingDoc = outgoingQuery.docs.first;
+    final requestId = outgoingDoc.id;
 
     // ============================
     // DUAL DELETE (ATOMIC)

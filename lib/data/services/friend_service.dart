@@ -25,16 +25,21 @@ class FriendService implements FriendRepository {
   // ==============================
   // COLLECTION REFS
   // ==============================
-  CollectionReference<Map<String, dynamic>> get _friendRef => firestore.collection(FirestorePaths.userFriends(_uid));
+  CollectionReference<Map<String, dynamic>> get _friendRef =>
+      firestore.collection(FirestorePaths.userFriends(_uid));
 
-  CollectionReference<Map<String, dynamic>> get _userRef => firestore.collection(FirebaseCollections.users);
+  CollectionReference<Map<String, dynamic>> get _userRef =>
+      firestore.collection(FirebaseCollections.users);
 
   // ==============================
   // STREAM FRIEND LIST (REALTIME)
   // ==============================
   @override
   Stream<List<FriendModel>> streamFriends() {
-    return _friendRef.orderBy(FriendField.createdAt, descending: true).snapshots().asyncMap(_mapToFriendModels);
+    return _friendRef
+        .orderBy(FriendField.createdAt, descending: true)
+        .snapshots()
+        .asyncMap(_mapToFriendModels);
   }
 
   Future<List<FriendModel>> _mapToFriendModels(
@@ -43,7 +48,11 @@ class FriendService implements FriendRepository {
     if (snapshot.docs.isEmpty) return [];
 
     // 1. Ambil uid teman
-    final friendUids = snapshot.docs.map((e) => e.data()[FriendField.uid]).whereType<String>().toSet().toList();
+    final friendUids = snapshot.docs
+        .map((e) => e.data()[FriendField.uid])
+        .whereType<String>()
+        .toSet()
+        .toList();
 
     // 2. Ambil user data (chunked whereIn)
     final Map<String, UserModel> usersById = {};
@@ -55,7 +64,8 @@ class FriendService implements FriendRepository {
         (i + chunkSize > friendUids.length) ? friendUids.length : i + chunkSize,
       );
 
-      final snap = await _userRef.where(FieldPath.documentId, whereIn: chunk).get();
+      final snap =
+          await _userRef.where(FieldPath.documentId, whereIn: chunk).get();
 
       for (final doc in snap.docs) {
         usersById[doc.id] = UserModel.fromJson({
@@ -78,9 +88,15 @@ class FriendService implements FriendRepository {
       return FriendModel(
         uid: uid,
         user: user,
-        createdAt: (data[FriendField.createdAt] as Timestamp).toDate(),
+        createdAt: _dateFromTimestamp(data[FriendField.createdAt]),
       );
     }).toList();
+  }
+
+  DateTime _dateFromTimestamp(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.now();
   }
 
   // ==============================
@@ -89,8 +105,11 @@ class FriendService implements FriendRepository {
   // ==============================
   @override
   Future<List<FriendModel>> getFriends() async {
-    final snapshot = await _friendRef.orderBy(FriendField.createdAt, descending: true).get();
+    final snapshot =
+        await _friendRef.orderBy(FriendField.createdAt, descending: true).get();
 
-    return snapshot.docs.map((doc) => FriendModel.fromJson(doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => FriendModel.fromJson(doc.data()))
+        .toList();
   }
 }
