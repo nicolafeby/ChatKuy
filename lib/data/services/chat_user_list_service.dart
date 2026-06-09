@@ -35,6 +35,8 @@ class ChatUserListService implements ChatUserListRepository {
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? roomsSubscription;
     StreamSubscription<BoxEvent>? localSubscription;
     StreamSubscription<BoxEvent>? messageSubscription;
+    final userSubscriptions =
+        <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
     var isApplyingRemoteRooms = false;
 
     List<ChatUserItemModel> localItems() {
@@ -95,6 +97,10 @@ class ChatUserListService implements ChatUserListRepository {
               .map(
                   (room) => room.participants.firstWhere((uid) => uid != myUid))
               .toSet();
+          _syncUserSubscriptions(
+            targetUids: targetUids,
+            userSubscriptions: userSubscriptions,
+          );
           final missingTargetUids =
               targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
 
@@ -170,6 +176,10 @@ class ChatUserListService implements ChatUserListRepository {
       await roomsSubscription?.cancel();
       await localSubscription?.cancel();
       await messageSubscription?.cancel();
+      await Future.wait(
+        userSubscriptions.values.map((subscription) => subscription.cancel()),
+      );
+      userSubscriptions.clear();
     };
 
     return controller.stream;
@@ -217,5 +227,62 @@ class ChatUserListService implements ChatUserListRepository {
         lastMessageReadBy: message.readBy,
       ),
     );
+  }
+
+  void _syncUserSubscriptions({
+    required Set<String> targetUids,
+    required Map<String,
+            StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
+        userSubscriptions,
+  }) {
+    final staleUids = userSubscriptions.keys
+        .where((uid) => !targetUids.contains(uid))
+        .toList();
+    for (final uid in staleUids) {
+      userSubscriptions.remove(uid)?.cancel();
+    }
+
+    for (final uid in targetUids) {
+      if (userSubscriptions.containsKey(uid)) continue;
+
+      userSubscriptions[uid] = _usersRef.doc(uid).snapshots().listen(
+        (snapshot) async {
+          final data = snapshot.data();
+          if (!snapshot.exists || data == null) return;
+
+          final user = UserModel.fromJson({
+            'id': snapshot.id,
+            ...data,
+          });
+          _userCache[user.id] = user;
+
+          await _updateLocalChatListUser(user);
+        },
+      );
+    }
+  }
+
+  Future<void> _updateLocalChatListUser(UserModel user) async {
+    final affectedItems =
+        _chatListBox.values.where((item) => item.user.id == user.id).toList();
+
+    for (final item in affectedItems) {
+      await _chatListBox.put(
+        item.roomId,
+        ChatUserItemModel(
+          roomId: item.roomId,
+          user: user,
+          lastMessage: item.lastMessage,
+          lastMessageAt: item.lastMessageAt,
+          unreadCount: item.unreadCount,
+          imageUrl: item.imageUrl,
+          type: item.type,
+          lastSenderId: item.lastSenderId,
+          lastMessageStatus: item.lastMessageStatus,
+          lastMessageDeliveredTo: item.lastMessageDeliveredTo,
+          lastMessageReadBy: item.lastMessageReadBy,
+        ),
+      );
+    }
   }
 }
