@@ -193,6 +193,33 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
     );
   }
 
+  void _showLogoutConfirmationDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: Text(AppTranslationKey.logoutConfirmationTitle.tr),
+        content: Text(AppTranslationKey.logoutConfirmationMessage.tr),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(AppTranslationKey.cancel.tr),
+          ),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              store.logout(
+                onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
+              );
+            },
+            child: Text(
+              AppTranslationKey.logout.tr,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDialog() {
     Get.dialog(
       Dialog(
@@ -651,12 +678,7 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     _buildAccoungSettingSections(),
                     80.verticalSpace,
                     TextButton(
-                      onPressed: () {
-                        store.logout(
-                          onSuccess: () =>
-                              Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
-                        );
-                      },
+                      onPressed: _showLogoutConfirmationDialog,
                       child: Text(
                         AppTranslationKey.logout.tr,
                         style: TextStyle(fontSize: 18.sp, color: Colors.red),
