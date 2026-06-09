@@ -43,7 +43,13 @@ class ProfileAvatarWidget extends StatelessWidget {
       return cached;
     }
 
-    final image = MemoryImage(base64Image.base64GzipToBytes());
+    MemoryImage image;
+    try {
+      image = MemoryImage(base64Image.base64GzipToBytes());
+    } catch (_) {
+      return null;
+    }
+
     _imageCache[base64Image] = image;
 
     if (_imageCache.length > _maxCachedImages) {

@@ -99,7 +99,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
         ),
         8.verticalSpace,
         ProfileButtonWidget(
-          title: Text(AppTranslationKey.changeEmail.tr, style: TextStyle(fontSize: 12.sp)),
+          title: Text(AppTranslationKey.changeEmail.tr,
+              style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.email_outlined, size: 20.r),
           onTap: () {
             final email = store.user?.email;
@@ -112,7 +113,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
           },
         ),
         ProfileButtonWidget(
-          title: Text(AppTranslationKey.changePassword.tr, style: TextStyle(fontSize: 12.sp)),
+          title: Text(AppTranslationKey.changePassword.tr,
+              style: TextStyle(fontSize: 12.sp)),
           leading: Icon(Icons.password_outlined, size: 20.r),
           onTap: () => Get.toNamed(AppRouteName.CHANGE_PASSWORD_SCREEN),
         ),
@@ -145,25 +147,41 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 handlePermission(
                   permission: Permission.mediaLibrary,
                   onSuccess: () async {
-                    dismissLoading();
-                    final image = await ImagePickerHelper.pickImage(
-                      source: PickImageSource.gallery,
-                    );
+                    try {
+                      dismissLoading();
+                      final image = await ImagePickerHelper.pickImage(
+                        source: PickImageSource.gallery,
+                        imageQuality: 78,
+                        maxWidth: 1600,
+                        maxHeight: 1600,
+                      );
 
-                    if (image == null) return;
-                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+                      if (image == null) return;
+                      final croppedImage =
+                          await ImageCropperHelper.cropImage(imageFile: image);
 
-                    if (croppedImage == null) return;
-                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                      if (croppedImage == null) return;
+                      final base64 =
+                          await FileConverterHelper.fileToBase64(croppedImage);
 
-                    store.changeProfilePicture(imageUrl: base64).then(
-                      (value) async {
-                        final id = await getIt<SecureStorageRepository>().getUserId();
+                      await store.changeProfilePicture(imageUrl: base64);
+                      if (store.error.general != null) {
+                        showSnackbar(
+                          message: store.error.general?.message ??
+                              AppTranslationKey.somethingWentWrong.tr,
+                        );
+                        return;
+                      }
 
-                        if (id == null) return;
-                        return store.getUserProfile(id);
-                      },
-                    );
+                      final id =
+                          await getIt<SecureStorageRepository>().getUserId();
+
+                      if (id == null) return;
+                      await store.getUserProfile(id);
+                    } catch (_) {
+                      showSnackbar(
+                          message: AppTranslationKey.somethingWentWrong.tr);
+                    }
                   },
                   onDenied: (p0) {
                     Get.bottomSheet(BottomsheetWidget(
@@ -191,25 +209,41 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 handlePermission(
                   permission: Permission.camera,
                   onSuccess: () async {
-                    dismissLoading();
-                    final image = await ImagePickerHelper.pickImage(
-                      source: PickImageSource.camera,
-                    );
+                    try {
+                      dismissLoading();
+                      final image = await ImagePickerHelper.pickImage(
+                        source: PickImageSource.camera,
+                        imageQuality: 78,
+                        maxWidth: 1600,
+                        maxHeight: 1600,
+                      );
 
-                    if (image == null) return;
-                    final croppedImage = await ImageCropperHelper.cropImage(imageFile: image);
+                      if (image == null) return;
+                      final croppedImage =
+                          await ImageCropperHelper.cropImage(imageFile: image);
 
-                    if (croppedImage == null) return;
-                    final base64 = await FileConverterHelper.fileToBase64(croppedImage);
+                      if (croppedImage == null) return;
+                      final base64 =
+                          await FileConverterHelper.fileToBase64(croppedImage);
 
-                    store.changeProfilePicture(imageUrl: base64).then(
-                      (value) async {
-                        final id = await getIt<SecureStorageRepository>().getUserId();
+                      await store.changeProfilePicture(imageUrl: base64);
+                      if (store.error.general != null) {
+                        showSnackbar(
+                          message: store.error.general?.message ??
+                              AppTranslationKey.somethingWentWrong.tr,
+                        );
+                        return;
+                      }
 
-                        if (id == null) return;
-                        return store.getUserProfile(id);
-                      },
-                    );
+                      final id =
+                          await getIt<SecureStorageRepository>().getUserId();
+
+                      if (id == null) return;
+                      await store.getUserProfile(id);
+                    } catch (_) {
+                      showSnackbar(
+                          message: AppTranslationKey.somethingWentWrong.tr);
+                    }
                   },
                   onDenied: (p0) {
                     Get.bottomSheet(BottomsheetWidget(
@@ -231,13 +265,15 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
-                  padding: EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 20.r, vertical: 6.r),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: () {
                   store.changeProfilePicture(imageUrl: null).then(
                     (value) async {
-                      final id = await getIt<SecureStorageRepository>().getUserId();
+                      final id =
+                          await getIt<SecureStorageRepository>().getUserId();
 
                       if (id == null) return;
                       return store.getUserProfile(id);
@@ -267,7 +303,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
       body: Observer(
         builder: (context) {
           final languageController = getIt<LanguageController>();
-          if (_isResolvingProfile || store.userFuture?.status == FutureStatus.pending) {
+          if (_isResolvingProfile ||
+              store.userFuture?.status == FutureStatus.pending) {
             return const ProfileSkeletonView();
           }
 
@@ -282,7 +319,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                 centerTitle: true,
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
-                    final percent = ((constraints.maxHeight - kToolbarHeight) / (260 - kToolbarHeight)).clamp(0.0, 1.0);
+                    final percent = ((constraints.maxHeight - kToolbarHeight) /
+                            (260 - kToolbarHeight))
+                        .clamp(0.0, 1.0);
                     final gender = store.user?.gender;
                     int? age;
 
@@ -320,7 +359,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               children: [
                                 Container(
                                   padding: EdgeInsets.all(4.r),
-                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.surface),
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colorScheme.surface),
                                   child: ProfileAvatarWidget(
                                     base64Image: store.user?.photoUrl,
                                     size: 80,
@@ -421,7 +462,9 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                             color: Colors.white,
                           ),
                           onTap: getIt<ThemeController>().toggleTheme,
-                          title: isDarkMode ? AppTranslationKey.dark.tr : AppTranslationKey.light.tr,
+                          title: isDarkMode
+                              ? AppTranslationKey.dark.tr
+                              : AppTranslationKey.light.tr,
                         ),
                       ],
                     ),
@@ -453,12 +496,16 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                               (value) async {
                                 if (value != true) return;
 
-                                final id = await getIt<SecureStorageRepository>().getUserId();
+                                final id =
+                                    await getIt<SecureStorageRepository>()
+                                        .getUserId();
 
                                 if (id == null) return;
                                 store.getUserProfile(id);
                                 showSnackbar(
-                                    title: AppTranslationKey.success.tr, message: AppTranslationKey.profileUpdated.tr);
+                                    title: AppTranslationKey.success.tr,
+                                    message:
+                                        AppTranslationKey.profileUpdated.tr);
                               },
                             );
                           },
@@ -535,7 +582,8 @@ class _ProfileScreenState extends State<ProfileScreen> with BaseLayout {
                     TextButton(
                       onPressed: () {
                         store.logout(
-                          onSuccess: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
+                          onSuccess: () =>
+                              Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
                         );
                       },
                       child: Text(

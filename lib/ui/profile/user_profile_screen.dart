@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
@@ -242,6 +244,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
   void _showProfilePhoto(UserModel user) {
     final image = user.photoUrl;
     if (image == null) return;
+    final imageBytes = _safeDecodeProfileImage(image);
+    if (imageBytes == null) {
+      showSnackbar(message: AppTranslationKey.somethingWentWrong.tr);
+      return;
+    }
 
     showDialog<void>(
       context: context,
@@ -252,7 +259,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
           child: Center(
             child: InteractiveViewer(
               child: Image.memory(
-                image.base64GzipToBytes(),
+                imageBytes,
                 fit: BoxFit.contain,
               ),
             ),
@@ -260,6 +267,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
         ),
       ),
     );
+  }
+
+  Uint8List? _safeDecodeProfileImage(String image) {
+    try {
+      return image.base64GzipToBytes();
+    } catch (_) {
+      return null;
+    }
   }
 
   String _presenceText(UserModel user, bool canViewPresence) {
