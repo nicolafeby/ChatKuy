@@ -59,5 +59,7 @@ abstract class AuthRepository {
 
   Future<void> changeProfilePicture({String? imageUrl});
 
+  Future<void> requestAccountDeletion({required String password});
+
   String? get currentUid;
 }

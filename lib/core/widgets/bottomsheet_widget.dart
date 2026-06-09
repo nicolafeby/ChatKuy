@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/color.dart';
+import 'package:chatkuy/core/utils/error_ticket_visibility.dart';
 import 'package:chatkuy/core/widgets/textfield/button_widget.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +28,10 @@ class BottomsheetWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedErrorTicketId = errorTicketId;
+    final resolvedErrorTicketId = ErrorTicketVisibility.visibleTicketId(
+      ticketId: errorTicketId,
+      message: message,
+    );
     final colorScheme = Theme.of(context).colorScheme;
 
     return PopScope(

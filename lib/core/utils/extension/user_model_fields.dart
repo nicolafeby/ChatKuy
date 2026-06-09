@@ -5,6 +5,9 @@ extension UserModelFields on UserModel {
   static const name = 'name';
   static const email = 'email';
   static const pendingEmail = 'pendingEmail';
+  static const accountStatus = 'accountStatus';
+  static const deletionRequestedAt = 'deletionRequestedAt';
+  static const deletedAt = 'deletedAt';
   static const username = 'username';
   static const photoUrl = 'photoUrl';
   static const isEmailVerified = 'isEmailVerified';

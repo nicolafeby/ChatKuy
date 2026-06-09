@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/utils/converter/timestamp_converter.dart';
+import 'package:chatkuy/core/utils/error_ticket_visibility.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,6 +44,27 @@ Future<void> coreUtilsTest() async {
       expect(UserModelFields.isEmailVerified, 'isEmailVerified');
       expect(UserModelFields.isOnline, 'isOnline');
       expect(UserModelFields.lastOnlineAt, 'lastOnlineAt');
+    });
+  });
+
+  group('ErrorTicketVisibility', () {
+    test('shows ticket for generic error messages only', () {
+      expect(
+        ErrorTicketVisibility.visibleTicketId(
+          ticketId: 'ERR-123',
+          message:
+              'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
+        ),
+        'ERR-123',
+      );
+
+      expect(
+        ErrorTicketVisibility.visibleTicketId(
+          ticketId: 'ERR-123',
+          message: 'Akun sudah dihapus atau sedang dalam proses penghapusan',
+        ),
+        isNull,
+      );
     });
   });
 }

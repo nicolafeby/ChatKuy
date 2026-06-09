@@ -23,7 +23,18 @@ class AuthService implements AuthRepository {
           .doc(user.uid)
           .get();
 
-      return UserModel.fromJson(doc.data()!).copyWith(id: doc.id);
+      final data = doc.data();
+      if (!doc.exists || data == null) {
+        await auth.signOut();
+        return null;
+      }
+
+      if (_isDeletedAccount(data[UserModelFields.accountStatus])) {
+        await auth.signOut();
+        return null;
+      }
+
+      return UserModel.fromJson(data).copyWith(id: doc.id);
     });
   }
 
@@ -46,9 +57,16 @@ class AuthService implements AuthRepository {
     }
 
     final userDoc = query.docs.first;
-    final userData = UserModel.fromJson(userDoc.data());
-    final pendingEmail =
-        userDoc.data()[UserModelFields.pendingEmail] as String?;
+    final rawUserData = userDoc.data();
+    if (_isDeletedAccount(rawUserData[UserModelFields.accountStatus])) {
+      throw FirebaseAuthException(
+        code: 'account-deleted',
+        message: 'Akun sudah dihapus atau sedang dalam proses penghapusan',
+      );
+    }
+
+    final userData = UserModel.fromJson(rawUserData);
+    final pendingEmail = rawUserData[UserModelFields.pendingEmail] as String?;
 
     UserCredential cred;
     String emailUsed = userData.email;
@@ -365,5 +383,46 @@ class AuthService implements AuthRepository {
   }
 
   @override
+  Future<void> requestAccountDeletion({required String password}) async {
+    final user = auth.currentUser;
+
+    if (user == null) {
+      throw Exception('User belum login');
+    }
+
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw Exception('Email user tidak ditemukan');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+
+    await user.reauthenticateWithCredential(credential);
+
+    await firestore.collection(FirebaseCollections.users).doc(user.uid).update({
+      UserModelFields.accountStatus: AccountStatus.pendingDelete,
+      UserModelFields.deletionRequestedAt: FieldValue.serverTimestamp(),
+      UserModelFields.isOnline: false,
+      AppStrings.fcmToken: '',
+    });
+
+    await auth.signOut();
+  }
+
+  @override
   String? get currentUid => auth.currentUser?.uid;
+
+  bool _isDeletedAccount(dynamic status) {
+    return status == AccountStatus.pendingDelete ||
+        status == AccountStatus.deleted;
+  }
+}
+
+abstract class AccountStatus {
+  static const active = 'active';
+  static const pendingDelete = 'pending_delete';
+  static const deleted = 'deleted';
 }
