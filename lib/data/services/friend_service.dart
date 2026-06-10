@@ -4,6 +4,7 @@ import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hive/hive.dart';
 
 class FriendService implements FriendRepository {
   FriendService(this.auth, this.firestore);
@@ -30,6 +31,8 @@ class FriendService implements FriendRepository {
 
   CollectionReference<Map<String, dynamic>> get _userRef =>
       firestore.collection(FirebaseCollections.users);
+
+  Box<UserModel> get _userBox => Hive.box<UserModel>('user_model');
 
   // ==============================
   // STREAM FRIEND LIST (REALTIME)
@@ -68,11 +71,16 @@ class FriendService implements FriendRepository {
           await _userRef.where(FieldPath.documentId, whereIn: chunk).get();
 
       for (final doc in snap.docs) {
-        usersById[doc.id] = UserModel.fromJson({
+        final user = UserModel.fromJson({
           'id': doc.id,
           ...doc.data(),
         });
+        usersById[doc.id] = user;
       }
+    }
+
+    if (usersById.isNotEmpty) {
+      await _userBox.putAll(usersById);
     }
 
     // 3. Build FriendModel (preserve order)

@@ -35,6 +35,18 @@ class AppRoute {
       page: () => ChatRoomScreen(),
     ),
     GetPage(
+      name: AppRouteName.CHAT_GROUP_INFO_SCREEN,
+      page: () => const ChatGroupInfoScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.CHAT_GROUP_PICKER_SCREEN,
+      page: () => const ChatGroupPickerScreen(),
+    ),
+    GetPage(
+      name: AppRouteName.CHAT_GROUP_CREATE_SCREEN,
+      page: () => const ChatGroupCreateScreen(),
+    ),
+    GetPage(
       name: AppRouteName.CHAT_ARCHIVE_SCREEN,
       page: () => const ChatArchiveScreen(),
     ),

@@ -5,6 +5,9 @@ abstract class AppRouteName {
   static const REGISTER_SCREEN = '/register';
   static const BASE_SCREEN = '/base';
   static const CHAT_ROOM_SCREEN = '/room-chat';
+  static const CHAT_GROUP_INFO_SCREEN = '/chat-group-info';
+  static const CHAT_GROUP_PICKER_SCREEN = '/chat-group-picker';
+  static const CHAT_GROUP_CREATE_SCREEN = '/chat-group-create';
   static const CHAT_ARCHIVE_SCREEN = '/chat-archive';
   static const VERIFY_SCREEN = '/verify';
   static const ADD_FRIEND_SCREEN = '/add-friend';

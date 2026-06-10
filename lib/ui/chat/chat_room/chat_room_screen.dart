@@ -19,6 +19,8 @@ import 'package:chatkuy/ui/chat/chat_room/widget/chat_appbar_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_bubble_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_date_sparator.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/chat_unread_separator.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_group_info_screen.dart';
+import 'package:chatkuy/ui/chat/chat_room/chat_media_gallery_screen.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
 import 'package:chatkuy/ui/profile/user_profile_screen.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
@@ -56,7 +58,8 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAliveClientMixin {
+class _ChatRoomScreenState extends State<ChatRoomScreen>
+    with AutomaticKeepAliveClientMixin {
   ChatRoomStore store = ChatRoomStore(
     chatRepository: getIt<ChatRepository>(),
     userRepository: getIt<UserRepository>(),
@@ -79,7 +82,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
     super.initState();
     argument = Get.arguments as ChatRoomArgument?;
 
-    final id = argument?.isGroup == true ? null : argument?.targetUser?.id ?? argument?.senderId;
+    final id = argument?.isGroup == true
+        ? null
+        : argument?.targetUser?.id ?? argument?.senderId;
 
     if (argument == null || (!argument!.isGroup && id == null)) return;
 
@@ -139,7 +144,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
       builder: (context) {
         final isGroup = argument!.isGroup;
         final activeRoom = store.room?.value;
-        final targetId = isGroup ? null : argument!.targetUser?.id ?? argument!.senderId;
+        final targetId =
+            isGroup ? null : argument!.targetUser?.id ?? argument!.senderId;
 
         bool isTargetTyping() {
           final typingMap = store.typing?.value ?? {};
@@ -148,6 +154,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
         }
 
         final targetUserFallback = argument?.targetUser;
+        final groupMembers = store.groupMembers?.value ?? const <UserModel>[];
         final user = isGroup
             ? UserModel(
                 id: argument!.roomId,
@@ -160,20 +167,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
               )
             : store.targetUser?.value ?? targetUserFallback;
         final currentUser = store.currentUser?.value;
-        final canViewPresence =
-            !isGroup && currentUser?.isOnlineStatusVisible == true && user?.isOnlineStatusVisible != false;
+        final canViewPresence = !isGroup &&
+            currentUser?.isOnlineStatusVisible == true &&
+            user?.isOnlineStatusVisible != false;
 
         final messages = _isSearching ? store.visibleMessages : store.messages;
-        final isInitialMessagesLoading = !_isSearching && store.isInitialMessagesLoading.value;
+        final isInitialMessagesLoading =
+            !_isSearching && store.isInitialMessagesLoading.value;
         _scheduleTargetMessageScroll(messages);
         final isSelectionMode = _selectedMessageIds.isNotEmpty;
         if (isSelectionMode) {
-          final visibleMessageIds = messages.map((message) => message.id).toSet();
+          final visibleMessageIds =
+              messages.map((message) => message.id).toSet();
           _selectedMessageIds.removeWhere(
             (messageId) => !visibleMessageIds.contains(messageId),
           );
         }
-        final hasSearchQuery = _isSearching && store.searchQuery.trim().isNotEmpty;
+        final hasSearchQuery =
+            _isSearching && store.searchQuery.trim().isNotEmpty;
 
         final dummy = UserModel(
           name: 'name',
@@ -199,9 +210,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                         userData: user ?? dummy,
                         isTyping: canViewPresence && isTargetTyping(),
                         canViewPresence: canViewPresence,
+                        isGroup: isGroup,
+                        subtitle: isGroup ? _groupSubtitle(groupMembers) : null,
                         onSearchTap: _showSearch,
                         onProfileTap: isGroup
-                            ? _showGroupInfoSheet
+                            ? _openGroupInfoScreen
                             : user == null || targetId == null
                                 ? null
                                 : () => Get.toNamed(
@@ -212,12 +225,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                                         currentUid: argument!.currentUid,
                                       ),
                                     ),
+                        onAddMembersTap: isGroup ? _openGroupInfoScreen : null,
+                        onGroupInfoTap: isGroup ? _openGroupInfoScreen : null,
+                        onGroupMediaTap: isGroup
+                            ? () => Get.toNamed(
+                                  AppRouteName.CHAT_MEDIA_GALLERY_SCREEN,
+                                  arguments: ChatMediaGalleryArgument(
+                                    roomName: user?.name ?? 'Grup',
+                                    messages: store.messages,
+                                    roomId: argument!.roomId,
+                                  ),
+                                )
+                            : null,
                         onCallTap: isGroup || user == null || targetId == null
                             ? null
-                            : () => _startCall(user, targetId, isVideoCall: false),
-                        onVideoCallTap: isGroup || user == null || targetId == null
+                            : () =>
+                                _startCall(user, targetId, isVideoCall: false),
+                        onVideoCallTap: isGroup ||
+                                user == null ||
+                                targetId == null
                             ? null
-                            : () => _startCall(user, targetId, isVideoCall: true),
+                            : () =>
+                                _startCall(user, targetId, isVideoCall: true),
                       ),
             body: Column(
               children: [
@@ -239,23 +268,44 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
 
                                 final message = messages[realIndex];
                                 final localMediaPath = _localMediaPath(message);
-                                final isMe = message.senderId == argument!.currentUid;
-                                final isSelected = _selectedMessageIds.contains(message.id);
+                                final isMe =
+                                    message.senderId == argument!.currentUid;
+                                final isSelected =
+                                    _selectedMessageIds.contains(message.id);
 
-                                final prevMessage = realIndex > 0 ? messages[realIndex - 1] : null;
+                                final prevMessage = realIndex > 0
+                                    ? messages[realIndex - 1]
+                                    : null;
 
-                                final isSameGroup = prevMessage != null && prevMessage.senderId == message.senderId;
+                                final isSameGroup = prevMessage != null &&
+                                    prevMessage.senderId == message.senderId &&
+                                    message.createdAt
+                                        .isSameDay(prevMessage.createdAt);
 
-                                final showDateSeparator =
-                                    prevMessage == null || !message.createdAt.isSameDay(prevMessage.createdAt);
-                                final showUnreadDivider =
-                                    !_isSearching && store.unreadDividerMessageId.value == message.id;
-                                final uploadProgress = store.uploadProgressByMessageId[message.id] ??
-                                    (localMediaPath == null ? null : store.uploadProgressByLocalPath[localMediaPath]);
+                                final showDateSeparator = prevMessage == null ||
+                                    !message.createdAt
+                                        .isSameDay(prevMessage.createdAt);
+                                final showUnreadDivider = !_isSearching &&
+                                    store.unreadDividerMessageId.value ==
+                                        message.id;
+                                final uploadProgress =
+                                    store.uploadProgressByMessageId[
+                                            message.id] ??
+                                        (localMediaPath == null
+                                            ? null
+                                            : store.uploadProgressByLocalPath[
+                                                localMediaPath]);
+                                final sender = isGroup && !isMe
+                                    ? _memberById(
+                                        groupMembers,
+                                        message.senderId,
+                                      )
+                                    : null;
 
                                 return Column(
                                   key: _keyForMessage(message.id),
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
                                     if (showDateSeparator)
                                       ChatDateSeparator(
@@ -263,7 +313,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                                       ).paddingOnly(top: 8.h),
                                     if (showUnreadDivider)
                                       ChatUnreadSeparator(
-                                        label: AppTranslationKey.unreadMessages.tr,
+                                        label:
+                                            AppTranslationKey.unreadMessages.tr,
                                       ),
                                     ChatBubbleWidget(
                                       message: message,
@@ -273,16 +324,44 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                                       isFirstInGroup: !isSameGroup,
                                       currentUid: argument!.currentUid,
                                       targetName: user?.name,
+                                      showSenderInfo: isGroup && !isMe,
+                                      senderUser: sender,
+                                      senderName:
+                                          sender?.name ?? message.senderName,
+                                      senderPhotoUrl: sender?.photoUrl,
+                                      onSenderAvatarTap: sender == null
+                                          ? null
+                                          : () => Get.toNamed(
+                                                AppRouteName
+                                                    .USER_PROFILE_SCREEN,
+                                                arguments: UserProfileArgument(
+                                                  targetUser: sender,
+                                                  roomId: argument!.roomId,
+                                                  currentUid:
+                                                      argument!.currentUid,
+                                                ),
+                                              ),
                                       searchQuery: _activeHighlightQuery,
-                                      isJumpHighlighted: _jumpHighlightedMessageId == message.id,
+                                      isJumpHighlighted:
+                                          _jumpHighlightedMessageId ==
+                                              message.id,
                                       onRetry:
-                                          message.status == MessageStatus.failed ? () => _retryMessage(message) : null,
-                                      onReply: !isSelectionMode && message.status == MessageStatus.sent
-                                          ? () => store.setReplyToMessage(message)
+                                          message.status == MessageStatus.failed
+                                              ? () => _retryMessage(message)
+                                              : null,
+                                      onReply: !isSelectionMode &&
+                                              message.status ==
+                                                  MessageStatus.sent
+                                          ? () =>
+                                              store.setReplyToMessage(message)
                                           : null,
-                                      onReplyPreviewTap: !isSelectionMode ? () => _jumpToRepliedMessage(message) : null,
-                                      onDelete: () => _deleteMessageForMe(message),
-                                      onSelect: () => _toggleSelectedMessage(message.id),
+                                      onReplyPreviewTap: !isSelectionMode
+                                          ? () => _jumpToRepliedMessage(message)
+                                          : null,
+                                      onDelete: () =>
+                                          _deleteMessageForMe(message),
+                                      onSelect: () =>
+                                          _toggleSelectedMessage(message.id),
                                       selectionMode: isSelectionMode,
                                       isSelected: isSelected,
                                     ),
@@ -312,7 +391,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
                             sendButtonColor: AppColor.primaryColor,
                             attachmentConfig: AttachmentConfig(
                               showAudio: false,
-                              backgroundColor: Colors.grey.withValues(alpha: 0.7),
+                              backgroundColor:
+                                  Colors.grey.withValues(alpha: 0.7),
                             ),
                             onSendTap: () {
                               final text = store.messageController.text.trim();
@@ -376,107 +456,40 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
     );
   }
 
-  void _showGroupInfoSheet() {
-    final activeRoom = store.room?.value;
-    final members = store.groupMembers?.value ?? const <UserModel>[];
-    final canManage = store.isCurrentUserGroupAdmin;
-    final nameController = TextEditingController(text: activeRoom?.name ?? '');
+  void _openGroupInfoScreen() {
+    final roomId = argument?.roomId;
+    final currentUid = argument?.currentUid;
+    if (roomId == null || currentUid == null) return;
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activeRoom?.name ?? 'Grup',
-                  style: TextStyle(
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                12.verticalSpace,
-                if (canManage) ...[
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama grup',
-                    ),
-                  ),
-                  8.verticalSpace,
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () async {
-                        await store.updateGroupInfo(name: nameController.text);
-                        if (context.mounted) Navigator.of(context).pop();
-                      },
-                      child: const Text('Simpan nama grup'),
-                    ),
-                  ),
-                  12.verticalSpace,
-                ],
-                Text(
-                  '${members.length} member',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: Colors.grey,
-                  ),
-                ),
-                8.verticalSpace,
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: members.length,
-                    itemBuilder: (context, index) {
-                      final member = members[index];
-                      final isAdmin = activeRoom?.admins.contains(member.id) == true;
-                      final isCurrentUser = member.id == argument?.currentUid;
-
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(member.name),
-                        subtitle: Text(isAdmin ? 'Admin' : 'Member'),
-                        trailing: canManage && !isCurrentUser
-                            ? PopupMenuButton<String>(
-                                onSelected: (value) async {
-                                  if (value == 'admin') {
-                                    await store.promoteGroupAdmin(member.id);
-                                  } else if (value == 'remove') {
-                                    await store.removeGroupMember(member.id);
-                                  }
-                                  if (context.mounted) {
-                                    Navigator.of(context).pop();
-                                  }
-                                },
-                                itemBuilder: (_) => [
-                                  if (!isAdmin)
-                                    const PopupMenuItem(
-                                      value: 'admin',
-                                      child: Text('Jadikan admin'),
-                                    ),
-                                  const PopupMenuItem(
-                                    value: 'remove',
-                                    child: Text('Keluarkan member'),
-                                  ),
-                                ],
-                              )
-                            : null,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    Get.toNamed(
+      AppRouteName.CHAT_GROUP_INFO_SCREEN,
+      arguments: ChatGroupInfoArgument(
+        roomId: roomId,
+        currentUid: currentUid,
+      ),
     );
+  }
+
+  String _groupSubtitle(List<UserModel> members) {
+    if (members.isEmpty) return 'Group';
+
+    final names = members.take(4).map((member) {
+      if (member.id == argument?.currentUid) return 'You';
+      return member.name;
+    }).toList();
+
+    if (members.length > names.length) {
+      names.add('+${members.length - names.length}');
+    }
+
+    return names.join(', ');
+  }
+
+  UserModel? _memberById(List<UserModel> members, String uid) {
+    for (final member in members) {
+      if (member.id == uid) return member;
+    }
+    return null;
   }
 
   String get _activeHighlightQuery {
@@ -490,7 +503,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
 
   void _scheduleTargetMessageScroll(List<ChatMessageModel> messages) {
     final targetMessageId = argument?.targetMessageId;
-    if (targetMessageId == null || _didScrollToTarget || _targetScrollScheduled) {
+    if (targetMessageId == null ||
+        _didScrollToTarget ||
+        _targetScrollScheduled) {
       return;
     }
 
@@ -811,7 +826,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with AutomaticKeepAlive
   Future<void> _deleteSelectedMessagesForMe(
     List<ChatMessageModel> messages,
   ) async {
-    final selectedMessages = messages.where((message) => _selectedMessageIds.contains(message.id)).toList();
+    final selectedMessages = messages
+        .where((message) => _selectedMessageIds.contains(message.id))
+        .toList();
 
     if (selectedMessages.isEmpty) {
       _clearSelectedMessages();
@@ -892,8 +909,9 @@ class _ReplyPreviewBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final senderName =
-        message.senderId == currentUid ? AppTranslationKey.you.tr : (targetName ?? AppTranslationKey.contact.tr);
+    final senderName = message.senderId == currentUid
+        ? AppTranslationKey.you.tr
+        : (targetName ?? AppTranslationKey.contact.tr);
 
     return Container(
       width: double.infinity,
