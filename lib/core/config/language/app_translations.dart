@@ -98,6 +98,7 @@ class AppTranslationKey {
   static const ok = 'ok';
   static const deleteForMe = 'deleteForMe';
   static const deleteChatTitle = 'deleteChatTitle';
+  static const deleteChatsTitle = 'deleteChatsTitle';
   static const deleteChatContent = 'deleteChatContent';
   static const deleteChatFailed = 'deleteChatFailed';
   static const deleteMessagesTitle = 'deleteMessagesTitle';
@@ -350,6 +351,7 @@ const Map<String, String> _id = {
   AppTranslationKey.ok: 'Oke',
   AppTranslationKey.deleteForMe: 'Hapus untuk saya',
   AppTranslationKey.deleteChatTitle: 'Hapus chat dengan @name?',
+  AppTranslationKey.deleteChatsTitle: 'Hapus @count chat?',
   AppTranslationKey.deleteChatContent:
       'Chat ini akan dihapus hanya dari daftar dan riwayat Anda.',
   AppTranslationKey.deleteChatFailed: 'Gagal menghapus chat',
@@ -606,6 +608,7 @@ const Map<String, String> _en = {
   AppTranslationKey.ok: 'OK',
   AppTranslationKey.deleteForMe: 'Delete for me',
   AppTranslationKey.deleteChatTitle: 'Delete chat with @name?',
+  AppTranslationKey.deleteChatsTitle: 'Delete @count chats?',
   AppTranslationKey.deleteChatContent:
       'This chat will only be deleted from your list and history.',
   AppTranslationKey.deleteChatFailed: 'Failed to delete chat',

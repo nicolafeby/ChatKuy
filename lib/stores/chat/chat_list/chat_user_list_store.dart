@@ -27,7 +27,8 @@ abstract class _ChatUserListStore with Store {
   // STATE
   // -----------------------------
   @observable
-  ObservableList<ChatUserItemModel> chatUsers = ObservableList<ChatUserItemModel>();
+  ObservableList<ChatUserItemModel> chatUsers =
+      ObservableList<ChatUserItemModel>();
 
   @observable
   bool isLoading = false;
@@ -48,7 +49,9 @@ abstract class _ChatUserListStore with Store {
       final email = item.user.email.toLowerCase();
       final lastMessage = item.lastMessage?.toLowerCase() ?? '';
 
-      return name.contains(query) || email.contains(query) || lastMessage.contains(query);
+      return name.contains(query) ||
+          email.contains(query) ||
+          lastMessage.contains(query);
     }).toList();
   }
 
@@ -70,19 +73,23 @@ abstract class _ChatUserListStore with Store {
           .where(
             (message) =>
                 roomIds.contains(message.roomId) &&
-                (currentUid == null || message.deletedFor[currentUid] != true) &&
+                (currentUid == null ||
+                    message.deletedFor[currentUid] != true) &&
                 _searchableMessageText(message).toLowerCase().contains(query),
           )
           .toList()
         ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
 
       for (final message in matchingMessages) {
-        matchingMessagesByRoomId.putIfAbsent(message.roomId, () => <ChatMessageModel>[]).add(message);
+        matchingMessagesByRoomId
+            .putIfAbsent(message.roomId, () => <ChatMessageModel>[])
+            .add(message);
       }
     }
 
     for (final item in chatUsers) {
-      final matchingMessages = matchingMessagesByRoomId[item.roomId] ?? const <ChatMessageModel>[];
+      final matchingMessages =
+          matchingMessagesByRoomId[item.roomId] ?? const <ChatMessageModel>[];
 
       for (final message in matchingMessages) {
         results.add(
@@ -100,12 +107,15 @@ abstract class _ChatUserListStore with Store {
       final hasProfileMatch = name.contains(query) || email.contains(query);
       final hasLastMessageMatch = lastMessage.contains(query);
 
-      if (matchingMessages.isEmpty && (hasProfileMatch || hasLastMessageMatch)) {
+      if (matchingMessages.isEmpty &&
+          (hasProfileMatch || hasLastMessageMatch)) {
         results.add(
           ChatSearchResult(
             item: item,
             message: null,
-            previewText: item.lastMessage?.isNotEmpty == true ? item.lastMessage! : item.user.email,
+            previewText: item.lastMessage?.isNotEmpty == true
+                ? item.lastMessage!
+                : item.user.email,
           ),
         );
       }
@@ -139,14 +149,17 @@ abstract class _ChatUserListStore with Store {
     final messages = Hive.box<ChatMessageModel>('chat_messages')
         .values
         .where(
-          (message) => message.roomId == item.roomId && (currentUid == null || message.deletedFor[currentUid] != true),
+          (message) =>
+              message.roomId == item.roomId &&
+              (currentUid == null || message.deletedFor[currentUid] != true),
         )
         .toList()
       ..sort((a, b) => b.createdAtClient.compareTo(a.createdAtClient));
 
     return messages
         .where(
-          (message) => _searchableMessageText(message).toLowerCase().contains(query),
+          (message) =>
+              _searchableMessageText(message).toLowerCase().contains(query),
         )
         .toList();
   }
@@ -165,23 +178,31 @@ abstract class _ChatUserListStore with Store {
   }
 
   Future<void> deleteChat(ChatUserItemModel item) async {
+    await deleteChats([item]);
+  }
+
+  Future<void> deleteChats(List<ChatUserItemModel> items) async {
     final uid = currentUid;
     if (uid == null || uid.isEmpty) return;
+    if (items.isEmpty) return;
 
     runInAction(() {
       errorMessage = null;
     });
 
     final previousItems = chatUsers.toList();
+    final roomIds = items.map((item) => item.roomId).toSet();
     runInAction(() {
-      chatUsers.removeWhere((chatUser) => chatUser.roomId == item.roomId);
+      chatUsers.removeWhere((chatUser) => roomIds.contains(chatUser.roomId));
     });
 
     try {
-      await repository.deleteChat(
-        roomId: item.roomId,
-        uid: uid,
-      );
+      for (final item in items) {
+        await repository.deleteChat(
+          roomId: item.roomId,
+          uid: uid,
+        );
+      }
     } catch (e, stackTrace) {
       runInAction(() {
         chatUsers
@@ -193,7 +214,7 @@ abstract class _ChatUserListStore with Store {
         stackTrace,
         reason: 'Delete chat for me failed',
         context: {
-          'room_id': item.roomId,
+          'room_ids': roomIds.join(','),
           'uid': uid,
         },
       );
@@ -241,7 +262,9 @@ abstract class _ChatUserListStore with Store {
   }
 
   bool _isExpectedLogoutStreamError(Object error) {
-    return FirebaseAuth.instance.currentUser == null && error is FirebaseException && error.code == 'permission-denied';
+    return FirebaseAuth.instance.currentUser == null &&
+        error is FirebaseException &&
+        error.code == 'permission-denied';
   }
 
   String? currentUid;
