@@ -138,6 +138,7 @@ class LocalNotificationService implements LocalNotificationRepository {
   Future<void> show(RemoteMessage message) async {
     if (message.data['type'] == 'chat') {
       await markChatMessageDeliveredFromPayload(message.data);
+      if (await _isArchivedChatNotification(message.data)) return;
     }
 
     final isCall = message.data['type'] == 'voice_call' ||
@@ -226,6 +227,46 @@ class LocalNotificationService implements LocalNotificationRepository {
         },
         showBottomSheet: false,
       );
+    }
+  }
+
+  static Future<bool> _isArchivedChatNotification(
+    Map<String, dynamic> data,
+  ) async {
+    final roomId = data['roomId'];
+    final receiverId = data['receiverId'];
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (roomId is! String || roomId.isEmpty) return false;
+
+    final uid = currentUid ??
+        (receiverId is String && receiverId.isNotEmpty ? receiverId : null);
+    if (uid == null) return false;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(FirebaseCollections.chatRooms)
+          .doc(roomId)
+          .get();
+      final roomData = snapshot.data();
+      if (roomData == null) return false;
+
+      final archivedFor = Map<String, dynamic>.from(
+        roomData[ChatRoomField.archivedFor] ?? {},
+      );
+      return archivedFor[uid] == true;
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: 'Check archived chat notification failed',
+        context: {
+          'room_id': roomId,
+          'uid': uid,
+        },
+        showBottomSheet: false,
+      );
+      return false;
     }
   }
 

@@ -9,4 +9,14 @@ abstract class ChatUserListRepository {
     required String roomId,
     required String uid,
   });
+
+  Future<void> archiveChat({
+    required String roomId,
+    required String uid,
+  });
+
+  Future<void> unarchiveChat({
+    required String roomId,
+    required String uid,
+  });
 }

@@ -60,6 +60,7 @@ abstract class ChatRoomField {
   static const type = 'type';
   static const deletedMessagesFor = 'deletedMessagesFor';
   static const deletedChatListFor = 'deletedChatListFor';
+  static const archivedFor = 'archivedFor';
 }
 
 /// ==============================

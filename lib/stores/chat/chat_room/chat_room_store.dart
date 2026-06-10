@@ -485,6 +485,7 @@ abstract class _ChatRoomStore with Store {
         lastMessageStatus: message.status,
         lastMessageDeliveredTo: message.deliveredTo,
         lastMessageReadBy: message.readBy,
+        isArchived: existing.isArchived,
       ),
     );
   }

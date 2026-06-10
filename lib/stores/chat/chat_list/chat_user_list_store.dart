@@ -41,10 +41,11 @@ abstract class _ChatUserListStore with Store {
 
   @computed
   List<ChatUserItemModel> get filteredChatUsers {
+    final baseItems = activeChatUsers;
     final query = searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return chatUsers;
+    if (query.isEmpty) return baseItems;
 
-    return chatUsers.where((item) {
+    return baseItems.where((item) {
       final name = item.user.name.toLowerCase();
       final email = item.user.email.toLowerCase();
       final lastMessage = item.lastMessage?.toLowerCase() ?? '';
@@ -55,6 +56,14 @@ abstract class _ChatUserListStore with Store {
     }).toList();
   }
 
+  @computed
+  List<ChatUserItemModel> get activeChatUsers =>
+      chatUsers.where((item) => !item.isArchived).toList();
+
+  @computed
+  List<ChatUserItemModel> get archivedChatUsers =>
+      chatUsers.where((item) => item.isArchived).toList();
+
   List<ChatSearchResult> get searchResults {
     final query = searchQuery.trim().toLowerCase();
     if (query.isEmpty) return const [];
@@ -62,7 +71,7 @@ abstract class _ChatUserListStore with Store {
     final results = <ChatSearchResult>[];
 
     final itemByRoomId = {
-      for (final item in chatUsers) item.roomId: item,
+      for (final item in activeChatUsers) item.roomId: item,
     };
     final matchingMessagesByRoomId = <String, List<ChatMessageModel>>{};
 
@@ -87,7 +96,7 @@ abstract class _ChatUserListStore with Store {
       }
     }
 
-    for (final item in chatUsers) {
+    for (final item in activeChatUsers) {
       final matchingMessages =
           matchingMessagesByRoomId[item.roomId] ?? const <ChatMessageModel>[];
 
@@ -179,6 +188,75 @@ abstract class _ChatUserListStore with Store {
 
   Future<void> deleteChat(ChatUserItemModel item) async {
     await deleteChats([item]);
+  }
+
+  Future<void> archiveChat(ChatUserItemModel item) async {
+    await archiveChats([item]);
+  }
+
+  Future<void> archiveChats(List<ChatUserItemModel> items) async {
+    await _setChatsArchived(items, true);
+  }
+
+  Future<void> unarchiveChat(ChatUserItemModel item) async {
+    await unarchiveChats([item]);
+  }
+
+  Future<void> unarchiveChats(List<ChatUserItemModel> items) async {
+    await _setChatsArchived(items, false);
+  }
+
+  Future<void> _setChatsArchived(
+    List<ChatUserItemModel> items,
+    bool archived,
+  ) async {
+    final uid = currentUid;
+    if (uid == null || uid.isEmpty) return;
+    if (items.isEmpty) return;
+
+    runInAction(() {
+      errorMessage = null;
+    });
+
+    final previousItems = chatUsers.toList();
+    final roomIds = items.map((item) => item.roomId).toSet();
+    runInAction(() {
+      for (var i = 0; i < chatUsers.length; i++) {
+        final item = chatUsers[i];
+        if (roomIds.contains(item.roomId)) {
+          chatUsers[i] = item.copyWith(isArchived: archived);
+        }
+      }
+    });
+
+    try {
+      for (final item in items) {
+        if (archived) {
+          await repository.archiveChat(roomId: item.roomId, uid: uid);
+        } else {
+          await repository.unarchiveChat(roomId: item.roomId, uid: uid);
+        }
+      }
+    } catch (e, stackTrace) {
+      runInAction(() {
+        chatUsers
+          ..clear()
+          ..addAll(previousItems);
+      });
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: archived ? 'Archive chats failed' : 'Unarchive chats failed',
+        context: {
+          'room_ids': roomIds.join(','),
+          'uid': uid,
+        },
+      );
+      runInAction(() {
+        errorMessage = e.toString();
+      });
+      rethrow;
+    }
   }
 
   Future<void> deleteChats(List<ChatUserItemModel> items) async {

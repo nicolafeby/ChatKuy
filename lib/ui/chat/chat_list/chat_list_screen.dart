@@ -21,7 +21,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({super.key});
+  const ChatListScreen({
+    super.key,
+    this.archivedOnly = false,
+  });
+
+  final bool archivedOnly;
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -37,6 +42,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   bool _canPopRoute = false;
 
   bool get _isSelectionMode => _selectedRoomIds.isNotEmpty;
+  bool get _showArchivedChats => widget.archivedOnly;
 
   @override
   void initState() {
@@ -78,20 +84,28 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
       return _buildSelectionAppbar();
     }
 
-    final isDarkMode = isDarkModeOf(context);
     return AppBar(
-      automaticallyImplyLeading: false,
+      automaticallyImplyLeading: widget.archivedOnly,
+      leading: _showArchivedChats
+          ? IconButton(
+              tooltip: AppTranslationKey.chats.tr,
+              onPressed: Get.back,
+              icon: const Icon(Icons.arrow_back),
+            )
+          : null,
       title: Text(
-        AppTranslationKey.chats.tr,
+        _showArchivedChats ? AppTranslationKey.archivedChats.tr : AppTranslationKey.chats.tr,
         style: TextStyle(fontSize: 28.sp),
       ),
-      actions: [
-        Image.asset(
-          AppAsset.icEditOutlined,
-          height: 24.r,
-          color: isDarkMode ? Colors.white : null,
-        ).paddingOnly(right: 16.r)
-      ],
+      actions: _showArchivedChats
+          ? null
+          : [
+              Image.asset(
+                AppAsset.icEditOutlined,
+                height: 24.r,
+                color: isDarkModeOf(context) ? Colors.white : null,
+              ).paddingOnly(right: 16.r)
+            ],
     );
   }
 
@@ -107,6 +121,11 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         style: TextStyle(fontSize: 24.sp),
       ),
       actions: [
+        IconButton(
+          tooltip: _showArchivedChats ? AppTranslationKey.unarchive.tr : AppTranslationKey.archive.tr,
+          onPressed: _showArchivedChats ? _unarchiveSelectedChats : _archiveSelectedChats,
+          icon: Icon(_showArchivedChats ? Icons.unarchive_outlined : Icons.archive_outlined),
+        ),
         IconButton(
           tooltip: AppTranslationKey.delete.tr,
           onPressed: _deleteSelectedChats,
@@ -152,7 +171,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 );
               }
 
-              if (isSearching) {
+              if (isSearching && !_showArchivedChats) {
                 final searchResults = store.searchResults;
                 if (searchResults.isEmpty) {
                   return Center(
@@ -239,21 +258,37 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 );
               }
 
-              final chatUsers = store.filteredChatUsers;
+              final chatUsers = _currentChatUsers(isSearching: isSearching);
               _selectedRoomIds.removeWhere(
                 (roomId) => !chatUsers.any((item) => item.roomId == roomId),
               );
+              final showArchivedEntry = !_showArchivedChats && !isSearching && store.archivedChatUsers.isNotEmpty;
               if (chatUsers.isEmpty) {
+                if (showArchivedEntry) {
+                  return ListView(
+                    children: [
+                      _buildArchivedEntry(),
+                    ],
+                  );
+                }
+
                 return Center(
-                  child: Text(AppTranslationKey.chatNotFound.tr),
+                  child: Text(
+                    _showArchivedChats ? AppTranslationKey.noArchivedChats.tr : AppTranslationKey.chatNotFound.tr,
+                  ),
                 );
               }
 
               return ListView.separated(
-                itemCount: chatUsers.length,
+                itemCount: chatUsers.length + (showArchivedEntry ? 1 : 0),
                 separatorBuilder: (_, __) => SizedBox(height: 2.h),
                 itemBuilder: (_, index) {
-                  final item = chatUsers[index];
+                  if (showArchivedEntry && index == 0) {
+                    return _buildArchivedEntry();
+                  }
+
+                  final itemIndex = showArchivedEntry ? index - 1 : index;
+                  final item = chatUsers[itemIndex];
                   final user = item.user;
                   final isSelected = _selectedRoomIds.contains(item.roomId);
 
@@ -353,11 +388,11 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                   }
 
                   return Dismissible(
-                    key: ValueKey('chat-${item.roomId}'),
+                    key: ValueKey('chat-${item.roomId}-${item.isArchived}'),
                     direction: DismissDirection.endToStart,
-                    background: _buildDeleteBackground(),
-                    confirmDismiss: (_) => _confirmDeleteChat(item),
-                    onDismissed: (_) => _performDeleteChat(item),
+                    background: _buildArchiveBackground(isArchived: _showArchivedChats),
+                    onDismissed: (_) =>
+                        _showArchivedChats ? _performUnarchiveChats([item]) : _performArchiveChats([item]),
                     child: tile,
                   );
                 },
@@ -410,6 +445,60 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         targetMessageId: targetMessageId,
         initialHighlightQuery: initialHighlightQuery,
       ),
+    );
+  }
+
+  List<ChatUserItemModel> _currentChatUsers({required bool isSearching}) {
+    if (!_showArchivedChats) return store.filteredChatUsers;
+
+    final query = store.searchQuery.trim().toLowerCase();
+    if (!isSearching) return store.archivedChatUsers;
+
+    return store.archivedChatUsers.where((item) {
+      final name = item.user.name.toLowerCase();
+      final email = item.user.email.toLowerCase();
+      final lastMessage = item.lastMessage?.toLowerCase() ?? '';
+      return name.contains(query) || email.contains(query) || lastMessage.contains(query);
+    }).toList();
+  }
+
+  Widget _buildArchivedEntry() {
+    final isDark = isDarkModeOf(context);
+    final unreadCount = store.archivedChatUsers.fold<int>(
+      0,
+      (total, item) => total + item.unreadCount,
+    );
+
+    return ListTile(
+      leading: SizedBox(
+        width: 52.r,
+        height: 52.r,
+        child: Icon(Icons.archive_outlined, size: 24.r),
+      ),
+      title: Text(
+        AppTranslationKey.archivedChats.tr,
+        style: TextStyle(
+          fontSize: 16.sp,
+          color: isDark ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: unreadCount > 0
+          ? CircleAvatar(
+              radius: 10,
+              backgroundColor: Colors.red,
+              child: Text(
+                unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              ),
+            )
+          : null,
+      onTap: () {
+        Get.toNamed(AppRouteName.CHAT_ARCHIVE_SCREEN);
+      },
     );
   }
 
@@ -478,21 +567,17 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     );
   }
 
-  Widget _buildDeleteBackground() {
+  Widget _buildArchiveBackground({required bool isArchived}) {
     return Container(
-      color: Colors.redAccent,
+      color: isArchived ? Colors.green : AppColor.primaryColor,
       alignment: Alignment.centerRight,
       padding: EdgeInsets.symmetric(horizontal: 24.w),
       child: Icon(
-        Icons.delete_outline,
+        isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
         color: Colors.white,
         size: 24.r,
       ),
     );
-  }
-
-  Future<bool> _confirmDeleteChat(ChatUserItemModel item) async {
-    return _confirmDeleteChats([item]);
   }
 
   Future<bool> _confirmDeleteChats(List<ChatUserItemModel> items) async {
@@ -532,12 +617,8 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         false;
   }
 
-  Future<void> _performDeleteChat(ChatUserItemModel item) async {
-    await _performDeleteChats([item]);
-  }
-
   Future<void> _deleteSelectedChats() async {
-    final selectedItems = store.chatUsers.where((item) => _selectedRoomIds.contains(item.roomId)).toList();
+    final selectedItems = _selectedItems();
     if (selectedItems.isEmpty) {
       _clearSelection();
       return;
@@ -548,16 +629,74 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     }
   }
 
+  Future<void> _archiveSelectedChats() async {
+    final selectedItems = _selectedItems();
+    if (selectedItems.isEmpty) {
+      _clearSelection();
+      return;
+    }
+
+    await _performArchiveChats(selectedItems);
+  }
+
+  Future<void> _unarchiveSelectedChats() async {
+    final selectedItems = _selectedItems();
+    if (selectedItems.isEmpty) {
+      _clearSelection();
+      return;
+    }
+
+    await _performUnarchiveChats(selectedItems);
+  }
+
+  List<ChatUserItemModel> _selectedItems() {
+    return store.chatUsers.where((item) => _selectedRoomIds.contains(item.roomId)).toList();
+  }
+
   Future<void> _performDeleteChats(List<ChatUserItemModel> items) async {
     try {
       await store.deleteChats(items);
       if (mounted) {
-        _clearSelection();
+        _clearSelection(force: true);
       }
     } catch (_) {
       if (mounted) {
         Get.snackbar(
           AppTranslationKey.deleteChatFailed.tr,
+          items.length == 1 ? items.first.user.name : '${items.length}',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
+  }
+
+  Future<void> _performArchiveChats(List<ChatUserItemModel> items) async {
+    try {
+      await store.archiveChats(items);
+      if (mounted) {
+        _clearSelection(force: true);
+      }
+    } catch (_) {
+      if (mounted) {
+        Get.snackbar(
+          AppTranslationKey.archiveChatFailed.tr,
+          items.length == 1 ? items.first.user.name : '${items.length}',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
+  }
+
+  Future<void> _performUnarchiveChats(List<ChatUserItemModel> items) async {
+    try {
+      await store.unarchiveChats(items);
+      if (mounted) {
+        _clearSelection(force: true);
+      }
+    } catch (_) {
+      if (mounted) {
+        Get.snackbar(
+          AppTranslationKey.unarchiveChatFailed.tr,
           items.length == 1 ? items.first.user.name : '${items.length}',
           snackPosition: SnackPosition.BOTTOM,
         );
@@ -575,8 +714,8 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     });
   }
 
-  void _clearSelection() {
-    if (_selectedRoomIds.isEmpty) return;
+  void _clearSelection({bool force = false}) {
+    if (_selectedRoomIds.isEmpty && !force) return;
     setState(_selectedRoomIds.clear);
   }
 

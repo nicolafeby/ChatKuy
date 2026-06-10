@@ -519,6 +519,7 @@ class ChatService implements ChatRepository {
         ChatRoomField.type: type.name,
         '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
         '${ChatRoomField.deletedChatListFor}.$targetUid': FieldValue.delete(),
+        '${ChatRoomField.archivedFor}.$uid': FieldValue.delete(),
       });
 
       await batch.commit();
