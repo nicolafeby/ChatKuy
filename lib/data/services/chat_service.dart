@@ -5,6 +5,7 @@ import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -135,6 +136,12 @@ class ChatService implements ChatRepository {
             replyToType: existing.replyToType ??
                 _nullableMessageTypeFromString(data[MessageField.replyToType]),
             deletedFor: deletedFor,
+            mentionedUserIds: _stringListFromData(
+              data[MessageField.mentionedUserIds],
+            ),
+            mentionedUserNames: _stringListFromData(
+              data[MessageField.mentionedUserNames],
+            ),
             callId: existing.callId ?? data[MessageField.callId],
             callStatus: data[MessageField.callStatus] ?? existing.callStatus,
             callType: existing.callType ?? data[MessageField.callType],
@@ -187,6 +194,12 @@ class ChatService implements ChatRepository {
           replyToType:
               _nullableMessageTypeFromString(data[MessageField.replyToType]),
           deletedFor: deletedFor,
+          mentionedUserIds: _stringListFromData(
+            data[MessageField.mentionedUserIds],
+          ),
+          mentionedUserNames: _stringListFromData(
+            data[MessageField.mentionedUserNames],
+          ),
           callId: data[MessageField.callId],
           callStatus: data[MessageField.callStatus],
           callType: data[MessageField.callType],
@@ -262,6 +275,8 @@ class ChatService implements ChatRepository {
     String? localFilePath,
     ChatMessageModel? replyToMessage,
     String? replyToSenderName,
+    List<String> mentionedUserIds = const [],
+    List<String> mentionedUserNames = const [],
     void Function(int progress)? onUploadProgress,
   }) async {
     final uid = auth.currentUser!.uid;
@@ -285,11 +300,8 @@ class ChatService implements ChatRepository {
     final participants =
         List<String>.from(roomData[ChatRoomField.participants] ?? const []);
 
-    final targetUid = participants.firstWhere(
-      (e) => e != uid,
-      orElse: () => '',
-    );
-    if (targetUid.isEmpty) {
+    final recipientUids = participants.where((e) => e != uid).toList();
+    if (recipientUids.isEmpty) {
       throw StateError('Chat room $roomId tidak memiliki penerima pesan');
     }
     final createdAtClient = DateTime.now();
@@ -353,6 +365,8 @@ class ChatService implements ChatRepository {
       replyToSenderName: replyToSenderName,
       replyToText: _replyPreviewText(replyToMessage),
       replyToType: replyToMessage?.type,
+      mentionedUserIds: mentionedUserIds,
+      mentionedUserNames: mentionedUserNames,
     );
 
     await _messageBox.put(localMessage.id, localMessage);
@@ -507,20 +521,29 @@ class ChatService implements ChatRepository {
         MessageField.replyToSenderName: replyToSenderName,
         MessageField.replyToText: _replyPreviewText(replyToMessage),
         MessageField.replyToType: replyToMessage?.type.name,
+        MessageField.mentionedUserIds: mentionedUserIds,
+        MessageField.mentionedUserNames: mentionedUserNames,
       });
 
-      batch.update(roomRef, {
+      final roomUpdates = <Object, Object?>{
         ChatRoomField.lastMessage: _resolveLastMessage(text, type),
         ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
         ChatRoomField.lastSenderId: uid,
         '${ChatRoomField.unreadCount}.$uid': 0,
-        '${ChatRoomField.unreadCount}.$targetUid': FieldValue.increment(1),
         ChatRoomField.imageUrl: uploadedImageUrl,
         ChatRoomField.type: type.name,
         '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
-        '${ChatRoomField.deletedChatListFor}.$targetUid': FieldValue.delete(),
         '${ChatRoomField.archivedFor}.$uid': FieldValue.delete(),
-      });
+      };
+
+      for (final recipientUid in recipientUids) {
+        roomUpdates['${ChatRoomField.unreadCount}.$recipientUid'] =
+            FieldValue.increment(1);
+        roomUpdates['${ChatRoomField.deletedChatListFor}.$recipientUid'] =
+            FieldValue.delete();
+      }
+
+      batch.update(roomRef, roomUpdates);
 
       await batch.commit();
     } catch (e, stackTrace) {
@@ -580,6 +603,11 @@ class ChatService implements ChatRepository {
 
   Map<String, bool> _deletedForFromData(Map<String, dynamic> data) {
     return Map<String, bool>.from(data[MessageField.deletedFor] ?? {});
+  }
+
+  List<String> _stringListFromData(dynamic value) {
+    if (value is! List) return const [];
+    return value.map((item) => item.toString()).toList();
   }
 
   bool _isDeletedForCurrentUser(
@@ -676,6 +704,206 @@ class ChatService implements ChatRepository {
     });
 
     return roomId;
+  }
+
+  @override
+  Future<String> createGroupRoom({
+    required String currentUid,
+    required String name,
+    required List<String> memberUids,
+    String? photoUrl,
+  }) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError('Nama grup wajib diisi');
+    }
+
+    final participants = <String>{currentUid, ...memberUids}.toList();
+    if (participants.length < 2) {
+      throw ArgumentError('Grup membutuhkan minimal 2 member');
+    }
+
+    final roomRef = _chatRoomsRef.doc();
+    await roomRef.set({
+      ChatRoomField.participants: participants,
+      ChatRoomField.admins: [currentUid],
+      ChatRoomField.createdBy: currentUid,
+      ChatRoomField.name: cleanName,
+      ChatRoomField.photoUrl: photoUrl,
+      ChatRoomField.isGroup: true,
+      ChatRoomField.lastMessage: null,
+      ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
+      ChatRoomField.lastSenderId: null,
+      ChatRoomField.unreadCount: {
+        for (final uid in participants) uid: 0,
+      },
+    });
+
+    return roomRef.id;
+  }
+
+  @override
+  Stream<ChatRoomModel> watchRoom({required String roomId}) {
+    return _chatRoomsRef.doc(roomId).snapshots().where((doc) {
+      return doc.exists && doc.data() != null;
+    }).map((doc) {
+      return ChatRoomModel.fromJson({
+        'id': doc.id,
+        ...doc.data()!,
+      });
+    });
+  }
+
+  @override
+  Stream<List<UserModel>> watchGroupMembers({required String roomId}) {
+    return watchRoom(roomId: roomId).asyncMap((room) async {
+      if (!room.isGroup || room.participants.isEmpty) return <UserModel>[];
+
+      final users = <UserModel>[];
+      for (var i = 0; i < room.participants.length; i += 10) {
+        final chunk = room.participants.skip(i).take(10).toList();
+        final snapshot = await firestore
+            .collection(FirebaseCollections.users)
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+
+        users.addAll(snapshot.docs.map((doc) {
+          return UserModel.fromJson({
+            'id': doc.id,
+            ...doc.data(),
+          });
+        }));
+      }
+
+      final indexByUid = {
+        for (var i = 0; i < room.participants.length; i++)
+          room.participants[i]: i,
+      };
+      users.sort((a, b) {
+        return (indexByUid[a.id] ?? 0).compareTo(indexByUid[b.id] ?? 0);
+      });
+
+      return users;
+    });
+  }
+
+  @override
+  Future<void> inviteGroupMembers({
+    required String roomId,
+    required String adminUid,
+    required List<String> memberUids,
+  }) async {
+    final cleanMemberUids = memberUids.toSet().toList();
+    if (cleanMemberUids.isEmpty) return;
+
+    final roomRef = _chatRoomsRef.doc(roomId);
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(roomRef);
+      final data = snapshot.data();
+      _assertGroupAdmin(data, adminUid);
+
+      final participants =
+          _stringListFromData(data?[ChatRoomField.participants]);
+      final newMembers =
+          cleanMemberUids.where((uid) => !participants.contains(uid)).toList();
+      if (newMembers.isEmpty) return;
+
+      transaction.update(roomRef, {
+        ChatRoomField.participants: FieldValue.arrayUnion(newMembers),
+        for (final uid in newMembers) '${ChatRoomField.unreadCount}.$uid': 0,
+        for (final uid in newMembers)
+          '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
+      });
+    });
+  }
+
+  @override
+  Future<void> promoteGroupAdmin({
+    required String roomId,
+    required String adminUid,
+    required String memberUid,
+  }) async {
+    final roomRef = _chatRoomsRef.doc(roomId);
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(roomRef);
+      final data = snapshot.data();
+      _assertGroupAdmin(data, adminUid);
+
+      final participants =
+          _stringListFromData(data?[ChatRoomField.participants]);
+      if (!participants.contains(memberUid)) {
+        throw StateError('Member belum bergabung di grup');
+      }
+
+      transaction.update(roomRef, {
+        ChatRoomField.admins: FieldValue.arrayUnion([memberUid]),
+      });
+    });
+  }
+
+  @override
+  Future<void> removeGroupMember({
+    required String roomId,
+    required String adminUid,
+    required String memberUid,
+  }) async {
+    final roomRef = _chatRoomsRef.doc(roomId);
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(roomRef);
+      final data = snapshot.data();
+      _assertGroupAdmin(data, adminUid);
+
+      final participants =
+          _stringListFromData(data?[ChatRoomField.participants]);
+      if (!participants.contains(memberUid)) return;
+      if (participants.length <= 2) {
+        throw StateError('Grup membutuhkan minimal 2 member');
+      }
+
+      transaction.update(roomRef, {
+        ChatRoomField.participants: FieldValue.arrayRemove([memberUid]),
+        ChatRoomField.admins: FieldValue.arrayRemove([memberUid]),
+        '${ChatRoomField.unreadCount}.$memberUid': FieldValue.delete(),
+        '${ChatRoomField.deletedChatListFor}.$memberUid': true,
+      });
+    });
+  }
+
+  @override
+  Future<void> updateGroupInfo({
+    required String roomId,
+    required String adminUid,
+    String? name,
+    String? photoUrl,
+  }) async {
+    final cleanName = name?.trim();
+    final updates = <Object, Object?>{};
+    if (cleanName != null && cleanName.isNotEmpty) {
+      updates[ChatRoomField.name] = cleanName;
+    }
+    if (photoUrl != null) {
+      updates[ChatRoomField.photoUrl] = photoUrl;
+    }
+    if (updates.isEmpty) return;
+
+    final roomRef = _chatRoomsRef.doc(roomId);
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(roomRef);
+      _assertGroupAdmin(snapshot.data(), adminUid);
+      transaction.update(roomRef, updates);
+    });
+  }
+
+  void _assertGroupAdmin(Map<String, dynamic>? data, String uid) {
+    if (data == null) {
+      throw StateError('Grup tidak ditemukan');
+    }
+
+    final isGroup = data[ChatRoomField.isGroup] == true;
+    final admins = _stringListFromData(data[ChatRoomField.admins]);
+    if (!isGroup || !admins.contains(uid)) {
+      throw StateError('Hanya admin grup yang dapat melakukan aksi ini');
+    }
   }
 
   @override

@@ -32,6 +32,16 @@ class ChatUserItemModel {
   final Map<String, bool> lastMessageReadBy;
   @HiveField(11, defaultValue: false)
   final bool isArchived;
+  @HiveField(12, defaultValue: false)
+  final bool isGroup;
+  @HiveField(13)
+  final String? groupName;
+  @HiveField(14)
+  final String? groupPhotoUrl;
+  @HiveField(15, defaultValue: <String>[])
+  final List<String> participants;
+  @HiveField(16, defaultValue: <String>[])
+  final List<String> admins;
 
   ChatUserItemModel({
     required this.roomId,
@@ -46,10 +56,14 @@ class ChatUserItemModel {
     this.lastMessageDeliveredTo = const {},
     this.lastMessageReadBy = const {},
     this.isArchived = false,
+    this.isGroup = false,
+    this.groupName,
+    this.groupPhotoUrl,
+    this.participants = const [],
+    this.admins = const [],
   });
 
-  factory ChatUserItemModel.fromJson(Map<String, dynamic> json) =>
-      _$ChatUserItemModelFromJson(json);
+  factory ChatUserItemModel.fromJson(Map<String, dynamic> json) => _$ChatUserItemModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatUserItemModelToJson(this);
 
@@ -66,6 +80,11 @@ class ChatUserItemModel {
     Map<String, bool>? lastMessageDeliveredTo,
     Map<String, bool>? lastMessageReadBy,
     bool? isArchived,
+    bool? isGroup,
+    String? groupName,
+    String? groupPhotoUrl,
+    List<String>? participants,
+    List<String>? admins,
   }) {
     return ChatUserItemModel(
       roomId: roomId ?? this.roomId,
@@ -77,10 +96,14 @@ class ChatUserItemModel {
       type: type ?? this.type,
       lastSenderId: lastSenderId ?? this.lastSenderId,
       lastMessageStatus: lastMessageStatus ?? this.lastMessageStatus,
-      lastMessageDeliveredTo:
-          lastMessageDeliveredTo ?? this.lastMessageDeliveredTo,
+      lastMessageDeliveredTo: lastMessageDeliveredTo ?? this.lastMessageDeliveredTo,
       lastMessageReadBy: lastMessageReadBy ?? this.lastMessageReadBy,
       isArchived: isArchived ?? this.isArchived,
+      isGroup: isGroup ?? this.isGroup,
+      groupName: groupName ?? this.groupName,
+      groupPhotoUrl: groupPhotoUrl ?? this.groupPhotoUrl,
+      participants: participants ?? this.participants,
+      admins: admins ?? this.admins,
     );
   }
 }

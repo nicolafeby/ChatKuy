@@ -101,15 +101,12 @@ class FriendService implements FriendRepository {
 
   // ==============================
   // GET FRIENDS (NON-STREAM)
-  // ⚠️ TIDAK JOIN USERS
   // ==============================
   @override
   Future<List<FriendModel>> getFriends() async {
     final snapshot =
         await _friendRef.orderBy(FriendField.createdAt, descending: true).get();
 
-    return snapshot.docs
-        .map((doc) => FriendModel.fromJson(doc.data()))
-        .toList();
+    return _mapToFriendModels(snapshot);
   }
 }

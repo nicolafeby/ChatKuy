@@ -25,6 +25,16 @@ class ChatRoomModel {
   final String? imageUrl;
   @HiveField(8)
   final MessageType? type;
+  @HiveField(9, defaultValue: false)
+  final bool isGroup;
+  @HiveField(10)
+  final String? name;
+  @HiveField(11)
+  final String? photoUrl;
+  @HiveField(12, defaultValue: <String>[])
+  final List<String> admins;
+  @HiveField(13)
+  final String? createdBy;
 
   ChatRoomModel({
     required this.id,
@@ -35,6 +45,11 @@ class ChatRoomModel {
     this.unreadCount,
     this.imageUrl,
     this.type,
+    this.isGroup = false,
+    this.name,
+    this.photoUrl,
+    this.admins = const [],
+    this.createdBy,
   });
 
   factory ChatRoomModel.fromJson(Map<String, dynamic> json) => _$ChatRoomModelFromJson(json);
