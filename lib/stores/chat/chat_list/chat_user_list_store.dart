@@ -177,6 +177,54 @@ abstract class _ChatUserListStore with Store {
     searchQuery = '';
   }
 
+  Future<void> deleteChat(ChatUserItemModel item) async {
+    await deleteChats([item]);
+  }
+
+  Future<void> deleteChats(List<ChatUserItemModel> items) async {
+    final uid = currentUid;
+    if (uid == null || uid.isEmpty) return;
+    if (items.isEmpty) return;
+
+    runInAction(() {
+      errorMessage = null;
+    });
+
+    final previousItems = chatUsers.toList();
+    final roomIds = items.map((item) => item.roomId).toSet();
+    runInAction(() {
+      chatUsers.removeWhere((chatUser) => roomIds.contains(chatUser.roomId));
+    });
+
+    try {
+      for (final item in items) {
+        await repository.deleteChat(
+          roomId: item.roomId,
+          uid: uid,
+        );
+      }
+    } catch (e, stackTrace) {
+      runInAction(() {
+        chatUsers
+          ..clear()
+          ..addAll(previousItems);
+      });
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete chat for me failed',
+        context: {
+          'room_ids': roomIds.join(','),
+          'uid': uid,
+        },
+      );
+      runInAction(() {
+        errorMessage = e.toString();
+      });
+      rethrow;
+    }
+  }
+
   @action
   void watchChatUsers(String myUid) {
     isLoading = true;

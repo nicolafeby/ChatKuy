@@ -97,6 +97,10 @@ class AppTranslationKey {
   static const errorTicketHelp = 'errorTicketHelp';
   static const ok = 'ok';
   static const deleteForMe = 'deleteForMe';
+  static const deleteChatTitle = 'deleteChatTitle';
+  static const deleteChatsTitle = 'deleteChatsTitle';
+  static const deleteChatContent = 'deleteChatContent';
+  static const deleteChatFailed = 'deleteChatFailed';
   static const deleteMessagesTitle = 'deleteMessagesTitle';
   static const deleteMessagesContent = 'deleteMessagesContent';
   static const cancel = 'cancel';
@@ -346,6 +350,11 @@ const Map<String, String> _id = {
       'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem',
   AppTranslationKey.ok: 'Oke',
   AppTranslationKey.deleteForMe: 'Hapus untuk saya',
+  AppTranslationKey.deleteChatTitle: 'Hapus chat dengan @name?',
+  AppTranslationKey.deleteChatsTitle: 'Hapus @count chat?',
+  AppTranslationKey.deleteChatContent:
+      'Chat ini akan dihapus hanya dari daftar dan riwayat Anda.',
+  AppTranslationKey.deleteChatFailed: 'Gagal menghapus chat',
   AppTranslationKey.deleteMessagesTitle: 'Hapus @count pesan?',
   AppTranslationKey.deleteMessagesContent:
       'Pesan akan dihapus hanya dari chat Anda.',
@@ -598,6 +607,11 @@ const Map<String, String> _en = {
       'Share this ticket ID with the technical team so the error can be checked in the system',
   AppTranslationKey.ok: 'OK',
   AppTranslationKey.deleteForMe: 'Delete for me',
+  AppTranslationKey.deleteChatTitle: 'Delete chat with @name?',
+  AppTranslationKey.deleteChatsTitle: 'Delete @count chats?',
+  AppTranslationKey.deleteChatContent:
+      'This chat will only be deleted from your list and history.',
+  AppTranslationKey.deleteChatFailed: 'Failed to delete chat',
   AppTranslationKey.deleteMessagesTitle: 'Delete @count messages?',
   AppTranslationKey.deleteMessagesContent:
       'Messages will only be deleted from your chat.',

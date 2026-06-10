@@ -42,7 +42,9 @@ class ChatService implements ChatRepository {
         .orderBy(ChatRoomField.lastMessageAt, descending: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs.map((doc) {
+          (snapshot) => snapshot.docs
+              .where((doc) => !_isChatListDeletedForUser(doc.data(), uid))
+              .map((doc) {
             return ChatRoomModel.fromJson({
               'id': doc.id,
               ...doc.data(),
@@ -515,6 +517,8 @@ class ChatService implements ChatRepository {
         '${ChatRoomField.unreadCount}.$targetUid': FieldValue.increment(1),
         ChatRoomField.imageUrl: uploadedImageUrl,
         ChatRoomField.type: type.name,
+        '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
+        '${ChatRoomField.deletedChatListFor}.$targetUid': FieldValue.delete(),
       });
 
       await batch.commit();
@@ -583,6 +587,13 @@ class ChatService implements ChatRepository {
   ) {
     if (currentUid == null || currentUid.isEmpty) return false;
     return deletedFor[currentUid] == true;
+  }
+
+  bool _isChatListDeletedForUser(Map<String, dynamic> data, String uid) {
+    final deletedChatListFor = Map<String, dynamic>.from(
+      data[ChatRoomField.deletedChatListFor] ?? {},
+    );
+    return deletedChatListFor[uid] == true;
   }
 
   Future<Set<String>> _getRoomDeletedMessageIdsForUser({

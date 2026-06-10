@@ -4,4 +4,9 @@ abstract class ChatUserListRepository {
   Stream<List<ChatUserItemModel>> watchChatUsers({
     required String myUid,
   });
+
+  Future<void> deleteChat({
+    required String roomId,
+    required String uid,
+  });
 }

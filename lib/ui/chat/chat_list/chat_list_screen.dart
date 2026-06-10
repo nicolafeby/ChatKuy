@@ -13,6 +13,7 @@ import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
 import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/ui/chat/chat_list/widget/chat_list_search.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
+import 'package:chatkuy/core/constants/color.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -31,7 +32,11 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     repository: getIt<ChatUserListRepository>(),
   );
   final TextEditingController _searchController = TextEditingController();
+  final Set<String> _selectedRoomIds = {};
   bool _isResolvingChatUsers = true;
+  bool _canPopRoute = false;
+
+  bool get _isSelectionMode => _selectedRoomIds.isNotEmpty;
 
   @override
   void initState() {
@@ -54,8 +59,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 const Duration(seconds: 2),
                 onTimeout: () => null,
               );
-      final currentUid =
-          user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
+      final currentUid = user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
 
       if (currentUid != null) {
         store.watchChatUsers(currentUid);
@@ -70,6 +74,10 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   }
 
   PreferredSizeWidget _buildAppbar() {
+    if (_isSelectionMode) {
+      return _buildSelectionAppbar();
+    }
+
     final isDarkMode = isDarkModeOf(context);
     return AppBar(
       automaticallyImplyLeading: false,
@@ -83,6 +91,27 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
           height: 24.r,
           color: isDarkMode ? Colors.white : null,
         ).paddingOnly(right: 16.r)
+      ],
+    );
+  }
+
+  PreferredSizeWidget _buildSelectionAppbar() {
+    return AppBar(
+      leading: IconButton(
+        tooltip: AppTranslationKey.cancel.tr,
+        onPressed: _clearSelection,
+        icon: const Icon(Icons.arrow_back),
+      ),
+      title: Text(
+        '${_selectedRoomIds.length}',
+        style: TextStyle(fontSize: 24.sp),
+      ),
+      actions: [
+        IconButton(
+          tooltip: AppTranslationKey.delete.tr,
+          onPressed: _deleteSelectedChats,
+          icon: const Icon(Icons.delete_outline),
+        ),
       ],
     );
   }
@@ -117,6 +146,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               final isSearching = store.searchQuery.trim().isNotEmpty;
 
               if (store.chatUsers.isEmpty) {
+                _selectedRoomIds.clear();
                 return Center(
                   child: Text(AppTranslationKey.noChats.tr),
                 );
@@ -157,10 +187,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                             ),
                           ),
                           Text(
-                            (result.message?.createdAtClient ??
-                                        item.lastMessageAt)
-                                    ?.hhmm ??
-                                '',
+                            (result.message?.createdAtClient ?? item.lastMessageAt)?.hhmm ?? '',
                             style: TextStyle(
                               fontSize: 11.sp,
                               color: isDark ? null : Colors.black54,
@@ -172,29 +199,23 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                         children: [
                           Visibility(
                             visible: result.message?.type == MessageType.image,
-                            child: Icon(Icons.image_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.video,
-                            child: Icon(Icons.videocam_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.call,
-                            child: Icon(Icons.call_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.call_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.file,
-                            child: Icon(Icons.description_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.description_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
-                            visible:
-                                result.message?.type == MessageType.contact,
-                            child: Icon(Icons.person_outline, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            visible: result.message?.type == MessageType.contact,
+                            child: Icon(Icons.person_outline, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Flexible(
                             child: _buildHighlightedText(
@@ -219,6 +240,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               }
 
               final chatUsers = store.filteredChatUsers;
+              _selectedRoomIds.removeWhere(
+                (roomId) => !chatUsers.any((item) => item.roomId == roomId),
+              );
               if (chatUsers.isEmpty) {
                 return Center(
                   child: Text(AppTranslationKey.chatNotFound.tr),
@@ -231,10 +255,18 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 itemBuilder: (_, index) {
                   final item = chatUsers[index];
                   final user = item.user;
+                  final isSelected = _selectedRoomIds.contains(item.roomId);
 
-                  return ListTile(
-                    leading: ProfileAvatarWidget(
-                        base64Image: user.photoUrl, size: 48),
+                  final tile = ListTile(
+                    tileColor: isSelected
+                        ? AppColor.primaryColor.withValues(
+                            alpha: isDark ? 0.24 : 0.14,
+                          )
+                        : null,
+                    leading: _buildSelectableAvatar(
+                      image: user.photoUrl,
+                      isSelected: isSelected,
+                    ),
                     title: Row(
                       children: [
                         Expanded(
@@ -250,40 +282,32 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                         ),
                         Text(
                           item.lastMessageAt?.hhmm ?? '',
-                          style: TextStyle(
-                              fontSize: 11.sp,
-                              color: isDark ? null : Colors.black54),
+                          style: TextStyle(fontSize: 11.sp, color: isDark ? null : Colors.black54),
                         ),
                       ],
                     ),
                     subtitle: Row(
                       children: [
-                        if (_shouldShowStatus(item))
-                          _buildStatusIcon(item).paddingOnly(right: 4.w),
+                        if (_shouldShowStatus(item)) _buildStatusIcon(item).paddingOnly(right: 4.w),
                         Visibility(
                           visible: item.type == MessageType.image,
-                          child: Icon(Icons.image_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.video,
-                          child: Icon(Icons.videocam_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.call,
-                          child: Icon(Icons.call_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.call_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.file,
-                          child: Icon(Icons.description_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.description_outlined, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.contact,
-                          child: Icon(Icons.person_outline, size: 18.r)
-                              .paddingOnly(right: 4.w),
+                          child: Icon(Icons.person_outline, size: 18.r).paddingOnly(right: 4.w),
                         ),
                         Flexible(
                           child: _buildHighlightedText(
@@ -313,7 +337,28 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                             ),
                           )
                         : null,
-                    onTap: () => _openChatRoom(item),
+                    onTap: () {
+                      if (_isSelectionMode) {
+                        _toggleChatSelection(item);
+                        return;
+                      }
+
+                      _openChatRoom(item);
+                    },
+                    onLongPress: () => _toggleChatSelection(item),
+                  );
+
+                  if (_isSelectionMode) {
+                    return tile;
+                  }
+
+                  return Dismissible(
+                    key: ValueKey('chat-${item.roomId}'),
+                    direction: DismissDirection.endToStart,
+                    background: _buildDeleteBackground(),
+                    confirmDismiss: (_) => _confirmDeleteChat(item),
+                    onDismissed: (_) => _performDeleteChat(item),
+                    child: tile,
                   );
                 },
               );
@@ -326,9 +371,24 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppbar(),
-      body: _buildBody(),
+    return PopScope(
+      canPop: _canPopRoute,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isSelectionMode) {
+          _clearSelection();
+          return;
+        }
+
+        setState(() {
+          _canPopRoute = true;
+        });
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        appBar: _buildAppbar(),
+        body: _buildBody(),
+      ),
     );
   }
 
@@ -372,8 +432,152 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   }
 
   bool _shouldShowStatus(ChatUserItemModel item) {
-    return item.lastSenderId == store.currentUid &&
-        item.lastMessageStatus != null;
+    return item.lastSenderId == store.currentUid && item.lastMessageStatus != null;
+  }
+
+  Widget _buildSelectableAvatar({
+    required String? image,
+    required bool isSelected,
+  }) {
+    return SizedBox(
+      width: 52.r,
+      height: 52.r,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Center(
+            child: ProfileAvatarWidget(
+              base64Image: image,
+              size: 48,
+            ),
+          ),
+          if (isSelected)
+            Positioned(
+              right: -1.r,
+              bottom: 1.r,
+              child: Container(
+                width: 22.r,
+                height: 22.r,
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    width: 2.r,
+                  ),
+                ),
+                child: Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 15.r,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteBackground() {
+    return Container(
+      color: Colors.redAccent,
+      alignment: Alignment.centerRight,
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      child: Icon(
+        Icons.delete_outline,
+        color: Colors.white,
+        size: 24.r,
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteChat(ChatUserItemModel item) async {
+    return _confirmDeleteChats([item]);
+  }
+
+  Future<bool> _confirmDeleteChats(List<ChatUserItemModel> items) async {
+    if (items.isEmpty) return false;
+
+    final isSingle = items.length == 1;
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(
+                isSingle
+                    ? AppTranslationKey.deleteChatTitle.trParams({
+                        'name': items.first.user.name,
+                      })
+                    : AppTranslationKey.deleteChatsTitle.trParams({
+                        'count': '${items.length}',
+                      }),
+              ),
+              content: Text(AppTranslationKey.deleteChatContent.tr),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(AppTranslationKey.cancel.tr),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text(
+                    AppTranslationKey.delete.tr,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _performDeleteChat(ChatUserItemModel item) async {
+    await _performDeleteChats([item]);
+  }
+
+  Future<void> _deleteSelectedChats() async {
+    final selectedItems = store.chatUsers.where((item) => _selectedRoomIds.contains(item.roomId)).toList();
+    if (selectedItems.isEmpty) {
+      _clearSelection();
+      return;
+    }
+
+    if (await _confirmDeleteChats(selectedItems)) {
+      await _performDeleteChats(selectedItems);
+    }
+  }
+
+  Future<void> _performDeleteChats(List<ChatUserItemModel> items) async {
+    try {
+      await store.deleteChats(items);
+      if (mounted) {
+        _clearSelection();
+      }
+    } catch (_) {
+      if (mounted) {
+        Get.snackbar(
+          AppTranslationKey.deleteChatFailed.tr,
+          items.length == 1 ? items.first.user.name : '${items.length}',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
+  }
+
+  void _toggleChatSelection(ChatUserItemModel item) {
+    setState(() {
+      if (_selectedRoomIds.contains(item.roomId)) {
+        _selectedRoomIds.remove(item.roomId);
+      } else {
+        _selectedRoomIds.add(item.roomId);
+      }
+    });
+  }
+
+  void _clearSelection() {
+    if (_selectedRoomIds.isEmpty) return;
+    setState(_selectedRoomIds.clear);
   }
 
   Widget _buildStatusIcon(ChatUserItemModel item) {
@@ -402,8 +606,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     required TextStyle style,
   }) {
     final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty ||
-        text.toLowerCase().contains(normalizedQuery) == false) {
+    if (normalizedQuery.isEmpty || text.toLowerCase().contains(normalizedQuery) == false) {
       return Text(
         text,
         maxLines: 1,
