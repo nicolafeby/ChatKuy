@@ -52,6 +52,11 @@ abstract class FirestorePaths {
 /// ==============================
 abstract class ChatRoomField {
   static const participants = 'participants';
+  static const admins = 'admins';
+  static const createdBy = 'createdBy';
+  static const name = 'name';
+  static const photoUrl = 'photoUrl';
+  static const isGroup = 'isGroup';
   static const lastMessage = 'lastMessage';
   static const lastMessageAt = 'lastMessageAt';
   static const lastSenderId = 'lastSenderId';
@@ -100,6 +105,8 @@ abstract class MessageField {
   static const audioUrl = 'audioUrl';
   static const localAudioPath = 'localAudioPath';
   static const audioDurationSeconds = 'audioDurationSeconds';
+  static const mentionedUserIds = 'mentionedUserIds';
+  static const mentionedUserNames = 'mentionedUserNames';
 }
 
 /// ==============================

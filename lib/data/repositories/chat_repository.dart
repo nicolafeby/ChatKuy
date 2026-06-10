@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
 
 abstract class ChatRepository {
   /// Chat List (Realtime)
@@ -41,6 +42,8 @@ abstract class ChatRepository {
     String? localFilePath,
     ChatMessageModel? replyToMessage,
     String? replyToSenderName,
+    List<String> mentionedUserIds = const [],
+    List<String> mentionedUserNames = const [],
     void Function(int progress)? onUploadProgress,
   });
 
@@ -48,6 +51,42 @@ abstract class ChatRepository {
   Future<String> createOrGetRoom({
     required String currentUid,
     required String targetUid,
+  });
+
+  Future<String> createGroupRoom({
+    required String currentUid,
+    required String name,
+    required List<String> memberUids,
+    String? photoUrl,
+  });
+
+  Stream<ChatRoomModel> watchRoom({required String roomId});
+
+  Stream<List<UserModel>> watchGroupMembers({required String roomId});
+
+  Future<void> inviteGroupMembers({
+    required String roomId,
+    required String adminUid,
+    required List<String> memberUids,
+  });
+
+  Future<void> promoteGroupAdmin({
+    required String roomId,
+    required String adminUid,
+    required String memberUid,
+  });
+
+  Future<void> removeGroupMember({
+    required String roomId,
+    required String adminUid,
+    required String memberUid,
+  });
+
+  Future<void> updateGroupInfo({
+    required String roomId,
+    required String adminUid,
+    String? name,
+    String? photoUrl,
   });
 
   Stream<Map<String, bool>> watchTyping({required String roomId});
@@ -79,6 +118,5 @@ abstract class ChatRepository {
     required String uid,
   });
 
-  Future<LocalImageModel> uploadImage(
-      {required File file, required String roomId});
+  Future<LocalImageModel> uploadImage({required File file, required String roomId});
 }

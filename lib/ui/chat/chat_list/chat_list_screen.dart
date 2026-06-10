@@ -6,7 +6,11 @@ import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
+import 'package:chatkuy/data/models/friend_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
+import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
+import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
@@ -36,7 +40,10 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   ChatUserListStore store = ChatUserListStore(
     repository: getIt<ChatUserListRepository>(),
   );
+  final ChatRepository _chatRepository = getIt<ChatRepository>();
+  final FriendRepository _friendRepository = getIt<FriendRepository>();
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _groupNameController = TextEditingController();
   final Set<String> _selectedRoomIds = {};
   bool _isResolvingChatUsers = true;
   bool _canPopRoute = false;
@@ -53,6 +60,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   @override
   void dispose() {
     _searchController.dispose();
+    _groupNameController.dispose();
     store.dispose();
     super.dispose();
   }
@@ -65,7 +73,8 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 const Duration(seconds: 2),
                 onTimeout: () => null,
               );
-      final currentUid = user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
+      final currentUid =
+          user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
 
       if (currentUid != null) {
         store.watchChatUsers(currentUid);
@@ -94,17 +103,23 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
             )
           : null,
       title: Text(
-        _showArchivedChats ? AppTranslationKey.archivedChats.tr : AppTranslationKey.chats.tr,
+        _showArchivedChats
+            ? AppTranslationKey.archivedChats.tr
+            : AppTranslationKey.chats.tr,
         style: TextStyle(fontSize: 28.sp),
       ),
       actions: _showArchivedChats
           ? null
           : [
-              Image.asset(
-                AppAsset.icEditOutlined,
-                height: 24.r,
-                color: isDarkModeOf(context) ? Colors.white : null,
-              ).paddingOnly(right: 16.r)
+              IconButton(
+                tooltip: 'Buat grup',
+                onPressed: _showCreateGroupSheet,
+                icon: Image.asset(
+                  AppAsset.icEditOutlined,
+                  height: 24.r,
+                  color: isDarkModeOf(context) ? Colors.white : null,
+                ),
+              ).paddingOnly(right: 8.r),
             ],
     );
   }
@@ -122,9 +137,15 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
       ),
       actions: [
         IconButton(
-          tooltip: _showArchivedChats ? AppTranslationKey.unarchive.tr : AppTranslationKey.archive.tr,
-          onPressed: _showArchivedChats ? _unarchiveSelectedChats : _archiveSelectedChats,
-          icon: Icon(_showArchivedChats ? Icons.unarchive_outlined : Icons.archive_outlined),
+          tooltip: _showArchivedChats
+              ? AppTranslationKey.unarchive.tr
+              : AppTranslationKey.archive.tr,
+          onPressed: _showArchivedChats
+              ? _unarchiveSelectedChats
+              : _archiveSelectedChats,
+          icon: Icon(_showArchivedChats
+              ? Icons.unarchive_outlined
+              : Icons.archive_outlined),
         ),
         IconButton(
           tooltip: AppTranslationKey.delete.tr,
@@ -206,7 +227,10 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                             ),
                           ),
                           Text(
-                            (result.message?.createdAtClient ?? item.lastMessageAt)?.hhmm ?? '',
+                            (result.message?.createdAtClient ??
+                                        item.lastMessageAt)
+                                    ?.hhmm ??
+                                '',
                             style: TextStyle(
                               fontSize: 11.sp,
                               color: isDark ? null : Colors.black54,
@@ -218,23 +242,29 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                         children: [
                           Visibility(
                             visible: result.message?.type == MessageType.image,
-                            child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
+                            child: Icon(Icons.image_outlined, size: 18.r)
+                                .paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.video,
-                            child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
+                            child: Icon(Icons.videocam_outlined, size: 18.r)
+                                .paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.call,
-                            child: Icon(Icons.call_outlined, size: 18.r).paddingOnly(right: 4.w),
+                            child: Icon(Icons.call_outlined, size: 18.r)
+                                .paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.file,
-                            child: Icon(Icons.description_outlined, size: 18.r).paddingOnly(right: 4.w),
+                            child: Icon(Icons.description_outlined, size: 18.r)
+                                .paddingOnly(right: 4.w),
                           ),
                           Visibility(
-                            visible: result.message?.type == MessageType.contact,
-                            child: Icon(Icons.person_outline, size: 18.r).paddingOnly(right: 4.w),
+                            visible:
+                                result.message?.type == MessageType.contact,
+                            child: Icon(Icons.person_outline, size: 18.r)
+                                .paddingOnly(right: 4.w),
                           ),
                           Flexible(
                             child: _buildHighlightedText(
@@ -262,7 +292,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               _selectedRoomIds.removeWhere(
                 (roomId) => !chatUsers.any((item) => item.roomId == roomId),
               );
-              final showArchivedEntry = !_showArchivedChats && !isSearching && store.archivedChatUsers.isNotEmpty;
+              final showArchivedEntry = !_showArchivedChats &&
+                  !isSearching &&
+                  store.archivedChatUsers.isNotEmpty;
               if (chatUsers.isEmpty) {
                 if (showArchivedEntry) {
                   return ListView(
@@ -274,7 +306,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
 
                 return Center(
                   child: Text(
-                    _showArchivedChats ? AppTranslationKey.noArchivedChats.tr : AppTranslationKey.chatNotFound.tr,
+                    _showArchivedChats
+                        ? AppTranslationKey.noArchivedChats.tr
+                        : AppTranslationKey.chatNotFound.tr,
                   ),
                 );
               }
@@ -317,32 +351,40 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                         ),
                         Text(
                           item.lastMessageAt?.hhmm ?? '',
-                          style: TextStyle(fontSize: 11.sp, color: isDark ? null : Colors.black54),
+                          style: TextStyle(
+                              fontSize: 11.sp,
+                              color: isDark ? null : Colors.black54),
                         ),
                       ],
                     ),
                     subtitle: Row(
                       children: [
-                        if (_shouldShowStatus(item)) _buildStatusIcon(item).paddingOnly(right: 4.w),
+                        if (_shouldShowStatus(item))
+                          _buildStatusIcon(item).paddingOnly(right: 4.w),
                         Visibility(
                           visible: item.type == MessageType.image,
-                          child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.image_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.video,
-                          child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.videocam_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.call,
-                          child: Icon(Icons.call_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.call_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.file,
-                          child: Icon(Icons.description_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.description_outlined, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Visibility(
                           visible: item.type == MessageType.contact,
-                          child: Icon(Icons.person_outline, size: 18.r).paddingOnly(right: 4.w),
+                          child: Icon(Icons.person_outline, size: 18.r)
+                              .paddingOnly(right: 4.w),
                         ),
                         Flexible(
                           child: _buildHighlightedText(
@@ -390,9 +432,11 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                   return Dismissible(
                     key: ValueKey('chat-${item.roomId}-${item.isArchived}'),
                     direction: DismissDirection.endToStart,
-                    background: _buildArchiveBackground(isArchived: _showArchivedChats),
-                    onDismissed: (_) =>
-                        _showArchivedChats ? _performUnarchiveChats([item]) : _performArchiveChats([item]),
+                    background:
+                        _buildArchiveBackground(isArchived: _showArchivedChats),
+                    onDismissed: (_) => _showArchivedChats
+                        ? _performUnarchiveChats([item])
+                        : _performArchiveChats([item]),
                     child: tile,
                   );
                 },
@@ -442,9 +486,168 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         roomId: item.roomId,
         currentUid: id,
         targetUser: item.user,
+        isGroup: item.isGroup,
         targetMessageId: targetMessageId,
         initialHighlightQuery: initialHighlightQuery,
       ),
+    );
+  }
+
+  Future<void> _showCreateGroupSheet() async {
+    final currentUid = store.currentUid;
+    if (currentUid == null || currentUid.isEmpty) return;
+
+    _groupNameController.clear();
+    final selectedUids = <String>{};
+    var isCreating = false;
+
+    final friendsFuture = _friendRepository.getFriends();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> createGroup(List<FriendModel> friends) async {
+              final groupName = _groupNameController.text.trim();
+              if (groupName.isEmpty || selectedUids.isEmpty || isCreating) {
+                return;
+              }
+
+              setSheetState(() => isCreating = true);
+              try {
+                final roomId = await _chatRepository.createGroupRoom(
+                  currentUid: currentUid,
+                  name: groupName,
+                  memberUids: selectedUids.toList(),
+                );
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+                Get.toNamed(
+                  AppRouteName.CHAT_ROOM_SCREEN,
+                  arguments: ChatRoomArgument(
+                    roomId: roomId,
+                    currentUid: currentUid,
+                    targetUser: UserModel(
+                      id: roomId,
+                      name: groupName,
+                      email: '',
+                      isEmailVerified: false,
+                      fcmToken: '',
+                      isOnlineStatusVisible: false,
+                    ),
+                    isGroup: true,
+                  ),
+                );
+              } finally {
+                if (context.mounted) {
+                  setSheetState(() => isCreating = false);
+                }
+              }
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20.w,
+                  16.h,
+                  20.w,
+                  MediaQuery.of(context).viewInsets.bottom + 20.h,
+                ),
+                child: FutureBuilder<List<FriendModel>>(
+                  future: friendsFuture,
+                  builder: (context, snapshot) {
+                    final friends = snapshot.data ?? const <FriendModel>[];
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Buat grup',
+                          style: TextStyle(
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        12.verticalSpace,
+                        TextField(
+                          controller: _groupNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nama grup',
+                          ),
+                          onChanged: (_) => setSheetState(() {}),
+                        ),
+                        12.verticalSpace,
+                        if (snapshot.connectionState == ConnectionState.waiting)
+                          const Center(child: CircularProgressIndicator())
+                        else if (friends.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Text('Belum ada teman untuk ditambahkan.'),
+                          )
+                        else
+                          Flexible(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: friends.length,
+                              itemBuilder: (context, index) {
+                                final friend = friends[index];
+                                final user = friend.user;
+                                final memberUid =
+                                    user.id.isNotEmpty ? user.id : friend.uid;
+                                final isSelected =
+                                    selectedUids.contains(memberUid);
+
+                                return CheckboxListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  value: isSelected,
+                                  title: Text(user.name),
+                                  subtitle: Text(user.username ?? user.email),
+                                  onChanged: (value) {
+                                    setSheetState(() {
+                                      if (value == true) {
+                                        selectedUids.add(memberUid);
+                                      } else {
+                                        selectedUids.remove(memberUid);
+                                      }
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        12.verticalSpace,
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed:
+                                _groupNameController.text.trim().isEmpty ||
+                                        selectedUids.isEmpty ||
+                                        isCreating
+                                    ? null
+                                    : () => createGroup(friends),
+                            child: isCreating
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Buat grup'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -458,7 +661,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
       final name = item.user.name.toLowerCase();
       final email = item.user.email.toLowerCase();
       final lastMessage = item.lastMessage?.toLowerCase() ?? '';
-      return name.contains(query) || email.contains(query) || lastMessage.contains(query);
+      return name.contains(query) ||
+          email.contains(query) ||
+          lastMessage.contains(query);
     }).toList();
   }
 
@@ -521,7 +726,8 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   }
 
   bool _shouldShowStatus(ChatUserItemModel item) {
-    return item.lastSenderId == store.currentUid && item.lastMessageStatus != null;
+    return item.lastSenderId == store.currentUid &&
+        item.lastMessageStatus != null;
   }
 
   Widget _buildSelectableAvatar({
@@ -650,7 +856,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   }
 
   List<ChatUserItemModel> _selectedItems() {
-    return store.chatUsers.where((item) => _selectedRoomIds.contains(item.roomId)).toList();
+    return store.chatUsers
+        .where((item) => _selectedRoomIds.contains(item.roomId))
+        .toList();
   }
 
   Future<void> _performDeleteChats(List<ChatUserItemModel> items) async {
@@ -745,7 +953,8 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     required TextStyle style,
   }) {
     final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty || text.toLowerCase().contains(normalizedQuery) == false) {
+    if (normalizedQuery.isEmpty ||
+        text.toLowerCase().contains(normalizedQuery) == false) {
       return Text(
         text,
         maxLines: 1,

@@ -185,7 +185,66 @@ class _FakeChatRepository implements ChatRepository {
     String? localFilePath,
     ChatMessageModel? replyToMessage,
     String? replyToSenderName,
+    List<String> mentionedUserIds = const [],
+    List<String> mentionedUserNames = const [],
     void Function(int progress)? onUploadProgress,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String> createGroupRoom({
+    required String currentUid,
+    required String name,
+    required List<String> memberUids,
+    String? photoUrl,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<ChatRoomModel> watchRoom({required String roomId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<List<UserModel>> watchGroupMembers({required String roomId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> inviteGroupMembers({
+    required String roomId,
+    required String adminUid,
+    required List<String> memberUids,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> promoteGroupAdmin({
+    required String roomId,
+    required String adminUid,
+    required String memberUid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> removeGroupMember({
+    required String roomId,
+    required String adminUid,
+    required String memberUid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateGroupInfo({
+    required String roomId,
+    required String adminUid,
+    String? name,
+    String? photoUrl,
   }) {
     throw UnimplementedError();
   }
