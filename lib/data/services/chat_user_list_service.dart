@@ -6,13 +6,15 @@ import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
+import 'package:chatkuy/data/repositories/message_encryption_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 
 class ChatUserListService implements ChatUserListRepository {
-  ChatUserListService(this.firestore);
+  ChatUserListService(this.firestore, this.messageEncryption);
 
   final FirebaseFirestore firestore;
+  final MessageEncryptionRepository messageEncryption;
 
   CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
       firestore.collection(FirebaseCollections.chatRooms);
@@ -86,7 +88,7 @@ class ChatUserListService implements ChatUserListRepository {
           final rooms = snapshot.docs
               .map((doc) => ChatRoomModel.fromJson({
                     'id': doc.id,
-                    ...doc.data(),
+                    ..._decryptRoomData(doc.id, doc.data()),
                   }))
               .toList();
 
@@ -284,5 +286,26 @@ class ChatUserListService implements ChatUserListRepository {
         ),
       );
     }
+  }
+
+  Map<String, dynamic> _decryptRoomData(
+    String roomId,
+    Map<String, dynamic> data,
+  ) {
+    final participants =
+        List<String>.from(data[ChatRoomField.participants] ?? const []);
+    final encryptedPayload = data[ChatRoomField.encryptedPayload];
+    final decrypted = messageEncryption.decryptPayload(
+      roomId: roomId,
+      participants: participants,
+      encryptedPayload: encryptedPayload is Map
+          ? Map<String, dynamic>.from(encryptedPayload)
+          : null,
+    );
+    if (decrypted == null) return data;
+    return {
+      ...data,
+      ...decrypted,
+    };
   }
 }

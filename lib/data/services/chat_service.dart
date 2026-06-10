@@ -6,6 +6,7 @@ import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
+import 'package:chatkuy/data/repositories/message_encryption_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -17,11 +18,13 @@ class ChatService implements ChatRepository {
     this.auth,
     this.firestore,
     this.firebaseStorage,
+    this.messageEncryption,
   );
 
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
   final FirebaseStorage firebaseStorage;
+  final MessageEncryptionRepository messageEncryption;
 
   /// HIVE BOX
   final Box<ChatMessageModel> _messageBox =
@@ -45,7 +48,7 @@ class ChatService implements ChatRepository {
           (snapshot) => snapshot.docs.map((doc) {
             return ChatRoomModel.fromJson({
               'id': doc.id,
-              ...doc.data(),
+              ..._decryptRoomData(doc.id, doc.data()),
             });
           }).toList(),
         );
@@ -61,6 +64,10 @@ class ChatService implements ChatRepository {
     final currentUid = auth.currentUser?.uid;
 
     yield _getLocalMessages(roomId, currentUid: currentUid);
+
+    final roomSnap = await _chatRoomsRef.doc(roomId).get();
+    final roomParticipants =
+        List<String>.from(roomSnap.data()?[ChatRoomField.participants] ?? []);
 
     yield* _chatRoomsRef
         .doc(roomId)
@@ -79,8 +86,13 @@ class ChatService implements ChatRepository {
       for (final doc in docsToProcess) {
         final messageId = doc.id;
         final existing = _messageBox.get(messageId);
-        final data = doc.data();
-        if (data == null) continue;
+        final rawData = doc.data();
+        if (rawData == null) continue;
+        final data = _decryptMessageData(
+          roomId: roomId,
+          participants: roomParticipants,
+          data: rawData,
+        );
 
         if (existing != null) {
           final newDelivered =
@@ -93,7 +105,7 @@ class ChatService implements ChatRepository {
             id: existing.id,
             roomId: existing.roomId,
             senderId: existing.senderId,
-            text: existing.text,
+            text: existing.text ?? data[MessageField.text],
             imageUrl: existing.imageUrl ?? data[MessageField.imageUrl],
             localImagePath: _existingFilePath(existing.localImagePath),
             videoUrl: existing.videoUrl ?? data[MessageField.videoUrl],
@@ -474,23 +486,40 @@ class ChatService implements ChatRepository {
       }
 
       final batch = firestore.batch();
-
-      batch.set(messageRef, {
-        MessageField.senderId: uid,
+      final messagePayload = _encryptedPayloadFor({
         MessageField.text: text,
         MessageField.imageUrl: uploadedImageUrl,
-        MessageField.localImagePath: localPath,
         MessageField.videoUrl: uploadedVideoUrl,
-        MessageField.localVideoPath: localVideo,
         MessageField.fileUrl: uploadedFileUrl,
-        MessageField.localFilePath: resolvedLocalFilePath,
         MessageField.fileName: resolvedFileName,
-        MessageField.fileSize: resolvedFileSize,
         MessageField.fileExtension: resolvedFileExtension,
         MessageField.contactName: contactName,
         MessageField.contactPhone: contactPhone,
         MessageField.audioUrl: uploadedAudioUrl,
-        MessageField.localAudioPath: resolvedLocalAudioPath,
+        MessageField.replyToText: _replyPreviewText(replyToMessage),
+      }, roomId: roomId, participants: participants);
+      final roomPayload = _encryptedPayloadFor({
+        ChatRoomField.lastMessage: _resolveLastMessage(text, type),
+        ChatRoomField.imageUrl: uploadedImageUrl,
+      }, roomId: roomId, participants: participants);
+
+      batch.set(messageRef, {
+        MessageField.senderId: uid,
+        MessageField.encryptedPayload: messagePayload,
+        MessageField.text: null,
+        MessageField.imageUrl: null,
+        MessageField.localImagePath: null,
+        MessageField.videoUrl: null,
+        MessageField.localVideoPath: null,
+        MessageField.fileUrl: null,
+        MessageField.localFilePath: null,
+        MessageField.fileName: null,
+        MessageField.fileSize: resolvedFileSize,
+        MessageField.fileExtension: null,
+        MessageField.contactName: null,
+        MessageField.contactPhone: null,
+        MessageField.audioUrl: null,
+        MessageField.localAudioPath: null,
         MessageField.audioDurationSeconds: audioDurationSeconds,
         MessageField.createdAt: FieldValue.serverTimestamp(),
         MessageField.createdAtClient: createdAtClient,
@@ -503,17 +532,18 @@ class ChatService implements ChatRepository {
         MessageField.replyToMessageId: replyToMessage?.id,
         MessageField.replyToSenderId: replyToMessage?.senderId,
         MessageField.replyToSenderName: replyToSenderName,
-        MessageField.replyToText: _replyPreviewText(replyToMessage),
+        MessageField.replyToText: null,
         MessageField.replyToType: replyToMessage?.type.name,
       });
 
       batch.update(roomRef, {
-        ChatRoomField.lastMessage: _resolveLastMessage(text, type),
+        ChatRoomField.encryptedPayload: roomPayload,
+        ChatRoomField.lastMessage: null,
         ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
         ChatRoomField.lastSenderId: uid,
         '${ChatRoomField.unreadCount}.$uid': 0,
         '${ChatRoomField.unreadCount}.$targetUid': FieldValue.increment(1),
-        ChatRoomField.imageUrl: uploadedImageUrl,
+        ChatRoomField.imageUrl: null,
         ChatRoomField.type: type.name,
       });
 
@@ -617,6 +647,63 @@ class ChatService implements ChatRepository {
     if (messageText != null && messageText.isNotEmpty) return messageText;
 
     return _fallbackLastMessage(message.type);
+  }
+
+  Map<String, dynamic> _decryptMessageData({
+    required String roomId,
+    required List<String> participants,
+    required Map<String, dynamic> data,
+  }) {
+    final decrypted = messageEncryption.decryptPayload(
+      roomId: roomId,
+      participants: participants,
+      encryptedPayload:
+          _encryptedPayloadMap(data[MessageField.encryptedPayload]),
+    );
+    if (decrypted == null) return data;
+    return {
+      ...data,
+      ...decrypted,
+    };
+  }
+
+  Map<String, dynamic> _decryptRoomData(
+    String roomId,
+    Map<String, dynamic> data,
+  ) {
+    final participants =
+        List<String>.from(data[ChatRoomField.participants] ?? const []);
+    final decrypted = messageEncryption.decryptPayload(
+      roomId: roomId,
+      participants: participants,
+      encryptedPayload:
+          _encryptedPayloadMap(data[ChatRoomField.encryptedPayload]),
+    );
+    if (decrypted == null) return data;
+    return {
+      ...data,
+      ...decrypted,
+    };
+  }
+
+  Map<String, dynamic> _encryptedPayloadFor(
+    Map<String, dynamic> payload, {
+    required String roomId,
+    required List<String> participants,
+  }) {
+    final filteredPayload = Map<String, dynamic>.fromEntries(
+      payload.entries.where((entry) => entry.value != null),
+    );
+    return messageEncryption.encryptPayload(
+      roomId: roomId,
+      participants: participants,
+      payload: filteredPayload,
+    );
+  }
+
+  Map<String, dynamic>? _encryptedPayloadMap(dynamic value) {
+    if (value is! Map) return null;
+    return Map<String, dynamic>.from(value);
   }
 
   String? _existingFilePath(dynamic path) {

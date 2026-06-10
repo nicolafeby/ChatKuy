@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/services/chat_service.dart';
+import 'package:chatkuy/data/services/message_encryption_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,7 +56,12 @@ Future<void> chatServiceTest() async {
     firestore = MockFirebaseFirestore();
     auth = MockFirebaseAuth();
     firebaseStorage = MockFirebaseStorage();
-    service = ChatService(auth, firestore, firebaseStorage);
+    service = ChatService(
+      auth,
+      firestore,
+      firebaseStorage,
+      MessageEncryptionService(),
+    );
 
     mockUser = MockUser();
     mockBatch = MockWriteBatch();
@@ -87,6 +93,10 @@ Future<void> chatServiceTest() async {
         .thenReturn(roomsCollection);
 
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
+    when(roomSnapshot.data()).thenReturn({
+      ChatRoomField.participants: ['user-1', 'user-2'],
+    });
 
     when(roomDoc.collection(FirestoreCollection.messages))
         .thenReturn(messagesCollection);
@@ -129,6 +139,10 @@ Future<void> chatServiceTest() async {
     when(firestore.collection(FirebaseCollections.chatRooms))
         .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
+    when(roomSnapshot.data()).thenReturn({
+      ChatRoomField.participants: ['user-1', 'user-2'],
+    });
     when(roomDoc.collection(FirestoreCollection.messages))
         .thenReturn(messagesCollection);
     when(messagesCollection.orderBy(MessageField.createdAtClient))
@@ -207,7 +221,8 @@ Future<void> chatServiceTest() async {
     verify(mockBatch.set(
       messageDocRef,
       argThat(predicate<Map<String, dynamic>>((data) {
-        return data[MessageField.text] == 'Hi' &&
+        return data[MessageField.text] == null &&
+            data[MessageField.encryptedPayload] is Map<String, dynamic> &&
             data[MessageField.senderId] == 'user-1' &&
             data[MessageField.senderName] == 'Budi' &&
             data[MessageField.type] == MessageType.text.name &&
@@ -225,7 +240,8 @@ Future<void> chatServiceTest() async {
     verify(mockBatch.update(
       roomDoc,
       argThat(predicate<Map<Object, Object?>>((data) {
-        return data[ChatRoomField.lastMessage] == 'Hi' &&
+        return data[ChatRoomField.lastMessage] == null &&
+            data[ChatRoomField.encryptedPayload] is Map<String, dynamic> &&
             data[ChatRoomField.lastSenderId] == 'user-1' &&
             data[ChatRoomField.imageUrl] == null &&
             data[ChatRoomField.type] == MessageType.text.name &&
