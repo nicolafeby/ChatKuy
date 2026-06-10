@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/skeleton.dart';
@@ -84,9 +85,18 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
                     }
 
                     return ListView.separated(
-                      padding: EdgeInsets.only(top: 8.h, bottom: 16.h),
+                      padding: EdgeInsets.only(top: 4.h, bottom: 88.h),
                       itemCount: groups.length,
-                      separatorBuilder: (_, __) => SizedBox(height: 2.h),
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        indent: 84.w,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withValues(
+                              alpha: isDarkModeOf(context) ? 0.22 : 0.5,
+                            ),
+                      ),
                       itemBuilder: (context, index) {
                         final group = groups[index];
                         return CallHistoryTile(
@@ -123,9 +133,17 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> with BaseLayout {
   PreferredSizeWidget _buildDefaultAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
+      backgroundColor:
+          isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
+      surfaceTintColor:
+          isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
       title: Text(
         AppTranslationKey.callHistory.tr,
-        style: TextStyle(fontSize: 28.sp),
+        style: TextStyle(
+          fontSize: 26.sp,
+          fontWeight: FontWeight.w700,
+          color: isDarkModeOf(context) ? Colors.white : AppColor.primaryColor,
+        ),
       ),
       actions: [
         IconButton(

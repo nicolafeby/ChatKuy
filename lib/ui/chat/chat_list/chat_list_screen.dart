@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
@@ -87,6 +86,10 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
 
     return AppBar(
       automaticallyImplyLeading: widget.archivedOnly,
+      backgroundColor:
+          isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
+      surfaceTintColor:
+          isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
       leading: _showArchivedChats
           ? IconButton(
               tooltip: AppTranslationKey.chats.tr,
@@ -98,16 +101,24 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         _showArchivedChats
             ? AppTranslationKey.archivedChats.tr
             : AppTranslationKey.chats.tr,
-        style: TextStyle(fontSize: 28.sp),
+        style: TextStyle(
+          fontSize: 26.sp,
+          fontWeight: FontWeight.w700,
+          color: _showArchivedChats
+              ? Theme.of(context).colorScheme.onSurface
+              : isDarkModeOf(context)
+                  ? Colors.white
+                  : AppColor.primaryColor,
+        ),
       ),
       actions: _showArchivedChats
           ? null
           : [
-              Image.asset(
-                AppAsset.icEditOutlined,
-                height: 24.r,
-                color: isDarkModeOf(context) ? Colors.white : null,
-              ).paddingOnly(right: 8.r),
+              IconButton(
+                tooltip: 'New group',
+                onPressed: _openNewGroupPicker,
+                icon: const Icon(Icons.group_add_outlined),
+              ),
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'new_group') {
@@ -327,8 +338,16 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
               }
 
               return ListView.separated(
+                padding: EdgeInsets.only(bottom: 88.h),
                 itemCount: chatUsers.length + (showArchivedEntry ? 1 : 0),
-                separatorBuilder: (_, __) => SizedBox(height: 2.h),
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  indent: 84.w,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: isDark ? 0.22 : 0.5),
+                ),
                 itemBuilder: (_, index) {
                   if (showArchivedEntry && index == 0) {
                     return _buildArchivedEntry();
@@ -340,6 +359,9 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                   final isSelected = _selectedRoomIds.contains(item.roomId);
 
                   final tile = ListTile(
+                    minVerticalPadding: 10.h,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 2.h),
                     tileColor: isSelected
                         ? AppColor.primaryColor.withValues(
                             alpha: isDark ? 0.24 : 0.14,
@@ -358,15 +380,25 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                             style: TextStyle(
                               fontSize: 16.sp,
                               color: isDark ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: item.unreadCount > 0
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           ),
                         ),
                         Text(
                           item.lastMessageAt?.hhmm ?? '',
                           style: TextStyle(
-                              fontSize: 11.sp,
-                              color: isDark ? null : Colors.black54),
+                            fontSize: 11.sp,
+                            color: item.unreadCount > 0
+                                ? AppColor.accentColor
+                                : isDark
+                                    ? Colors.white54
+                                    : Colors.black54,
+                            fontWeight: item.unreadCount > 0
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
                         ),
                       ],
                     ),
@@ -407,8 +439,11 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                             ),
                             query: store.searchQuery,
                             style: TextStyle(
-                              color: isDark ? null : Colors.black54,
+                              color: isDark ? Colors.white60 : Colors.black54,
                               fontSize: 14.sp,
+                              fontWeight: item.unreadCount > 0
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                             ),
                           ),
                         ),
@@ -416,13 +451,14 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                     ),
                     trailing: item.unreadCount > 0
                         ? CircleAvatar(
-                            radius: 10,
-                            backgroundColor: Colors.red,
+                            radius: 10.r,
+                            backgroundColor: AppColor.accentColor,
                             child: Text(
                               item.unreadCount.toString(),
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFF063D34),
                                 fontSize: 12,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           )
@@ -480,6 +516,15 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
       child: Scaffold(
         appBar: _buildAppbar(),
         body: _buildBody(),
+        floatingActionButton: _showArchivedChats
+            ? null
+            : FloatingActionButton(
+                heroTag: 'chat-list-new-chat',
+                backgroundColor: AppColor.primaryColor,
+                foregroundColor: Colors.white,
+                onPressed: () => Get.toNamed(AppRouteName.ADD_FRIEND_SCREEN),
+                child: const Icon(Icons.chat),
+              ),
       ),
     );
   }
@@ -556,12 +601,13 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
       trailing: unreadCount > 0
           ? CircleAvatar(
               radius: 10,
-              backgroundColor: Colors.red,
+              backgroundColor: AppColor.accentColor,
               child: Text(
                 unreadCount.toString(),
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFF063D34),
                   fontSize: 12,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             )
@@ -619,7 +665,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 width: 22.r,
                 height: 22.r,
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: AppColor.primaryColor,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: Theme.of(context).scaffoldBackgroundColor,
@@ -640,7 +686,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
 
   Widget _buildArchiveBackground({required bool isArchived}) {
     return Container(
-      color: isArchived ? Colors.green : AppColor.primaryColor,
+      color: isArchived ? AppColor.primaryColor : AppColor.primaryDarkColor,
       alignment: Alignment.centerRight,
       padding: EdgeInsets.symmetric(horizontal: 24.w),
       child: Icon(

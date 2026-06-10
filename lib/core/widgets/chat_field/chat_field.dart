@@ -41,8 +41,7 @@ class ChatField extends StatelessWidget with BaseLayout {
   Widget build(BuildContext context) {
     final colorScheme = colorSchemeOf(context);
     final isDarkMode = isDarkModeOf(context);
-    final fieldColor =
-        isDarkMode ? const Color(0xFF18232C) : Colors.grey.shade200;
+    final fieldColor = isDarkMode ? const Color(0xFF18232C) : Colors.grey.shade200;
 
     return SafeArea(
       top: false,
@@ -76,8 +75,7 @@ class ChatField extends StatelessWidget with BaseLayout {
                         style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
                           hintText: AppTranslationKey.message.tr,
-                          hintStyle:
-                              TextStyle(color: colorScheme.onSurfaceVariant),
+                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                           border: InputBorder.none,
                           focusedBorder: InputBorder.none,
                         ),
@@ -98,15 +96,13 @@ class ChatField extends StatelessWidget with BaseLayout {
                               if (image == null) return;
 
                               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                                  arguments: ChatAttachImageArgument(
-                                      image: image, store: store));
+                                  arguments: ChatAttachImageArgument(image: image, store: store));
                             },
                             onDenied: (p0) {
                               Get.bottomSheet(BottomsheetWidget(
                                 asset: AppAsset.imgFaceSad,
                                 title: AppStrings.oopsTerjadiKesalahan,
-                                message: AppTranslationKey
-                                    .galleryPermissionDenied.tr,
+                                message: AppTranslationKey.galleryPermissionDenied.tr,
                               ));
                             },
                           );
@@ -133,15 +129,13 @@ class ChatField extends StatelessWidget with BaseLayout {
                               if (image == null) return;
 
                               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                                  arguments: ChatAttachImageArgument(
-                                      image: image, store: store));
+                                  arguments: ChatAttachImageArgument(image: image, store: store));
                             },
                             onDenied: (p0) {
                               Get.bottomSheet(BottomsheetWidget(
                                 asset: AppAsset.imgFaceSad,
                                 title: AppStrings.oopsTerjadiKesalahan,
-                                message:
-                                    AppTranslationKey.cameraPermissionDenied.tr,
+                                message: AppTranslationKey.cameraPermissionDenied.tr,
                               ));
                             },
                           );
@@ -163,8 +157,7 @@ class ChatField extends StatelessWidget with BaseLayout {
               backgroundColor: Colors.green,
               child: IconButton(
                 icon: Icon(Icons.send, color: Colors.white, size: 20.r),
-                onPressed: () =>
-                    onSend.call(store.messageController.text.trim()),
+                onPressed: () => onSend.call(store.messageController.text.trim()),
               ),
             ),
           ],
@@ -215,10 +208,10 @@ class ChatFieldV2 extends StatefulWidget {
     this.showAttachmentIcon = true,
     this.onSendTap,
     this.onChanged,
-    this.textInputAction = TextInputAction.send,
+    this.textInputAction = TextInputAction.newline,
     this.keyboardType = TextInputType.multiline,
     this.autoFocus = false,
-    this.maxLines = 1,
+    this.maxLines = 5,
     this.attachmentConfig,
     this.readOnly = false,
     this.enabled = true,
@@ -242,8 +235,7 @@ class ChatFieldV2 extends StatefulWidget {
   }
 }
 
-class _ChatFieldV2State extends State<ChatFieldV2>
-    with WidgetsBindingObserver, BaseLayout {
+class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, BaseLayout {
   bool _showAboveSheet = false;
   bool _showEmojiPicker = false;
   bool _isRecording = false;
@@ -286,8 +278,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
 
   @override
   void didChangeMetrics() {
-    final bottomInset =
-        View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    final bottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
 
     if (bottomInset > 0 && bottomInset > (_keyboardHeight ?? 0)) {
       setState(() {
@@ -347,8 +338,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
               if (image == null) return;
 
               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                  arguments: ChatAttachImageArgument(
-                      image: image, store: widget.store));
+                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
             },
             onDenied: (p0) {
               Get.bottomSheet(BottomsheetWidget(
@@ -376,8 +366,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
               if (image == null) return;
 
               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                  arguments: ChatAttachImageArgument(
-                      image: image, store: widget.store));
+                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
             },
             onDenied: (p0) {
               Get.bottomSheet(BottomsheetWidget(
@@ -478,15 +467,12 @@ class _ChatFieldV2State extends State<ChatFieldV2>
               contacts: contacts.where((contact) => contact.phones.isNotEmpty),
               onContactSelect: (contact) async {
                 final phones = contact['phones'];
-                final phone = phones is List && phones.isNotEmpty
-                    ? phones.first['number']?.toString()
-                    : null;
+                final phone = phones is List && phones.isNotEmpty ? phones.first['number']?.toString() : null;
                 if (phone == null || phone.trim().isEmpty) return;
 
                 try {
                   await widget.store.sendContactMessage(
-                    name: contact['displayName']?.toString() ??
-                        AppTranslationKey.contact.tr,
+                    name: contact['displayName']?.toString() ?? AppTranslationKey.contact.tr,
                     phone: phone,
                   );
                 } catch (_) {
@@ -578,9 +564,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
     _recordingTimer?.cancel();
 
     final path = await _audioRecorder.stop();
-    final duration = startedAt == null
-        ? _recordingDuration
-        : DateTime.now().difference(startedAt);
+    final duration = startedAt == null ? _recordingDuration : DateTime.now().difference(startedAt);
 
     if (!mounted) return;
     setState(() {
@@ -707,8 +691,7 @@ class _ChatFieldV2State extends State<ChatFieldV2>
   Widget build(BuildContext context) {
     final colorScheme = colorSchemeOf(context);
     final isDarkMode = isDarkModeOf(context);
-    final textFieldFillColor =
-        isDarkMode ? const Color(0xFF18232C) : Colors.grey[200];
+    final textFieldFillColor = isDarkMode ? const Color(0xFF202C33) : Colors.white;
 
     return PopScope(
       canPop: _showEmojiPicker == false && _showAboveSheet == false,
@@ -730,103 +713,99 @@ class _ChatFieldV2State extends State<ChatFieldV2>
                 _buildRecordingBar(colorScheme)
               else
                 Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                   child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Focus(
-                        onFocusChange: (value) {
-                          setState(() {
-                            isFocused = value;
-                          });
-                        },
-                        child: TextFormField(
-                          controller: widget.controller,
-                          focusNode: _focusNode,
-                          maxLines: widget.maxLines,
-                          autofocus: widget.autoFocus,
-                          keyboardType: widget.keyboardType,
-                          textInputAction: widget.textInputAction,
-                          onChanged: widget.onChanged,
-                          readOnly: widget.readOnly,
-                          enabled: widget.enabled,
-                          enableSuggestions: widget.enableSuggestions,
-                          autocorrect: widget.autocorrect,
-                          textCapitalization: widget.textCapitalization,
-                          decoration: InputDecoration(
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(widget.textFieldRadius),
-                              borderSide: BorderSide.none,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Focus(
+                          onFocusChange: (value) {
+                            setState(() {
+                              isFocused = value;
+                            });
+                          },
+                          child: TextFormField(
+                            controller: widget.controller,
+                            focusNode: _focusNode,
+                            minLines: 1,
+                            maxLines: widget.maxLines,
+                            autofocus: widget.autoFocus,
+                            keyboardType: widget.keyboardType,
+                            textInputAction: widget.textInputAction,
+                            onChanged: widget.onChanged,
+                            readOnly: widget.readOnly,
+                            enabled: widget.enabled,
+                            enableSuggestions: widget.enableSuggestions,
+                            autocorrect: widget.autocorrect,
+                            textCapitalization: widget.textCapitalization,
+                            decoration: InputDecoration(
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(widget.textFieldRadius),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: textFieldFillColor,
+                              hintText: widget.hintText.tr,
+                              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(widget.textFieldRadius),
+                                borderSide: BorderSide.none,
+                              ),
+                              prefixIcon: widget.showEmogyIcon
+                                  ? IconButton(
+                                      icon: Icon(
+                                        _showEmojiPicker ? Icons.keyboard_alt_outlined : widget.emojiIcon,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                      onPressed: _toggleEmojiKeyboard,
+                                    )
+                                  : (widget.customEmojiIcon != null
+                                      ? IconButton(
+                                          icon: widget.customEmojiIcon!,
+                                          onPressed: widget.onCustomEmojiTap,
+                                        )
+                                      : null),
+                              suffixIcon: widget.showAttachmentIcon &&
+                                      ((widget.attachmentConfig?.showCamera ?? true) ||
+                                          (widget.attachmentConfig?.showGallery ?? true) ||
+                                          (widget.attachmentConfig?.showAudio ?? true) ||
+                                          (widget.attachmentConfig?.showDoc ?? true) ||
+                                          (widget.attachmentConfig?.showContact ?? true))
+                                  ? IconButton(
+                                      icon: Icon(widget.attachmentIcon, color: colorScheme.onSurfaceVariant),
+                                      onPressed: () => showAttachment(context),
+                                    )
+                                  : null,
                             ),
-                            filled: true,
-                            fillColor: textFieldFillColor,
-                            hintText: widget.hintText.tr,
-                            hintStyle:
-                                TextStyle(color: colorScheme.onSurfaceVariant),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 10),
-                            border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(widget.textFieldRadius),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: widget.showEmogyIcon
-                                ? IconButton(
-                                    icon: Icon(
-                                      _showEmojiPicker
-                                          ? Icons.keyboard_alt_outlined
-                                          : widget.emojiIcon,
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                    onPressed: _toggleEmojiKeyboard,
-                                  )
-                                : (widget.customEmojiIcon != null
-                                    ? IconButton(
-                                        icon: widget.customEmojiIcon!,
-                                        onPressed: widget.onCustomEmojiTap,
-                                      )
-                                    : null),
-                            suffixIcon: widget.showAttachmentIcon &&
-                                    ((widget.attachmentConfig?.showCamera ?? true) ||
-                                        (widget.attachmentConfig?.showGallery ??
-                                            true) ||
-                                        (widget.attachmentConfig?.showAudio ??
-                                            true) ||
-                                        (widget.attachmentConfig?.showDoc ??
-                                            true) ||
-                                        (widget.attachmentConfig?.showContact ??
-                                            true))
-                                ? IconButton(
-                                    icon: Icon(widget.attachmentIcon,
-                                        color: colorScheme.onSurfaceVariant),
-                                    onPressed: () => showAttachment(context),
-                                  )
-                                : null,
+                            style: TextStyle(color: colorScheme.onSurface),
                           ),
-                          style: TextStyle(color: colorScheme.onSurface),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: widget.sendButtonRadius * 2,
-                      height: widget.sendButtonRadius * 2,
-                      decoration: BoxDecoration(
-                        color: widget.sendButtonColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          _hasText ? widget.sendIcon : Icons.mic,
-                          color: Colors.white,
+                      const SizedBox(width: 8),
+                      Container(
+                        width: widget.sendButtonRadius * 2,
+                        height: widget.sendButtonRadius * 2,
+                        decoration: BoxDecoration(
+                          color: widget.sendButtonColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        onPressed:
-                            _hasText ? widget.onSendTap : _toggleRecording,
+                        child: IconButton(
+                          icon: Icon(
+                            _hasText ? widget.sendIcon : Icons.mic,
+                            color: Colors.white,
+                          ),
+                          onPressed: _hasText ? widget.onSendTap : _toggleRecording,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
                   ),
                 ),
               if (_showEmojiPicker) SizedBox(height: _keyboardHeight ?? 0),

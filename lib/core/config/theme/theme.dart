@@ -18,8 +18,8 @@ ThemeData _getAppTheme(Brightness brightness) {
     seedColor: AppColor.primaryColor,
     brightness: brightness,
   );
-  final surfaceColor = isDark ? const Color(0xFF101820) : Colors.white;
-  final scaffoldColor = isDark ? const Color(0xFF0B1218) : Colors.white;
+  final surfaceColor = isDark ? const Color(0xFF111B21) : Colors.white;
+  final scaffoldColor = isDark ? const Color(0xFF0B141A) : Colors.white;
 
   return ThemeData(
     colorScheme: colorScheme,
@@ -46,6 +46,8 @@ ThemeData _getAppTheme(Brightness brightness) {
       backgroundColor: surfaceColor,
       foregroundColor: colorScheme.onSurface,
       surfaceTintColor: surfaceColor,
+      elevation: 0,
+      centerTitle: false,
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: surfaceColor,
@@ -56,7 +58,7 @@ ThemeData _getAppTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     scaffoldBackgroundColor: scaffoldColor,
-    fontFamily: GoogleFonts.wellfleet().fontFamily,
+    fontFamily: GoogleFonts.roboto().fontFamily,
     tabBarTheme: TabBarThemeData(
       labelColor: AppColor.primaryColor,
       indicatorColor: AppColor.primaryColor,
