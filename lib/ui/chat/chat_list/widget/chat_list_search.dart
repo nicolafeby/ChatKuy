@@ -20,23 +20,28 @@ class ChatListSearchWidget extends StatelessWidget {
     return SizedBox(
       height: 42.h,
       child: controller == null
-          ? _buildTextField()
+          ? _buildTextField(context)
           : ValueListenableBuilder<TextEditingValue>(
               valueListenable: controller!,
-              builder: (context, value, _) => _buildTextField(),
+              builder: (context, value, _) => _buildTextField(context),
             ),
     );
   }
 
-  Widget _buildTextField() {
+  Widget _buildTextField(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return TextField(
       controller: controller,
       cursorHeight: 16.h,
       textInputAction: TextInputAction.search,
       onChanged: onChanged,
       decoration: InputDecoration(
-        prefixIcon: Icon(Icons.search),
-        prefixIconColor: Colors.grey,
+        filled: true,
+        fillColor: isDark ? const Color(0xFF202C33) : const Color(0xFFF0F2F5),
+        prefixIcon: const Icon(Icons.search),
+        prefixIconColor: colorScheme.onSurfaceVariant,
         suffixIcon: controller?.text.isEmpty == false
             ? IconButton(
                 tooltip: AppTranslationKey.clearSearch.tr,
@@ -45,11 +50,11 @@ class ChatListSearchWidget extends StatelessWidget {
               )
             : null,
         border: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
+          borderSide: BorderSide.none,
           borderRadius: BorderRadius.circular(50.r),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
+          borderSide: BorderSide.none,
           borderRadius: BorderRadius.circular(50.r),
         ),
         floatingLabelBehavior: FloatingLabelBehavior.auto,

@@ -24,13 +24,25 @@ class AppbarWidget extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AppBar(
       leading: leading,
+      actions: action,
       titleSpacing: 0,
       bottom: bottom,
+      backgroundColor: isDark ? const Color(0xFF111B21) : Colors.white,
+      foregroundColor: Theme.of(context).colorScheme.onSurface,
+      surfaceTintColor: isDark ? const Color(0xFF111B21) : Colors.white,
+      elevation: 0,
       title: Text(
         title,
-        style: titleStyle ?? TextStyle(fontSize: 18.sp),
+        style: titleStyle ??
+            TextStyle(
+              fontSize: 22.sp,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/utils/extension/date.dart';
+import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/stores/chat/chat_room/chat_room_store.dart';
@@ -40,6 +41,9 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      backgroundColor: AppColor.primaryDarkColor,
+      foregroundColor: Colors.white,
+      surfaceTintColor: AppColor.primaryDarkColor,
       titleSpacing: 0,
       title: InkWell(
         onTap: onProfileTap,
@@ -52,6 +56,8 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
                 userData,
                 isTyping: isTyping,
                 canViewPresence: canViewPresence,
+                titleColor: Colors.white,
+                subtitleColor: Colors.white70,
               ),
             ),
           ],
@@ -71,7 +77,7 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
           ),
         _buildOverflowMenu(),
       ],
-      elevation: 2,
+      elevation: 0,
     );
   }
 
@@ -82,6 +88,8 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     UserModel user, {
     required bool isTyping,
     required bool canViewPresence,
+    required Color titleColor,
+    required Color subtitleColor,
   }) {
     final statusText = subtitle ??
         (canViewPresence
@@ -97,14 +105,20 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
       children: [
         Text(
           user.name,
-          style: TextStyle(fontSize: 16.sp),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 16.sp,
+            color: titleColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         4.verticalSpace,
         Text(
           statusText,
           style: TextStyle(
             fontSize: 11.sp,
-            color: Colors.grey,
+            color: subtitleColor,
           ),
         ),
       ],

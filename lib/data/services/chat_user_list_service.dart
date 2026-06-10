@@ -128,6 +128,10 @@ class ChatUserListService implements ChatUserListRepository {
             await _userBox.put(user.id, user);
           }
 
+          final latestOwnMessagesByRoomId = await _latestOwnMessagesForRooms(
+            rooms: rooms,
+            myUid: myUid,
+          );
           final items = <ChatUserItemModel>[];
 
           for (final room in rooms) {
@@ -147,6 +151,7 @@ class ChatUserListService implements ChatUserListRepository {
                 (localItem!.lastMessageStatus == MessageStatus.pending ||
                     room.lastMessageAt == null ||
                     localItem.lastMessageAt!.isAfter(room.lastMessageAt!));
+            final remoteLastOwnMessage = latestOwnMessagesByRoomId[room.id];
 
             final item = ChatUserItemModel(
               roomId: room.id,
@@ -160,12 +165,15 @@ class ChatUserListService implements ChatUserListRepository {
               type: useLocalLatest ? localItem.type : room.type,
               lastSenderId:
                   useLocalLatest ? localItem.lastSenderId : room.lastSenderId,
-              lastMessageStatus:
-                  useLocalLatest ? localItem.lastMessageStatus : null,
-              lastMessageDeliveredTo:
-                  useLocalLatest ? localItem.lastMessageDeliveredTo : const {},
-              lastMessageReadBy:
-                  useLocalLatest ? localItem.lastMessageReadBy : const {},
+              lastMessageStatus: useLocalLatest
+                  ? localItem.lastMessageStatus
+                  : remoteLastOwnMessage?.status,
+              lastMessageDeliveredTo: useLocalLatest
+                  ? localItem.lastMessageDeliveredTo
+                  : remoteLastOwnMessage?.deliveredTo ?? const {},
+              lastMessageReadBy: useLocalLatest
+                  ? localItem.lastMessageReadBy
+                  : remoteLastOwnMessage?.readBy ?? const {},
               isArchived: _isChatArchivedForUser(room.id, myUid),
               isGroup: room.isGroup,
               groupName: room.name,
@@ -337,6 +345,48 @@ class ChatUserListService implements ChatUserListRepository {
       fcmToken: '',
       isOnlineStatusVisible: false,
     );
+  }
+
+  Future<Map<String, ChatMessageModel>> _latestOwnMessagesForRooms({
+    required List<ChatRoomModel> rooms,
+    required String myUid,
+  }) async {
+    final ownLastMessageRooms = rooms
+        .where((room) => room.lastSenderId == myUid)
+        .where((room) => room.lastMessageAt != null)
+        .toList();
+    if (ownLastMessageRooms.isEmpty) return const {};
+
+    final entries = await Future.wait(
+      ownLastMessageRooms.map((room) async {
+        final message = await _latestMessageForRoom(room.id);
+        if (message == null || message.senderId != myUid) return null;
+        return MapEntry(room.id, message);
+      }),
+    );
+
+    return {
+      for (final entry in entries)
+        if (entry != null) entry.key: entry.value,
+    };
+  }
+
+  Future<ChatMessageModel?> _latestMessageForRoom(String roomId) async {
+    final snapshot = await _chatRoomsRef
+        .doc(roomId)
+        .collection(FirestoreCollection.messages)
+        .orderBy(MessageField.createdAtClient, descending: true)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return null;
+
+    final doc = snapshot.docs.first;
+    return ChatMessageModel.fromJson({
+      'id': doc.id,
+      'roomId': roomId,
+      ...doc.data(),
+    });
   }
 
   Future<void> _syncLocalChatListItemFromMessage({

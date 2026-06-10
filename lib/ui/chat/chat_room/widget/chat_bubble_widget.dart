@@ -162,10 +162,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final colorScheme = colorSchemeOf(context);
     final isDarkMode = isDarkModeOf(context);
     final bubbleColor = widget.isMe
-        ? AppColor.primaryColor.withValues(alpha: isDarkMode ? 0.7 : 0.8)
+        ? (isDarkMode ? const Color(0xFF005C4B) : AppColor.outgoingBubble)
         : isDarkMode
-            ? const Color(0xFF18232C)
-            : Colors.grey.shade200;
+            ? const Color(0xFF202C33)
+            : AppColor.incomingBubble;
     final replyProgress =
         (_dragOffset / _replyTriggerOffset).clamp(0.0, 1.0).toDouble();
     final selectedRowColor = AppColor.primaryColor.withValues(
@@ -274,8 +274,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                       curve: Curves.easeOutCubic,
                       transform: Matrix4.translationValues(_dragOffset, 0, 0),
                       padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
+                        horizontal: 9.w,
+                        vertical: 6.h,
                       ),
                       decoration: BoxDecoration(
                         color: bubbleColor,
@@ -399,11 +399,12 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   BorderRadius _bubbleRadius() {
-    final r = Radius.circular(8.r);
+    final r = Radius.circular(7.5.r);
+    final tight = Radius.circular(2.r);
 
     return BorderRadius.only(
-      topLeft: widget.isMe ? r : (widget.isSameGroup ? r : Radius.zero),
-      topRight: widget.isMe ? (widget.isSameGroup ? r : Radius.zero) : r,
+      topLeft: widget.isMe ? r : (widget.isSameGroup ? r : tight),
+      topRight: widget.isMe ? (widget.isSameGroup ? r : tight) : r,
       bottomLeft: r,
       bottomRight: r,
     );
@@ -425,10 +426,12 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final hasAudio = type == MessageType.audio &&
         (localAudioPath != null || audioUrl != null);
     final messageTextColor = widget.isMe
-        ? Colors.white.withValues(alpha: isDarkMode ? 0.9 : 1)
+        ? (isDarkMode
+            ? Colors.white.withValues(alpha: 0.92)
+            : const Color(0xFF111B21))
         : colorScheme.onSurface;
     final metaTextColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.68)
+        ? (isDarkMode ? Colors.white60 : const Color(0xFF667781))
         : colorScheme.onSurfaceVariant;
     final isTextMessage = type != MessageType.call &&
         type != MessageType.file &&
@@ -790,6 +793,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final spans = <TextSpan>[];
     final mentionMatches = <_TextMatch>[];
     final lowerText = text.toLowerCase();
+    final mentionColor = _mentionTextColor();
+    final mentionBackgroundColor = _mentionBackgroundColor();
 
     for (final name in mentionNames) {
       final needle = '@${name.toLowerCase()}';
@@ -813,9 +818,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         TextSpan(
           text: text.substring(match.start, match.end),
           style: TextStyle(
-            color: AppColor.primaryColor,
+            color: mentionColor,
             fontWeight: FontWeight.w700,
-            backgroundColor: AppColor.primaryColor.withValues(alpha: 0.14),
+            backgroundColor: mentionBackgroundColor,
           ),
         ),
       );
@@ -834,6 +839,17 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         children: spans,
       ),
     );
+  }
+
+  Color _mentionTextColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (isDark) return const Color(0xFF6BDDF2);
+    return const Color(0xFF007A63);
+  }
+
+  Color _mentionBackgroundColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return _mentionTextColor().withValues(alpha: isDark ? 0.18 : 0.12);
   }
 
   String _messageTypeLabel(MessageType type) {
@@ -857,6 +873,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final progress = duration.inMilliseconds <= 0
         ? 0.0
         : position.inMilliseconds / duration.inMilliseconds;
+    final attachmentAccentColor = _attachmentAccentColor();
+    final attachmentBackgroundColor = _attachmentBackgroundColor();
+    final attachmentTrackColor = _attachmentTrackColor();
 
     return SizedBox(
       width: 220.w,
@@ -867,9 +886,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             width: 38.r,
             height: 38.r,
             decoration: BoxDecoration(
-              color: widget.isMe
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : AppColor.primaryColor.withValues(alpha: 0.12),
+              color: attachmentBackgroundColor,
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -883,7 +900,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
               icon: Icon(
                 _isAudioPlaying ? Icons.pause : Icons.play_arrow,
                 size: 22.r,
-                color: widget.isMe ? Colors.white : AppColor.primaryColor,
+                color: attachmentAccentColor,
               ),
             ),
           ),
@@ -900,11 +917,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
                     value: widget.message.status == MessageStatus.pending
                         ? null
                         : progress.clamp(0.0, 1.0),
-                    backgroundColor: widget.isMe
-                        ? Colors.white.withValues(alpha: 0.24)
-                        : Colors.black.withValues(alpha: 0.08),
+                    backgroundColor: attachmentTrackColor,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      widget.isMe ? Colors.white : AppColor.primaryColor,
+                      attachmentAccentColor,
                     ),
                   ),
                 ),
@@ -929,6 +944,38 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     if (_audioDuration.inMilliseconds > 0) return _audioDuration;
     final seconds = widget.message.audioDurationSeconds ?? 0;
     return Duration(seconds: seconds);
+  }
+
+  Color _attachmentAccentColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (!widget.isMe) return AppColor.primaryColor;
+    return isDark
+        ? Colors.white.withValues(alpha: 0.92)
+        : AppColor.primaryColor;
+  }
+
+  Color _attachmentBackgroundColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (!widget.isMe) {
+      return AppColor.primaryColor.withValues(alpha: isDark ? 0.18 : 0.12);
+    }
+
+    return isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : AppColor.primaryColor.withValues(alpha: 0.12);
+  }
+
+  Color _attachmentTrackColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (!widget.isMe) {
+      return isDark
+          ? Colors.white.withValues(alpha: 0.14)
+          : Colors.black.withValues(alpha: 0.08);
+    }
+
+    return isDark
+        ? Colors.white.withValues(alpha: 0.24)
+        : AppColor.primaryColor.withValues(alpha: 0.18);
   }
 
   Future<void> _toggleAudioPlayback({
@@ -966,6 +1013,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       if (widget.message.fileSize != null)
         _formatBytes(widget.message.fileSize!),
     ].whereType<String>().join(' • ');
+    final attachmentAccentColor = _attachmentAccentColor();
+    final attachmentBackgroundColor = _attachmentBackgroundColor();
 
     return InkWell(
       onTap: _openFile,
@@ -977,15 +1026,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             width: 36.r,
             height: 36.r,
             decoration: BoxDecoration(
-              color: widget.isMe
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : AppColor.primaryColor.withValues(alpha: 0.12),
+              color: attachmentBackgroundColor,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.insert_drive_file_outlined,
               size: 20.r,
-              color: widget.isMe ? Colors.white : AppColor.primaryColor,
+              color: attachmentAccentColor,
             ),
           ),
           8.horizontalSpace,
@@ -1028,6 +1075,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     final contactName =
         widget.message.contactName ?? AppTranslationKey.contact.tr;
     final contactPhone = widget.message.contactPhone ?? '';
+    final attachmentAccentColor = _attachmentAccentColor();
+    final attachmentBackgroundColor = _attachmentBackgroundColor();
 
     return InkWell(
       onTap: contactPhone.isEmpty
@@ -1041,15 +1090,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             width: 36.r,
             height: 36.r,
             decoration: BoxDecoration(
-              color: widget.isMe
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : AppColor.primaryColor.withValues(alpha: 0.12),
+              color: attachmentBackgroundColor,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.person_outline,
               size: 20.r,
-              color: widget.isMe ? Colors.white : AppColor.primaryColor,
+              color: attachmentAccentColor,
             ),
           ),
           8.horizontalSpace,
@@ -1090,6 +1137,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
 
   Widget _buildCallContent(Color messageTextColor, Color metaTextColor) {
     final isVideo = widget.message.callType == 'video';
+    final attachmentAccentColor = _attachmentAccentColor();
+    final attachmentBackgroundColor = _attachmentBackgroundColor();
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1099,15 +1148,13 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           width: 32.r,
           height: 32.r,
           decoration: BoxDecoration(
-            color: widget.isMe
-                ? Colors.white.withValues(alpha: 0.16)
-                : AppColor.primaryColor.withValues(alpha: 0.12),
+            color: attachmentBackgroundColor,
             shape: BoxShape.circle,
           ),
           child: Icon(
             isVideo ? Icons.videocam_outlined : Icons.call_outlined,
             size: 18.r,
-            color: widget.isMe ? Colors.white : AppColor.primaryColor,
+            color: attachmentAccentColor,
           ),
         ),
         8.horizontalSpace,
@@ -1501,6 +1548,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   }
 
   Widget _buildStatusIcon() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final neutralColor = isDark ? Colors.white70 : const Color(0xFF667781);
+
     if (widget.message.status == MessageStatus.failed) {
       return Icon(
         Icons.error,
@@ -1513,7 +1563,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       return Icon(
         Icons.access_time,
         size: 12.sp,
-        color: Colors.white70,
+        color: neutralColor,
       );
     }
 
@@ -1524,21 +1574,21 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         return Icon(
           Icons.check,
           size: 12.sp,
-          color: Colors.white70,
+          color: neutralColor,
         );
 
       case UiMessageStatus.delivered:
         return Icon(
           Icons.done_all,
           size: 12.sp,
-          color: Colors.white70,
+          color: neutralColor,
         );
 
       case UiMessageStatus.read:
         return Icon(
           Icons.done_all,
           size: 12.sp,
-          color: Colors.yellowAccent,
+          color: const Color(0xFF53BDEB),
         );
     }
   }

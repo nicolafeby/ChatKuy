@@ -1,3 +1,4 @@
+import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
@@ -40,10 +41,11 @@ class CallHistoryTile extends StatelessWidget {
         }
 
         return ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
           onTap: onTap,
           leading: ProfileAvatarWidget(
             base64Image: user?.photoUrl,
-            size: 48,
+            size: 52,
           ),
           title: Text(
             group.displayTitle(user?.name),
@@ -51,6 +53,7 @@ class CallHistoryTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: isMissed ? Colors.redAccent : null,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -59,7 +62,7 @@ class CallHistoryTile extends StatelessWidget {
               Icon(
                 latest.isOutgoing ? Icons.call_made : Icons.call_received,
                 size: 16.r,
-                color: isMissed ? Colors.redAccent : Colors.green,
+                color: isMissed ? Colors.redAccent : AppColor.accentColor,
               ),
               4.horizontalSpace,
               Flexible(
@@ -81,6 +84,8 @@ class CallHistoryTile extends StatelessWidget {
               latest.isVideoCall
                   ? Icons.videocam_outlined
                   : Icons.call_outlined,
+              color: AppColor.primaryColor,
+              size: 24.r,
             ),
           ),
         );
