@@ -53,6 +53,7 @@ abstract class FirestorePaths {
 abstract class ChatRoomField {
   static const participants = 'participants';
   static const lastMessage = 'lastMessage';
+  static const encryptedPayload = 'encryptedPayload';
   static const lastMessageAt = 'lastMessageAt';
   static const lastSenderId = 'lastSenderId';
   static const unreadCount = 'unreadCount';
@@ -67,6 +68,7 @@ abstract class ChatRoomField {
 abstract class MessageField {
   static const senderId = 'senderId';
   static const text = 'text';
+  static const encryptedPayload = 'encryptedPayload';
   static const createdAt = 'createdAt';
   static const createdAtClient = 'createdAtClient';
   static const clientMessageId = 'clientMessageId';
