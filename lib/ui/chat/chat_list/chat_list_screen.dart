@@ -6,11 +6,7 @@ import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/core/widgets/skeleton.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
-import 'package:chatkuy/data/models/friend_model.dart';
-import 'package:chatkuy/data/models/user_model.dart';
-import 'package:chatkuy/data/repositories/chat_repository.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
-import 'package:chatkuy/data/repositories/friend_repository.dart';
 import 'package:chatkuy/data/repositories/secure_storage_repository.dart';
 import 'package:chatkuy/di/injection.dart';
 import 'package:chatkuy/stores/chat/chat_list/chat_user_list_store.dart';
@@ -40,10 +36,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   ChatUserListStore store = ChatUserListStore(
     repository: getIt<ChatUserListRepository>(),
   );
-  final ChatRepository _chatRepository = getIt<ChatRepository>();
-  final FriendRepository _friendRepository = getIt<FriendRepository>();
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _groupNameController = TextEditingController();
   final Set<String> _selectedRoomIds = {};
   bool _isResolvingChatUsers = true;
   bool _canPopRoute = false;
@@ -60,7 +53,6 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   @override
   void dispose() {
     _searchController.dispose();
-    _groupNameController.dispose();
     store.dispose();
     super.dispose();
   }
@@ -111,15 +103,36 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
       actions: _showArchivedChats
           ? null
           : [
-              IconButton(
-                tooltip: 'Buat grup',
-                onPressed: _showCreateGroupSheet,
-                icon: Image.asset(
-                  AppAsset.icEditOutlined,
-                  height: 24.r,
-                  color: isDarkModeOf(context) ? Colors.white : null,
-                ),
+              Image.asset(
+                AppAsset.icEditOutlined,
+                height: 24.r,
+                color: isDarkModeOf(context) ? Colors.white : null,
               ).paddingOnly(right: 8.r),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'new_group') {
+                    _openNewGroupPicker();
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'new_group',
+                    child: Text('New group'),
+                  ),
+                  PopupMenuItem(
+                    value: 'new_community',
+                    child: Text('New community'),
+                  ),
+                  PopupMenuItem(
+                    value: 'broadcast',
+                    child: Text('Broadcast lists'),
+                  ),
+                  PopupMenuItem(
+                    value: 'settings',
+                    child: Text('Settings'),
+                  ),
+                ],
+              ),
             ],
     );
   }
@@ -493,161 +506,13 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     );
   }
 
-  Future<void> _showCreateGroupSheet() async {
+  void _openNewGroupPicker() {
     final currentUid = store.currentUid;
     if (currentUid == null || currentUid.isEmpty) return;
 
-    _groupNameController.clear();
-    final selectedUids = <String>{};
-    var isCreating = false;
-
-    final friendsFuture = _friendRepository.getFriends();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            Future<void> createGroup(List<FriendModel> friends) async {
-              final groupName = _groupNameController.text.trim();
-              if (groupName.isEmpty || selectedUids.isEmpty || isCreating) {
-                return;
-              }
-
-              setSheetState(() => isCreating = true);
-              try {
-                final roomId = await _chatRepository.createGroupRoom(
-                  currentUid: currentUid,
-                  name: groupName,
-                  memberUids: selectedUids.toList(),
-                );
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
-                Get.toNamed(
-                  AppRouteName.CHAT_ROOM_SCREEN,
-                  arguments: ChatRoomArgument(
-                    roomId: roomId,
-                    currentUid: currentUid,
-                    targetUser: UserModel(
-                      id: roomId,
-                      name: groupName,
-                      email: '',
-                      isEmailVerified: false,
-                      fcmToken: '',
-                      isOnlineStatusVisible: false,
-                    ),
-                    isGroup: true,
-                  ),
-                );
-              } finally {
-                if (context.mounted) {
-                  setSheetState(() => isCreating = false);
-                }
-              }
-            }
-
-            return SafeArea(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  20.w,
-                  16.h,
-                  20.w,
-                  MediaQuery.of(context).viewInsets.bottom + 20.h,
-                ),
-                child: FutureBuilder<List<FriendModel>>(
-                  future: friendsFuture,
-                  builder: (context, snapshot) {
-                    final friends = snapshot.data ?? const <FriendModel>[];
-
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Buat grup',
-                          style: TextStyle(
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        12.verticalSpace,
-                        TextField(
-                          controller: _groupNameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nama grup',
-                          ),
-                          onChanged: (_) => setSheetState(() {}),
-                        ),
-                        12.verticalSpace,
-                        if (snapshot.connectionState == ConnectionState.waiting)
-                          const Center(child: CircularProgressIndicator())
-                        else if (friends.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Text('Belum ada teman untuk ditambahkan.'),
-                          )
-                        else
-                          Flexible(
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: friends.length,
-                              itemBuilder: (context, index) {
-                                final friend = friends[index];
-                                final user = friend.user;
-                                final memberUid =
-                                    user.id.isNotEmpty ? user.id : friend.uid;
-                                final isSelected =
-                                    selectedUids.contains(memberUid);
-
-                                return CheckboxListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  value: isSelected,
-                                  title: Text(user.name),
-                                  subtitle: Text(user.username ?? user.email),
-                                  onChanged: (value) {
-                                    setSheetState(() {
-                                      if (value == true) {
-                                        selectedUids.add(memberUid);
-                                      } else {
-                                        selectedUids.remove(memberUid);
-                                      }
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        12.verticalSpace,
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed:
-                                _groupNameController.text.trim().isEmpty ||
-                                        selectedUids.isEmpty ||
-                                        isCreating
-                                    ? null
-                                    : () => createGroup(friends),
-                            child: isCreating
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text('Buat grup'),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            );
-          },
-        );
-      },
+    Get.toNamed(
+      AppRouteName.CHAT_GROUP_PICKER_SCREEN,
+      arguments: ChatGroupPickerArgument(currentUid: currentUid),
     );
   }
 

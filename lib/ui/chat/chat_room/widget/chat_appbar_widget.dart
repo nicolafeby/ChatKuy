@@ -14,7 +14,12 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onVideoCallTap;
   final VoidCallback? onSearchTap;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onAddMembersTap;
+  final VoidCallback? onGroupInfoTap;
+  final VoidCallback? onGroupMediaTap;
   final bool canViewPresence;
+  final bool isGroup;
+  final String? subtitle;
   const ChatAppbarWidget({
     super.key,
     required this.store,
@@ -24,7 +29,12 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     this.onVideoCallTap,
     this.onSearchTap,
     this.onProfileTap,
+    this.onAddMembersTap,
+    this.onGroupInfoTap,
+    this.onGroupMediaTap,
     this.canViewPresence = true,
+    this.isGroup = false,
+    this.subtitle,
   });
 
   @override
@@ -49,20 +59,17 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          onPressed: onSearchTap,
-          icon: const Icon(Icons.search),
-          tooltip: AppTranslationKey.text(AppTranslationKey.searchMessages),
-        ),
-        IconButton(
           onPressed: onVideoCallTap,
           icon: const Icon(Icons.videocam),
           tooltip: AppTranslationKey.text(AppTranslationKey.videoCall),
         ),
-        IconButton(
-          onPressed: onCallTap,
-          icon: const Icon(Icons.call),
-          tooltip: AppTranslationKey.text(AppTranslationKey.voiceCall),
-        ),
+        if (!isGroup)
+          IconButton(
+            onPressed: onCallTap,
+            icon: const Icon(Icons.call),
+            tooltip: AppTranslationKey.text(AppTranslationKey.voiceCall),
+          ),
+        _buildOverflowMenu(),
       ],
       elevation: 2,
     );
@@ -76,13 +83,14 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     required bool isTyping,
     required bool canViewPresence,
   }) {
-    final statusText = canViewPresence
-        ? (isTyping
-            ? AppTranslationKey.text(AppTranslationKey.typing)
-            : user.isOnline == true
-                ? AppTranslationKey.text(AppTranslationKey.online)
-                : (user.lastOnlineAt?.daysAndTime ?? ''))
-        : AppTranslationKey.text(AppTranslationKey.hiddenOnlineStatus);
+    final statusText = subtitle ??
+        (canViewPresence
+            ? (isTyping
+                ? AppTranslationKey.text(AppTranslationKey.typing)
+                : user.isOnline == true
+                    ? AppTranslationKey.text(AppTranslationKey.online)
+                    : (user.lastOnlineAt?.daysAndTime ?? ''))
+            : AppTranslationKey.text(AppTranslationKey.hiddenOnlineStatus));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,4 +113,47 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => Size.fromHeight(56);
+
+  Widget _buildOverflowMenu() {
+    if (!isGroup) {
+      return PopupMenuButton<String>(
+        onSelected: (value) {
+          if (value == 'search') onSearchTap?.call();
+        },
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'search',
+            child:
+                Text(AppTranslationKey.text(AppTranslationKey.searchMessages)),
+          ),
+        ],
+      );
+    }
+
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        if (value == 'add') onAddMembersTap?.call();
+        if (value == 'info') {
+          if (onGroupInfoTap != null) {
+            onGroupInfoTap!.call();
+          } else {
+            onProfileTap?.call();
+          }
+        }
+        if (value == 'media') onGroupMediaTap?.call();
+        if (value == 'search') onSearchTap?.call();
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'add', child: Text('Add members')),
+        PopupMenuItem(value: 'info', child: Text('Group info')),
+        PopupMenuItem(value: 'media', child: Text('Group media')),
+        PopupMenuItem(value: 'search', child: Text('Search')),
+        PopupMenuItem(value: 'mute', child: Text('Mute notifications')),
+        PopupMenuItem(
+            value: 'disappearing', child: Text('Disappearing messages')),
+        PopupMenuItem(value: 'theme', child: Text('Chat theme')),
+        PopupMenuItem(value: 'more', child: Text('More')),
+      ],
+    );
+  }
 }

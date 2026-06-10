@@ -27,6 +27,7 @@ class ChatService implements ChatRepository {
   /// HIVE BOX
   final Box<ChatMessageModel> _messageBox =
       Hive.box<ChatMessageModel>('chat_messages');
+  final Box<UserModel> _userBox = Hive.box<UserModel>('user_model');
 
   CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
       firestore.collection(FirebaseCollections.chatRooms);
@@ -96,6 +97,7 @@ class ChatService implements ChatRepository {
             id: existing.id,
             roomId: existing.roomId,
             senderId: existing.senderId,
+            senderName: existing.senderName ?? data[MessageField.senderName],
             text: existing.text,
             imageUrl: existing.imageUrl ?? data[MessageField.imageUrl],
             localImagePath: _existingFilePath(existing.localImagePath),
@@ -159,6 +161,7 @@ class ChatService implements ChatRepository {
           id: messageId,
           roomId: roomId,
           senderId: data[MessageField.senderId] ?? '',
+          senderName: data[MessageField.senderName],
           text: data[MessageField.text],
           imageUrl: data[MessageField.imageUrl],
           localImagePath: _existingFilePath(data[MessageField.localImagePath]),
@@ -338,6 +341,7 @@ class ChatService implements ChatRepository {
       id: messageRef.id,
       roomId: roomId,
       senderId: uid,
+      senderName: senderName,
       text: text,
       imageUrl: imageUrl,
       videoUrl: videoUrl,
@@ -755,36 +759,93 @@ class ChatService implements ChatRepository {
   }
 
   @override
-  Stream<List<UserModel>> watchGroupMembers({required String roomId}) {
-    return watchRoom(roomId: roomId).asyncMap((room) async {
-      if (!room.isGroup || room.participants.isEmpty) return <UserModel>[];
+  Stream<List<UserModel>> watchGroupMembers({required String roomId}) async* {
+    List<UserModel>? lastEmitted;
 
-      final users = <UserModel>[];
-      for (var i = 0; i < room.participants.length; i += 10) {
-        final chunk = room.participants.skip(i).take(10).toList();
-        final snapshot = await firestore
-            .collection(FirebaseCollections.users)
-            .where(FieldPath.documentId, whereIn: chunk)
-            .get();
-
-        users.addAll(snapshot.docs.map((doc) {
-          return UserModel.fromJson({
-            'id': doc.id,
-            ...doc.data(),
-          });
-        }));
+    await for (final room in watchRoom(roomId: roomId)) {
+      if (!room.isGroup || room.participants.isEmpty) {
+        lastEmitted = const <UserModel>[];
+        yield lastEmitted;
+        continue;
       }
 
-      final indexByUid = {
-        for (var i = 0; i < room.participants.length; i++)
-          room.participants[i]: i,
-      };
-      users.sort((a, b) {
+      final cachedUsers = _cachedUsersFor(room.participants);
+      if (cachedUsers.isNotEmpty && !_sameUserList(lastEmitted, cachedUsers)) {
+        lastEmitted = cachedUsers;
+        yield cachedUsers;
+      }
+
+      final remoteUsers = await _fetchUsersByIds(room.participants);
+      if (remoteUsers.isNotEmpty) {
+        await _userBox.putAll({
+          for (final user in remoteUsers) user.id: user,
+        });
+      }
+
+      if (!_sameUserList(lastEmitted, remoteUsers)) {
+        lastEmitted = remoteUsers;
+        yield remoteUsers;
+      }
+    }
+  }
+
+  List<UserModel> _cachedUsersFor(List<String> participantIds) {
+    final users = participantIds
+        .map(_userBox.get)
+        .whereType<UserModel>()
+        .where((user) => user.id.isNotEmpty)
+        .toList();
+
+    return _sortUsersByParticipantOrder(users, participantIds);
+  }
+
+  Future<List<UserModel>> _fetchUsersByIds(List<String> userIds) async {
+    final users = <UserModel>[];
+    for (var i = 0; i < userIds.length; i += 10) {
+      final chunk = userIds.skip(i).take(10).toList();
+      final snapshot = await firestore
+          .collection(FirebaseCollections.users)
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      users.addAll(snapshot.docs.map((doc) {
+        return UserModel.fromJson({
+          'id': doc.id,
+          ...doc.data(),
+        });
+      }));
+    }
+
+    return _sortUsersByParticipantOrder(users, userIds);
+  }
+
+  List<UserModel> _sortUsersByParticipantOrder(
+    List<UserModel> users,
+    List<String> participantIds,
+  ) {
+    final indexByUid = {
+      for (var i = 0; i < participantIds.length; i++) participantIds[i]: i,
+    };
+
+    return List<UserModel>.of(users)
+      ..sort((a, b) {
         return (indexByUid[a.id] ?? 0).compareTo(indexByUid[b.id] ?? 0);
       });
+  }
 
-      return users;
-    });
+  bool _sameUserList(List<UserModel>? a, List<UserModel> b) {
+    if (a == null || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final left = a[i];
+      final right = b[i];
+      if (left.id != right.id ||
+          left.name != right.name ||
+          left.username != right.username ||
+          left.photoUrl != right.photoUrl) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @override

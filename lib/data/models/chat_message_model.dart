@@ -154,6 +154,8 @@ class ChatMessageModel {
   final List<String> mentionedUserIds;
   @HiveField(36, defaultValue: <String>[])
   final List<String> mentionedUserNames;
+  @HiveField(37)
+  final String? senderName;
 
   ChatMessageModel({
     required this.id,
@@ -193,9 +195,11 @@ class ChatMessageModel {
     this.audioDurationSeconds,
     this.mentionedUserIds = const [],
     this.mentionedUserNames = const [],
+    this.senderName,
   });
 
-  factory ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
+  factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
+      _$ChatMessageModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatMessageModelToJson(this);
 
@@ -215,6 +219,7 @@ class ChatMessageModel {
     int? audioDurationSeconds,
     List<String>? mentionedUserIds,
     List<String>? mentionedUserNames,
+    String? senderName,
   }) {
     return ChatMessageModel(
       id: id,
@@ -244,6 +249,7 @@ class ChatMessageModel {
       audioDurationSeconds: audioDurationSeconds ?? this.audioDurationSeconds,
       mentionedUserIds: mentionedUserIds ?? this.mentionedUserIds,
       mentionedUserNames: mentionedUserNames ?? this.mentionedUserNames,
+      senderName: senderName ?? this.senderName,
       replyToMessageId: replyToMessageId,
       replyToSenderId: replyToSenderId,
       replyToSenderName: replyToSenderName,

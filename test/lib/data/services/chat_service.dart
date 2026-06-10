@@ -59,6 +59,7 @@ Future<void> chatServiceTest() async {
 
     await Hive.box<ChatMessageModel>('chat_messages').clear();
     await Hive.box<ChatUserItemModel>('chat_list').clear();
+    await Hive.box<UserModel>('user_model').clear();
 
     firestore = MockFirebaseFirestore();
     auth = MockFirebaseAuth();

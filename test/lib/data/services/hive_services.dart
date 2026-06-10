@@ -30,18 +30,18 @@ Future<void> hiveServiceTest() async {
       Hive.registerAdapter(ChatUserItemModelAdapter());
     }
 
-    if (Hive.isAdapterRegistered(5)) {
+    if (!Hive.isAdapterRegistered(5)) {
       Hive.registerAdapter(GenderAdapter());
     }
 
-    if (Hive.isAdapterRegistered(6)) {
+    if (!Hive.isAdapterRegistered(6)) {
       Hive.registerAdapter(UserModelAdapter());
     }
 
     await Hive.openBox<ChatMessageModel>('chat_messages');
     await Hive.openBox<ChatRoomModel>('chat_room');
     await Hive.openBox<ChatUserItemModel>('chat_list');
-    await Hive.openBox<UserModel>('user_mocel');
+    await Hive.openBox<UserModel>('user_model');
   });
 
   tearDownAll(() async {

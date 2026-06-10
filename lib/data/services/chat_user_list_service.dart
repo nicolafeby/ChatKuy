@@ -14,13 +14,18 @@ class ChatUserListService implements ChatUserListRepository {
 
   final FirebaseFirestore firestore;
 
-  CollectionReference<Map<String, dynamic>> get _chatRoomsRef => firestore.collection(FirebaseCollections.chatRooms);
+  CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
+      firestore.collection(FirebaseCollections.chatRooms);
 
-  CollectionReference<Map<String, dynamic>> get _usersRef => firestore.collection(FirebaseCollections.users);
+  CollectionReference<Map<String, dynamic>> get _usersRef =>
+      firestore.collection(FirebaseCollections.users);
 
   /// HIVE BOX
-  final Box<ChatUserItemModel> _chatListBox = Hive.box<ChatUserItemModel>('chat_list');
-  final Box<ChatMessageModel> _messageBox = Hive.box<ChatMessageModel>('chat_messages');
+  final Box<ChatUserItemModel> _chatListBox =
+      Hive.box<ChatUserItemModel>('chat_list');
+  final Box<ChatMessageModel> _messageBox =
+      Hive.box<ChatMessageModel>('chat_messages');
+  final Box<UserModel> _userBox = Hive.box<UserModel>('user_model');
   final Map<String, UserModel> _userCache = {};
 
   @override
@@ -31,12 +36,14 @@ class ChatUserListService implements ChatUserListRepository {
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? roomsSubscription;
     StreamSubscription<BoxEvent>? localSubscription;
     StreamSubscription<BoxEvent>? messageSubscription;
-    final userSubscriptions = <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
+    final userSubscriptions =
+        <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
     var isApplyingRemoteRooms = false;
 
     List<ChatUserItemModel> localItems() {
       final localData = _chatListBox.values.toList()
-        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(a.lastMessageAt ?? DateTime(0)));
+        ..sort((a, b) => (b.lastMessageAt ?? DateTime(0))
+            .compareTo(a.lastMessageAt ?? DateTime(0)));
 
       for (final item in localData) {
         if (item.user.id.isNotEmpty) {
@@ -105,17 +112,20 @@ class ChatUserListService implements ChatUserListRepository {
             targetUids: targetUids,
             userSubscriptions: userSubscriptions,
           );
-          final missingTargetUids = targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
+          final missingTargetUids =
+              targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
 
           final userSnaps = await Future.wait(
             missingTargetUids.map((uid) => _usersRef.doc(uid).get()),
           );
           for (final snap in userSnaps) {
             if (!snap.exists) continue;
-            _userCache[snap.id] = UserModel.fromJson({
+            final user = UserModel.fromJson({
               'id': snap.id,
               ...snap.data()!,
             });
+            _userCache[snap.id] = user;
+            await _userBox.put(user.id, user);
           }
 
           final items = <ChatUserItemModel>[];
@@ -128,7 +138,9 @@ class ChatUserListService implements ChatUserListRepository {
                     orElse: () => '',
                   );
 
-            final user = room.isGroup ? _groupAsUser(room) : _userCache[targetUid] ?? localItemsByRoomId[room.id]?.user;
+            final user = room.isGroup
+                ? _groupAsUser(room)
+                : _userCache[targetUid] ?? localItemsByRoomId[room.id]?.user;
             if (user == null) continue;
             final localItem = localItemsByRoomId[room.id];
             final useLocalLatest = localItem?.lastMessageAt != null &&
@@ -139,15 +151,21 @@ class ChatUserListService implements ChatUserListRepository {
             final item = ChatUserItemModel(
               roomId: room.id,
               user: user,
-              lastMessage: useLocalLatest ? localItem.lastMessage : room.lastMessage,
-              lastMessageAt: useLocalLatest ? localItem.lastMessageAt : room.lastMessageAt,
+              lastMessage:
+                  useLocalLatest ? localItem.lastMessage : room.lastMessage,
+              lastMessageAt:
+                  useLocalLatest ? localItem.lastMessageAt : room.lastMessageAt,
               unreadCount: room.unreadCount?[myUid] ?? 0,
               imageUrl: useLocalLatest ? localItem.imageUrl : room.imageUrl,
               type: useLocalLatest ? localItem.type : room.type,
-              lastSenderId: useLocalLatest ? localItem.lastSenderId : room.lastSenderId,
-              lastMessageStatus: useLocalLatest ? localItem.lastMessageStatus : null,
-              lastMessageDeliveredTo: useLocalLatest ? localItem.lastMessageDeliveredTo : const {},
-              lastMessageReadBy: useLocalLatest ? localItem.lastMessageReadBy : const {},
+              lastSenderId:
+                  useLocalLatest ? localItem.lastSenderId : room.lastSenderId,
+              lastMessageStatus:
+                  useLocalLatest ? localItem.lastMessageStatus : null,
+              lastMessageDeliveredTo:
+                  useLocalLatest ? localItem.lastMessageDeliveredTo : const {},
+              lastMessageReadBy:
+                  useLocalLatest ? localItem.lastMessageReadBy : const {},
               isArchived: _isChatArchivedForUser(room.id, myUid),
               isGroup: room.isGroup,
               groupName: room.name,
@@ -196,7 +214,9 @@ class ChatUserListService implements ChatUserListRepository {
     required String roomId,
     required String uid,
   }) async {
-    final messages = _messageBox.values.where((message) => message.roomId == roomId).toList(growable: false);
+    final messages = _messageBox.values
+        .where((message) => message.roomId == roomId)
+        .toList(growable: false);
 
     for (final message in messages) {
       await _messageBox.put(
@@ -329,7 +349,8 @@ class ChatUserListService implements ChatUserListRepository {
     if (existing == null) return;
 
     final existingDate = existing.lastMessageAt ?? DateTime(0);
-    if (message.status != MessageStatus.pending && message.createdAtClient.isBefore(existingDate)) {
+    if (message.status != MessageStatus.pending &&
+        message.createdAtClient.isBefore(existingDate)) {
       return;
     }
 
@@ -359,9 +380,13 @@ class ChatUserListService implements ChatUserListRepository {
 
   void _syncUserSubscriptions({
     required Set<String> targetUids,
-    required Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>> userSubscriptions,
+    required Map<String,
+            StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
+        userSubscriptions,
   }) {
-    final staleUids = userSubscriptions.keys.where((uid) => !targetUids.contains(uid)).toList();
+    final staleUids = userSubscriptions.keys
+        .where((uid) => !targetUids.contains(uid))
+        .toList();
     for (final uid in staleUids) {
       userSubscriptions.remove(uid)?.cancel();
     }
@@ -379,6 +404,7 @@ class ChatUserListService implements ChatUserListRepository {
             ...data,
           });
           _userCache[user.id] = user;
+          await _userBox.put(user.id, user);
 
           await _updateLocalChatListUser(user);
         },
@@ -387,7 +413,8 @@ class ChatUserListService implements ChatUserListRepository {
   }
 
   Future<void> _updateLocalChatListUser(UserModel user) async {
-    final affectedItems = _chatListBox.values.where((item) => item.user.id == user.id).toList();
+    final affectedItems =
+        _chatListBox.values.where((item) => item.user.id == user.id).toList();
 
     for (final item in affectedItems) {
       await _chatListBox.put(
