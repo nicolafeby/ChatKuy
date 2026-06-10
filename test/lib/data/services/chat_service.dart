@@ -91,15 +91,19 @@ Future<void> chatServiceTest() async {
     when(auth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
 
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
 
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
 
-    when(messagesCollection.orderBy(MessageField.createdAtClient)).thenReturn(messageQuery);
+    when(messagesCollection.orderBy(MessageField.createdAtClient))
+        .thenReturn(messageQuery);
 
-    when(messageQuery.snapshots(includeMetadataChanges: true)).thenAnswer((_) => Stream.value(messageQuerySnapshot));
+    when(messageQuery.snapshots(includeMetadataChanges: true))
+        .thenAnswer((_) => Stream.value(messageQuerySnapshot));
 
     when(messageQuerySnapshot.docChanges).thenReturn([]);
     when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
@@ -130,11 +134,15 @@ Future<void> chatServiceTest() async {
     when(auth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
-    when(messagesCollection.orderBy(MessageField.createdAtClient)).thenReturn(messageQuery);
-    when(messageQuery.snapshots(includeMetadataChanges: true)).thenAnswer((_) => Stream.value(messageQuerySnapshot));
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
+    when(messagesCollection.orderBy(MessageField.createdAtClient))
+        .thenReturn(messageQuery);
+    when(messageQuery.snapshots(includeMetadataChanges: true))
+        .thenAnswer((_) => Stream.value(messageQuerySnapshot));
     when(messageQuerySnapshot.docChanges).thenReturn([]);
     when(messageQuerySnapshot.docs).thenReturn([messageSnapshot]);
     when(messageSnapshot.id).thenReturn('msg-1');
@@ -162,16 +170,19 @@ Future<void> chatServiceTest() async {
     when(auth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('user-1');
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
 
     when(messagesCollection.doc()).thenReturn(messageDocRef);
     when(messageDocRef.id).thenReturn('msg-1');
 
     when(firestore.batch()).thenReturn(mockBatch);
 
-    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
     when(usersCollection.doc('user-1')).thenReturn(userDoc);
     when(userDoc.get()).thenAnswer((_) async => userSnapshot);
     when(userSnapshot.data()).thenReturn({
@@ -191,7 +202,8 @@ Future<void> chatServiceTest() async {
       type: MessageType.text,
     );
 
-    final localMessage = Hive.box<ChatMessageModel>('chat_messages').get('msg-1');
+    final localMessage =
+        Hive.box<ChatMessageModel>('chat_messages').get('msg-1');
 
     expect(localMessage, isNotNull);
     expect(localMessage!.roomId, 'room-1');
@@ -227,7 +239,9 @@ Future<void> chatServiceTest() async {
             data[ChatRoomField.type] == MessageType.text.name &&
             data.containsKey(ChatRoomField.lastMessageAt) &&
             data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
-            data.containsKey('${ChatRoomField.unreadCount}.user-2');
+            data.containsKey('${ChatRoomField.unreadCount}.user-2') &&
+            data.containsKey('${ChatRoomField.archivedFor}.user-1') &&
+            !data.containsKey('${ChatRoomField.archivedFor}.user-2');
       })),
     )).called(1);
 
@@ -238,11 +252,13 @@ Future<void> chatServiceTest() async {
   // MARK READ
   // ==========================================================
   test('markRead updates readBy on message document', () async {
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
 
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
 
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
 
     when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
 
@@ -277,9 +293,11 @@ Future<void> chatServiceTest() async {
       ),
     );
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
     when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
     when(messageDocRef.update(any)).thenAnswer((_) async {});
     when(roomDoc.update(any)).thenAnswer((_) async {});
@@ -299,7 +317,9 @@ Future<void> chatServiceTest() async {
     })).called(1);
   });
 
-  test('deleteMessageForMe falls back to room marker when message update is denied', () async {
+  test(
+      'deleteMessageForMe falls back to room marker when message update is denied',
+      () async {
     final box = Hive.box<ChatMessageModel>('chat_messages');
     await box.put(
       'msg-1',
@@ -317,9 +337,11 @@ Future<void> chatServiceTest() async {
       ),
     );
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
-    when(roomDoc.collection(FirestoreCollection.messages)).thenReturn(messagesCollection);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
     when(messagesCollection.doc('msg-1')).thenReturn(messageDocRef);
     when(messageDocRef.update(any)).thenThrow(
       FirebaseException(
@@ -390,7 +412,8 @@ Future<void> chatServiceTest() async {
       ),
     );
 
-    when(firestore.collection(FirebaseCollections.chatRooms)).thenReturn(roomsCollection);
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
     when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
     when(roomDoc.update(any)).thenAnswer((_) async {});
 
@@ -411,5 +434,84 @@ Future<void> chatServiceTest() async {
           !data.containsKey('${ChatRoomField.deletedChatListFor}.user-2');
     })))).called(1);
     verifyNever(roomDoc.delete());
+  });
+
+  test('archiveChat marks local and remote room as archived for user',
+      () async {
+    final chatListBox = Hive.box<ChatUserItemModel>('chat_list');
+    final chatUserListService = ChatUserListService(firestore);
+
+    await chatListBox.put(
+      'room-1',
+      ChatUserItemModel(
+        roomId: 'room-1',
+        user: UserModel(
+          id: 'user-2',
+          name: 'Budi',
+          username: 'budi',
+          email: 'budi@example.com',
+          isEmailVerified: true,
+          fcmToken: '',
+        ),
+        lastMessage: 'Hi',
+        lastMessageAt: DateTime(2026, 1, 2),
+        unreadCount: 0,
+      ),
+    );
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.update(any)).thenAnswer((_) async {});
+
+    await chatUserListService.archiveChat(
+      roomId: 'room-1',
+      uid: 'user-1',
+    );
+
+    expect(chatListBox.get('room-1')!.isArchived, isTrue);
+    verify(roomDoc.update({
+      '${ChatRoomField.archivedFor}.user-1': true,
+    })).called(1);
+  });
+
+  test('unarchiveChat clears local and remote archive state for user',
+      () async {
+    final chatListBox = Hive.box<ChatUserItemModel>('chat_list');
+    final chatUserListService = ChatUserListService(firestore);
+
+    await chatListBox.put(
+      'room-1',
+      ChatUserItemModel(
+        roomId: 'room-1',
+        user: UserModel(
+          id: 'user-2',
+          name: 'Budi',
+          username: 'budi',
+          email: 'budi@example.com',
+          isEmailVerified: true,
+          fcmToken: '',
+        ),
+        lastMessage: 'Hi',
+        lastMessageAt: DateTime(2026, 1, 2),
+        unreadCount: 0,
+        isArchived: true,
+      ),
+    );
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('room-1')).thenReturn(roomDoc);
+    when(roomDoc.update(any)).thenAnswer((_) async {});
+
+    await chatUserListService.unarchiveChat(
+      roomId: 'room-1',
+      uid: 'user-1',
+    );
+
+    expect(chatListBox.get('room-1')!.isArchived, isFalse);
+    verify(roomDoc.update({
+      '${ChatRoomField.archivedFor}.user-1': FieldValue.delete(),
+    })).called(1);
   });
 }

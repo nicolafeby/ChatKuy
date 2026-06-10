@@ -59,6 +59,8 @@ class AppTranslationKey {
   static const unreadMessages = 'unreadMessages';
   static const chatNotFound = 'chatNotFound';
   static const noChats = 'noChats';
+  static const archivedChats = 'archivedChats';
+  static const noArchivedChats = 'noArchivedChats';
   static const pleaseLoginAgain = 'pleaseLoginAgain';
   static const securityLoginAgain = 'securityLoginAgain';
   static const message = 'message';
@@ -101,6 +103,10 @@ class AppTranslationKey {
   static const deleteChatsTitle = 'deleteChatsTitle';
   static const deleteChatContent = 'deleteChatContent';
   static const deleteChatFailed = 'deleteChatFailed';
+  static const archive = 'archive';
+  static const unarchive = 'unarchive';
+  static const archiveChatFailed = 'archiveChatFailed';
+  static const unarchiveChatFailed = 'unarchiveChatFailed';
   static const deleteMessagesTitle = 'deleteMessagesTitle';
   static const deleteMessagesContent = 'deleteMessagesContent';
   static const cancel = 'cancel';
@@ -307,6 +313,8 @@ const Map<String, String> _id = {
   AppTranslationKey.unreadMessages: 'Pesan belum dibaca',
   AppTranslationKey.chatNotFound: 'Percakapan tidak ditemukan',
   AppTranslationKey.noChats: 'Belum ada percakapan',
+  AppTranslationKey.archivedChats: 'Diarsipkan',
+  AppTranslationKey.noArchivedChats: 'Belum ada chat diarsipkan',
   AppTranslationKey.pleaseLoginAgain: 'Silakan masuk kembali',
   AppTranslationKey.securityLoginAgain: 'Silakan login ulang demi keamanan',
   AppTranslationKey.message: 'Pesan',
@@ -355,6 +363,10 @@ const Map<String, String> _id = {
   AppTranslationKey.deleteChatContent:
       'Chat ini akan dihapus hanya dari daftar dan riwayat Anda.',
   AppTranslationKey.deleteChatFailed: 'Gagal menghapus chat',
+  AppTranslationKey.archive: 'Arsipkan',
+  AppTranslationKey.unarchive: 'Keluarkan dari arsip',
+  AppTranslationKey.archiveChatFailed: 'Gagal mengarsipkan chat',
+  AppTranslationKey.unarchiveChatFailed: 'Gagal mengeluarkan chat dari arsip',
   AppTranslationKey.deleteMessagesTitle: 'Hapus @count pesan?',
   AppTranslationKey.deleteMessagesContent:
       'Pesan akan dihapus hanya dari chat Anda.',
@@ -564,6 +576,8 @@ const Map<String, String> _en = {
   AppTranslationKey.unreadMessages: 'Unread messages',
   AppTranslationKey.chatNotFound: 'Chat not found',
   AppTranslationKey.noChats: 'No chats yet',
+  AppTranslationKey.archivedChats: 'Archived',
+  AppTranslationKey.noArchivedChats: 'No archived chats yet',
   AppTranslationKey.pleaseLoginAgain: 'Please sign in again',
   AppTranslationKey.securityLoginAgain: 'Please sign in again for security',
   AppTranslationKey.message: 'Message',
@@ -612,6 +626,10 @@ const Map<String, String> _en = {
   AppTranslationKey.deleteChatContent:
       'This chat will only be deleted from your list and history.',
   AppTranslationKey.deleteChatFailed: 'Failed to delete chat',
+  AppTranslationKey.archive: 'Archive',
+  AppTranslationKey.unarchive: 'Unarchive',
+  AppTranslationKey.archiveChatFailed: 'Failed to archive chat',
+  AppTranslationKey.unarchiveChatFailed: 'Failed to unarchive chat',
   AppTranslationKey.deleteMessagesTitle: 'Delete @count messages?',
   AppTranslationKey.deleteMessagesContent:
       'Messages will only be deleted from your chat.',

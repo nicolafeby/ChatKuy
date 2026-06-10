@@ -35,6 +35,10 @@ class AppRoute {
       page: () => ChatRoomScreen(),
     ),
     GetPage(
+      name: AppRouteName.CHAT_ARCHIVE_SCREEN,
+      page: () => const ChatArchiveScreen(),
+    ),
+    GetPage(
       name: AppRouteName.ADD_FRIEND_SCREEN,
       page: () => AddFriendScreen(),
     ),

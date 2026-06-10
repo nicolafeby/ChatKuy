@@ -30,6 +30,8 @@ class ChatUserItemModel {
   final Map<String, bool> lastMessageDeliveredTo;
   @HiveField(10)
   final Map<String, bool> lastMessageReadBy;
+  @HiveField(11, defaultValue: false)
+  final bool isArchived;
 
   ChatUserItemModel({
     required this.roomId,
@@ -43,10 +45,42 @@ class ChatUserItemModel {
     this.lastMessageStatus,
     this.lastMessageDeliveredTo = const {},
     this.lastMessageReadBy = const {},
+    this.isArchived = false,
   });
 
   factory ChatUserItemModel.fromJson(Map<String, dynamic> json) =>
       _$ChatUserItemModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatUserItemModelToJson(this);
+
+  ChatUserItemModel copyWith({
+    String? roomId,
+    UserModel? user,
+    String? lastMessage,
+    DateTime? lastMessageAt,
+    int? unreadCount,
+    String? imageUrl,
+    MessageType? type,
+    String? lastSenderId,
+    MessageStatus? lastMessageStatus,
+    Map<String, bool>? lastMessageDeliveredTo,
+    Map<String, bool>? lastMessageReadBy,
+    bool? isArchived,
+  }) {
+    return ChatUserItemModel(
+      roomId: roomId ?? this.roomId,
+      user: user ?? this.user,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      unreadCount: unreadCount ?? this.unreadCount,
+      imageUrl: imageUrl ?? this.imageUrl,
+      type: type ?? this.type,
+      lastSenderId: lastSenderId ?? this.lastSenderId,
+      lastMessageStatus: lastMessageStatus ?? this.lastMessageStatus,
+      lastMessageDeliveredTo:
+          lastMessageDeliveredTo ?? this.lastMessageDeliveredTo,
+      lastMessageReadBy: lastMessageReadBy ?? this.lastMessageReadBy,
+      isArchived: isArchived ?? this.isArchived,
+    );
+  }
 }
