@@ -62,6 +62,8 @@ class CallService implements CallRepository {
       '${ChatRoomField.unreadCount}.$callerId': 0,
       '${ChatRoomField.unreadCount}.$calleeId': FieldValue.increment(1),
       ChatRoomField.type: MessageTypeName.call,
+      '${ChatRoomField.deletedChatListFor}.$callerId': FieldValue.delete(),
+      '${ChatRoomField.deletedChatListFor}.$calleeId': FieldValue.delete(),
     });
 
     await batch.commit();
@@ -247,6 +249,10 @@ class CallService implements CallRepository {
         ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
         ChatRoomField.lastSenderId: data[CallField.callerId],
         ChatRoomField.type: MessageTypeName.call,
+        '${ChatRoomField.deletedChatListFor}.${data[CallField.callerId]}':
+            FieldValue.delete(),
+        '${ChatRoomField.deletedChatListFor}.${data[CallField.calleeId]}':
+            FieldValue.delete(),
       });
     }
 

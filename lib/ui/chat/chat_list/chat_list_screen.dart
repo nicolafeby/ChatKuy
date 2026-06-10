@@ -54,8 +54,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                 const Duration(seconds: 2),
                 onTimeout: () => null,
               );
-      final currentUid =
-          user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
+      final currentUid = user?.uid ?? await getIt<SecureStorageRepository>().getUserId();
 
       if (currentUid != null) {
         store.watchChatUsers(currentUid);
@@ -157,10 +156,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                             ),
                           ),
                           Text(
-                            (result.message?.createdAtClient ??
-                                        item.lastMessageAt)
-                                    ?.hhmm ??
-                                '',
+                            (result.message?.createdAtClient ?? item.lastMessageAt)?.hhmm ?? '',
                             style: TextStyle(
                               fontSize: 11.sp,
                               color: isDark ? null : Colors.black54,
@@ -172,29 +168,23 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                         children: [
                           Visibility(
                             visible: result.message?.type == MessageType.image,
-                            child: Icon(Icons.image_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.video,
-                            child: Icon(Icons.videocam_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.call,
-                            child: Icon(Icons.call_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.call_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
                             visible: result.message?.type == MessageType.file,
-                            child: Icon(Icons.description_outlined, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            child: Icon(Icons.description_outlined, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Visibility(
-                            visible:
-                                result.message?.type == MessageType.contact,
-                            child: Icon(Icons.person_outline, size: 18.r)
-                                .paddingOnly(right: 4.w),
+                            visible: result.message?.type == MessageType.contact,
+                            child: Icon(Icons.person_outline, size: 18.r).paddingOnly(right: 4.w),
                           ),
                           Flexible(
                             child: _buildHighlightedText(
@@ -232,88 +222,91 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                   final item = chatUsers[index];
                   final user = item.user;
 
-                  return ListTile(
-                    leading: ProfileAvatarWidget(
-                        base64Image: user.photoUrl, size: 48),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: _buildHighlightedText(
-                            text: user.name,
-                            query: store.searchQuery,
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          item.lastMessageAt?.hhmm ?? '',
-                          style: TextStyle(
-                              fontSize: 11.sp,
-                              color: isDark ? null : Colors.black54),
-                        ),
-                      ],
-                    ),
-                    subtitle: Row(
-                      children: [
-                        if (_shouldShowStatus(item))
-                          _buildStatusIcon(item).paddingOnly(right: 4.w),
-                        Visibility(
-                          visible: item.type == MessageType.image,
-                          child: Icon(Icons.image_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
-                        ),
-                        Visibility(
-                          visible: item.type == MessageType.video,
-                          child: Icon(Icons.videocam_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
-                        ),
-                        Visibility(
-                          visible: item.type == MessageType.call,
-                          child: Icon(Icons.call_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
-                        ),
-                        Visibility(
-                          visible: item.type == MessageType.file,
-                          child: Icon(Icons.description_outlined, size: 18.r)
-                              .paddingOnly(right: 4.w),
-                        ),
-                        Visibility(
-                          visible: item.type == MessageType.contact,
-                          child: Icon(Icons.person_outline, size: 18.r)
-                              .paddingOnly(right: 4.w),
-                        ),
-                        Flexible(
-                          child: _buildHighlightedText(
-                            text: _previewText(
-                              item: item,
-                              isSearching: isSearching,
-                            ),
-                            query: store.searchQuery,
-                            style: TextStyle(
-                              color: isDark ? null : Colors.black54,
-                              fontSize: 14.sp,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    trailing: item.unreadCount > 0
-                        ? CircleAvatar(
-                            radius: 10,
-                            backgroundColor: Colors.red,
-                            child: Text(
-                              item.unreadCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
+                  return Dismissible(
+                    key: ValueKey('chat-${item.roomId}'),
+                    direction: DismissDirection.endToStart,
+                    background: _buildDeleteBackground(),
+                    confirmDismiss: (_) => _confirmDeleteChat(item),
+                    onDismissed: (_) => _performDeleteChat(item),
+                    child: ListTile(
+                      leading: ProfileAvatarWidget(base64Image: user.photoUrl, size: 48),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: _buildHighlightedText(
+                              text: user.name,
+                              query: store.searchQuery,
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          )
-                        : null,
-                    onTap: () => _openChatRoom(item),
+                          ),
+                          Text(
+                            item.lastMessageAt?.hhmm ?? '',
+                            style: TextStyle(fontSize: 11.sp, color: isDark ? null : Colors.black54),
+                          ),
+                        ],
+                      ),
+                      subtitle: Row(
+                        children: [
+                          if (_shouldShowStatus(item)) _buildStatusIcon(item).paddingOnly(right: 4.w),
+                          Visibility(
+                            visible: item.type == MessageType.image,
+                            child: Icon(Icons.image_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          ),
+                          Visibility(
+                            visible: item.type == MessageType.video,
+                            child: Icon(Icons.videocam_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          ),
+                          Visibility(
+                            visible: item.type == MessageType.call,
+                            child: Icon(Icons.call_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          ),
+                          Visibility(
+                            visible: item.type == MessageType.file,
+                            child: Icon(Icons.description_outlined, size: 18.r).paddingOnly(right: 4.w),
+                          ),
+                          Visibility(
+                            visible: item.type == MessageType.contact,
+                            child: Icon(Icons.person_outline, size: 18.r).paddingOnly(right: 4.w),
+                          ),
+                          Flexible(
+                            child: _buildHighlightedText(
+                              text: _previewText(
+                                item: item,
+                                isSearching: isSearching,
+                              ),
+                              query: store.searchQuery,
+                              style: TextStyle(
+                                color: isDark ? null : Colors.black54,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: item.unreadCount > 0
+                          ? CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Colors.red,
+                              child: Text(
+                                item.unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            )
+                          : null,
+                      onTap: () => _openChatRoom(item),
+                      onLongPress: () async {
+                        if (await _confirmDeleteChat(item)) {
+                          await _performDeleteChat(item);
+                        }
+                      },
+                    ),
                   );
                 },
               );
@@ -372,8 +365,64 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   }
 
   bool _shouldShowStatus(ChatUserItemModel item) {
-    return item.lastSenderId == store.currentUid &&
-        item.lastMessageStatus != null;
+    return item.lastSenderId == store.currentUid && item.lastMessageStatus != null;
+  }
+
+  Widget _buildDeleteBackground() {
+    return Container(
+      color: Colors.redAccent,
+      alignment: Alignment.centerRight,
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      child: Icon(
+        Icons.delete_outline,
+        color: Colors.white,
+        size: 24.r,
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteChat(ChatUserItemModel item) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(
+                AppTranslationKey.deleteChatTitle.trParams({
+                  'name': item.user.name,
+                }),
+              ),
+              content: Text(AppTranslationKey.deleteChatContent.tr),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(AppTranslationKey.cancel.tr),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text(
+                    AppTranslationKey.delete.tr,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _performDeleteChat(ChatUserItemModel item) async {
+    try {
+      await store.deleteChat(item);
+    } catch (_) {
+      if (mounted) {
+        Get.snackbar(
+          AppTranslationKey.deleteChatFailed.tr,
+          item.user.name,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
   }
 
   Widget _buildStatusIcon(ChatUserItemModel item) {
@@ -402,8 +451,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     required TextStyle style,
   }) {
     final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty ||
-        text.toLowerCase().contains(normalizedQuery) == false) {
+    if (normalizedQuery.isEmpty || text.toLowerCase().contains(normalizedQuery) == false) {
       return Text(
         text,
         maxLines: 1,
