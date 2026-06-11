@@ -5,6 +5,7 @@ import 'package:chatkuy/core/constants/color.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
+import 'package:chatkuy/core/widgets/media_viewer_widget.dart';
 import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
@@ -260,25 +261,57 @@ class _MediaGrid extends StatelessWidget {
   }
 
   void _openImage(ChatMessageModel message) {
+    final mediaItems = _mediaViewerItems();
+
     Get.toNamed(
       AppRouteName.IMAGE_VIEWER_SCREEN,
       arguments: ImageViewerArgument(
         imageUrl: message.imageUrl,
         localImagePath: _existingFilePath(message.localImagePath),
         heroTag: _mediaHeroTag(message),
+        mediaItems: mediaItems,
+        initialIndex: _mediaInitialIndex(message, mediaItems),
       ),
     );
   }
 
   void _openVideo(ChatMessageModel message) {
+    final mediaItems = _mediaViewerItems();
+
     Get.toNamed(
       AppRouteName.VIDEO_VIEWER_SCREEN,
       arguments: VideoViewerArgument(
         videoUrl: message.videoUrl,
         localVideoPath: _existingFilePath(message.localVideoPath),
         heroTag: _mediaHeroTag(message),
+        mediaItems: mediaItems,
+        initialIndex: _mediaInitialIndex(message, mediaItems),
       ),
     );
+  }
+
+  List<MediaViewerItem> _mediaViewerItems() {
+    return messages
+        .map(
+          (message) => MediaViewerItem(
+            heroTag: _mediaHeroTag(message),
+            imageUrl: message.imageUrl,
+            localImagePath: _existingFilePath(message.localImagePath),
+            videoUrl: message.videoUrl,
+            localVideoPath: _existingFilePath(message.localVideoPath),
+          ),
+        )
+        .toList();
+  }
+
+  int _mediaInitialIndex(
+    ChatMessageModel message,
+    List<MediaViewerItem> mediaItems,
+  ) {
+    final index = mediaItems.indexWhere(
+      (item) => item.heroTag == _mediaHeroTag(message),
+    );
+    return index < 0 ? 0 : index;
   }
 }
 
