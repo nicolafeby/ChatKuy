@@ -255,6 +255,7 @@ class ChatService implements ChatRepository {
   @override
   Future<void> sendMessage({
     required String roomId,
+    String? targetUid,
     String? text,
     String? imageUrl,
     File? imageFile,
@@ -294,14 +295,19 @@ class ChatService implements ChatRepository {
         await firestore.collection(FirebaseCollections.users).doc(uid).get();
     final senderName = userDoc.data()?[FriendField.name] ?? 'Unknown';
 
-    final roomSnap = await roomRef.get();
-    final roomData = roomSnap.data();
-    if (roomData == null) {
-      throw StateError('Chat room $roomId tidak ditemukan');
-    }
-
-    final participants =
-        List<String>.from(roomData[ChatRoomField.participants] ?? const []);
+    final roomSnap = await _getRoomIfReadable(
+      roomRef: roomRef,
+      targetUid: targetUid,
+    );
+    final roomData = roomSnap?.data();
+    final roomExists = roomSnap?.exists == true && roomData != null;
+    final participants = roomExists
+        ? List<String>.from(roomData[ChatRoomField.participants] ?? const [])
+        : _draftDirectRoomParticipants(
+            roomId: roomId,
+            currentUid: uid,
+            targetUid: targetUid,
+          );
 
     final recipientUids = participants.where((e) => e != uid).toList();
     if (recipientUids.isEmpty) {
@@ -493,9 +499,7 @@ class ChatService implements ChatRepository {
         );
       }
 
-      final batch = firestore.batch();
-
-      batch.set(messageRef, {
+      final messageData = <String, Object?>{
         MessageField.senderId: uid,
         MessageField.text: text,
         MessageField.imageUrl: uploadedImageUrl,
@@ -527,9 +531,9 @@ class ChatService implements ChatRepository {
         MessageField.replyToType: replyToMessage?.type.name,
         MessageField.mentionedUserIds: mentionedUserIds,
         MessageField.mentionedUserNames: mentionedUserNames,
-      });
+      };
 
-      final roomUpdates = <Object, Object?>{
+      final roomUpdates = <String, dynamic>{
         ChatRoomField.lastMessage: _resolveLastMessage(text, type),
         ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
         ChatRoomField.lastSenderId: uid,
@@ -540,6 +544,10 @@ class ChatService implements ChatRepository {
         '${ChatRoomField.archivedFor}.$uid': FieldValue.delete(),
       };
 
+      if (!roomExists) {
+        roomUpdates[ChatRoomField.participants] = participants;
+      }
+
       for (final recipientUid in recipientUids) {
         roomUpdates['${ChatRoomField.unreadCount}.$recipientUid'] =
             FieldValue.increment(1);
@@ -547,9 +555,13 @@ class ChatService implements ChatRepository {
             FieldValue.delete();
       }
 
-      batch.update(roomRef, roomUpdates);
-
-      await batch.commit();
+      await _commitMessageAndRoom(
+        messageRef: messageRef,
+        roomRef: roomRef,
+        messageData: messageData,
+        roomUpdates: roomUpdates,
+        canRetryWithoutParticipants: !roomExists && targetUid != null,
+      );
     } catch (e, stackTrace) {
       AppErrorLogger.recordError(
         e,
@@ -603,6 +615,85 @@ class ChatService implements ChatRepository {
   MessageType? _nullableMessageTypeFromString(dynamic value) {
     if (value == null) return null;
     return _messageTypeFromString(value);
+  }
+
+  List<String> _draftDirectRoomParticipants({
+    required String roomId,
+    required String currentUid,
+    required String? targetUid,
+  }) {
+    final cleanTargetUid = targetUid?.trim();
+    if (cleanTargetUid == null || cleanTargetUid.isEmpty) {
+      throw StateError(
+        'Chat room $roomId belum ada dan targetUid tidak tersedia',
+      );
+    }
+
+    return [currentUid, cleanTargetUid];
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _getRoomIfReadable({
+    required DocumentReference<Map<String, dynamic>> roomRef,
+    required String? targetUid,
+  }) async {
+    try {
+      return await roomRef.get();
+    } on FirebaseException catch (e) {
+      final cleanTargetUid = targetUid?.trim();
+      final canCreateDraftDirectRoom =
+          cleanTargetUid != null && cleanTargetUid.isNotEmpty;
+
+      if (e.code == 'permission-denied' && canCreateDraftDirectRoom) {
+        return null;
+      }
+
+      rethrow;
+    }
+  }
+
+  Future<void> _commitMessageAndRoom({
+    required DocumentReference<Map<String, dynamic>> messageRef,
+    required DocumentReference<Map<String, dynamic>> roomRef,
+    required Map<String, Object?> messageData,
+    required Map<String, dynamic> roomUpdates,
+    required bool canRetryWithoutParticipants,
+  }) async {
+    try {
+      await _commitMessageAndRoomBatch(
+        messageRef: messageRef,
+        roomRef: roomRef,
+        messageData: messageData,
+        roomUpdates: roomUpdates,
+      );
+    } on FirebaseException catch (e) {
+      if (e.code != 'permission-denied' || !canRetryWithoutParticipants) {
+        rethrow;
+      }
+
+      final retryRoomUpdates = Map<String, dynamic>.from(roomUpdates)
+        ..remove(ChatRoomField.participants);
+
+      await _commitMessageAndRoomBatch(
+        messageRef: messageRef,
+        roomRef: roomRef,
+        messageData: messageData,
+        roomUpdates: retryRoomUpdates,
+      );
+    }
+  }
+
+  Future<void> _commitMessageAndRoomBatch({
+    required DocumentReference<Map<String, dynamic>> messageRef,
+    required DocumentReference<Map<String, dynamic>> roomRef,
+    required Map<String, Object?> messageData,
+    required Map<String, dynamic> roomUpdates,
+  }) async {
+    final batch = firestore.batch();
+
+    batch.set(messageRef, messageData);
+    batch.set(roomRef, roomUpdates, SetOptions(merge: true));
+
+    await batch.commit();
   }
 
   Map<String, bool> _deletedForFromData(Map<String, dynamic> data) {
@@ -681,6 +772,14 @@ class ChatService implements ChatRepository {
   String buildRoomId(String uid1, String uid2) {
     final ids = [uid1, uid2]..sort();
     return ids.join('_');
+  }
+
+  @override
+  String directRoomId({
+    required String currentUid,
+    required String targetUid,
+  }) {
+    return buildRoomId(currentUid, targetUid);
   }
 
   @override

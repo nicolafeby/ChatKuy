@@ -86,8 +86,10 @@ class ChatUserListService implements ChatUserListRepository {
         try {
           final rooms = snapshot.docs
               .where((doc) {
-                _latestRoomData[doc.id] = doc.data();
-                return !_isChatListDeletedForUser(doc.id, myUid);
+                final data = doc.data();
+                _latestRoomData[doc.id] = data;
+                return !_isChatListDeletedForUser(doc.id, myUid) &&
+                    _shouldShowRoomInChatList(data);
               })
               .map((doc) => ChatRoomModel.fromJson({
                     'id': doc.id,
@@ -297,6 +299,16 @@ class ChatUserListService implements ChatUserListRepository {
       data[ChatRoomField.deletedChatListFor] ?? {},
     );
     return deletedChatListFor[uid] == true;
+  }
+
+  bool _shouldShowRoomInChatList(Map<String, dynamic> data) {
+    if (data[ChatRoomField.isGroup] == true) return true;
+
+    final lastMessage = data[ChatRoomField.lastMessage];
+    final lastMessageAt = data[ChatRoomField.lastMessageAt];
+    return lastMessageAt != null &&
+        lastMessage is String &&
+        lastMessage.trim().isNotEmpty;
   }
 
   bool _isChatArchivedForUser(String roomId, String uid) {

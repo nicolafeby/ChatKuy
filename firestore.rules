@@ -20,10 +20,32 @@ service cloud.firestore {
         && request.auth.uid in resource.data.participants;
     }
 
+    function isDirectRoomIdParticipant(roomId) {
+      return signedIn()
+        && resource.data.isGroup != true
+        && roomId.matches('(^|_)' + request.auth.uid + '(_|$)');
+    }
+
     function isParentRoomParticipant(roomId) {
       return signedIn()
         && room(roomId).data.participants is list
         && request.auth.uid in room(roomId).data.participants;
+    }
+
+    function isParentDirectRoomIdParticipant(roomId) {
+      return signedIn()
+        && room(roomId).data.isGroup != true
+        && roomId.matches('(^|_)' + request.auth.uid + '(_|$)');
+    }
+
+    function roomAfter(roomId) {
+      return getAfter(/databases/$(database)/documents/chat_rooms/$(roomId));
+    }
+
+    function isParentRoomParticipantAfter(roomId) {
+      return signedIn()
+        && roomAfter(roomId).data.participants is list
+        && request.auth.uid in roomAfter(roomId).data.participants;
     }
 
     function isCallParticipant() {
@@ -167,14 +189,15 @@ service cloud.firestore {
     }
 
     match /chat_rooms/{roomId} {
-      allow get: if isExistingRoomParticipant();
+      allow get: if isExistingRoomParticipant()
+        || isDirectRoomIdParticipant(roomId);
 
       allow list: if signedIn();
 
       allow create: if isCreatingDirectRoomAsParticipant()
         || isCreatingGroupRoomAsAdmin();
 
-      allow update: if isExistingRoomParticipant()
+      allow update: if (isExistingRoomParticipant() || isDirectRoomIdParticipant(roomId))
         && (
           (keepsParticipantsUnchanged() && keepsGroupAdminFieldsUnchanged()) ||
           isExistingGroupAdmin()
@@ -183,9 +206,14 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if isParentRoomParticipant(roomId);
+        allow read: if isParentRoomParticipant(roomId)
+          || isParentDirectRoomIdParticipant(roomId);
 
-        allow create: if isParentRoomParticipant(roomId)
+        allow create: if (
+            isParentRoomParticipant(roomId) ||
+            isParentDirectRoomIdParticipant(roomId) ||
+            isParentRoomParticipantAfter(roomId)
+          )
           && request.resource.data.senderId == request.auth.uid;
 
         allow update: if isParentRoomParticipant(roomId)

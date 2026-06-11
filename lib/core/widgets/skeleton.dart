@@ -37,13 +37,11 @@ class _SkeletonBlockState extends State<SkeletonBlock>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final baseColor = colorScheme.surfaceContainerHighest.withValues(
-      alpha: 0.52,
-    );
-    final highlightColor = colorScheme.surfaceContainerHighest.withValues(
-      alpha: 0.88,
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor =
+        isDark ? const Color(0xFF1F2C33) : const Color(0xFFD4DBDF);
+    final highlightColor =
+        isDark ? const Color(0xFF2A3942) : const Color(0xFFF0F2F5);
 
     return AnimatedBuilder(
       animation: _animation,

@@ -162,6 +162,7 @@ class _FakeChatRepository implements ChatRepository {
   @override
   Future<void> sendMessage({
     required String roomId,
+    String? targetUid,
     String? text,
     String? imageUrl,
     File? imageFile,
@@ -190,6 +191,14 @@ class _FakeChatRepository implements ChatRepository {
     void Function(int progress)? onUploadProgress,
   }) {
     throw UnimplementedError();
+  }
+
+  @override
+  String directRoomId({
+    required String currentUid,
+    required String targetUid,
+  }) {
+    return '${currentUid}_$targetUid';
   }
 
   @override

@@ -19,6 +19,7 @@ abstract class ChatRepository {
   /// Send message
   Future<void> sendMessage({
     required String roomId,
+    String? targetUid,
     String? text,
     String? imageUrl,
     File? imageFile,
@@ -49,6 +50,12 @@ abstract class ChatRepository {
 
   /// Create room if not exists
   Future<String> createOrGetRoom({
+    required String currentUid,
+    required String targetUid,
+  });
+
+  /// Deterministic 1:1 room id without creating the room document.
+  String directRoomId({
     required String currentUid,
     required String targetUid,
   });
@@ -118,5 +125,6 @@ abstract class ChatRepository {
     required String uid,
   });
 
-  Future<LocalImageModel> uploadImage({required File file, required String roomId});
+  Future<LocalImageModel> uploadImage(
+      {required File file, required String roomId});
 }
