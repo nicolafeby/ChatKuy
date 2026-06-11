@@ -42,8 +42,6 @@ abstract class _ForgotPasswordStore with Store {
 
       resetPasswordFuture = ObservableFuture(future);
       await resetPasswordFuture;
-
-      onSuccess.call();
     } on FirebaseAuthException catch (e, stackTrace) {
       await AppErrorLogger.recordError(
         e,

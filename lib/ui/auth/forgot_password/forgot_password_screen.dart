@@ -1,6 +1,7 @@
 import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/asset.dart';
+import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
@@ -40,6 +41,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             showLoading();
           } else {
             dismissLoading();
+          }
+
+          if (p0 == FutureStatus.fulfilled) {
+            _showResetLinkSentBottomSheet();
           }
         }),
         reaction((p0) => store.error.general, (p0) {
@@ -101,9 +106,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ButtonWidget(
                 onPressed: !store.isValid
                     ? null
-                    : () => store.sendResetLink(
-                          onSuccess: _showResetLinkSentBottomSheet,
-                        ),
+                    : () => store.sendResetLink(onSuccess: () {}),
                 title: AppTranslationKey.sendResetLink.tr,
               ),
             ],
@@ -123,7 +126,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         title: AppTranslationKey.resetLinkSentTitle.tr,
         message: AppTranslationKey.resetLinkSentMessage.tr,
         buttonText: AppTranslationKey.backToLogin.tr,
-        onButtonPressed: () => Get.back(closeOverlays: true),
+        onButtonPressed: () => Get.offAllNamed(AppRouteName.LOGIN_SCREEN),
       ),
     );
   }
