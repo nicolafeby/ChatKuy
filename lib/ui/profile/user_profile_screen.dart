@@ -212,7 +212,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with BaseLayout {
     }
 
     final roomId = argument?.roomId ??
-        await _chatRepository.createOrGetRoom(
+        _chatRepository.directRoomId(
           currentUid: currentUid,
           targetUid: targetUser.id,
         );

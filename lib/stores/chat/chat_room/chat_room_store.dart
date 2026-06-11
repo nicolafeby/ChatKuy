@@ -27,6 +27,8 @@ abstract class _ChatRoomStore with Store {
     required this.userRepository,
   });
 
+  static final Set<String> _initialRemoteLoadedRoomIds = {};
+
   final ChatRepository chatRepository;
   final UserRepository userRepository;
 
@@ -49,6 +51,8 @@ abstract class _ChatRoomStore with Store {
   @observable
   String? currentUid;
 
+  String? targetUid;
+
   @observable
   File? pickedImage;
 
@@ -68,6 +72,7 @@ abstract class _ChatRoomStore with Store {
 
   Timer? _resetUnreadTimer;
   Timer? _typingTimer;
+  Timer? _initialMessageLoadFallbackTimer;
   StreamSubscription<List<ChatMessageModel>>? _initialMessageLoadSubscription;
   ReactionDisposer? _messageStatusDisposer;
   bool _isTyping = false;
@@ -150,14 +155,24 @@ abstract class _ChatRoomStore with Store {
   }) {
     this.roomId = roomId;
     this.currentUid = currentUid;
+    this.targetUid = targetUid;
     _didCaptureUnreadDivider = false;
     unreadDividerMessageId.value = null;
-    isInitialMessagesLoading.value = true;
+    final shouldFetchInitialRemote =
+        !_initialRemoteLoadedRoomIds.contains(roomId);
+    isInitialMessagesLoading.value = shouldFetchInitialRemote;
 
     final messageStream =
         chatRepository.watchMessages(roomId: roomId).asBroadcastStream();
+    if (shouldFetchInitialRemote) {
+      _watchInitialMessageLoad(messageStream);
+    } else {
+      _initialMessageLoadSubscription?.cancel();
+      _initialMessageLoadFallbackTimer?.cancel();
+      _initialMessageLoadSubscription = null;
+      _initialMessageLoadFallbackTimer = null;
+    }
     _serverMessages = messageStream.asObservable();
-    _watchInitialMessageLoad(messageStream);
 
     room = chatRepository.watchRoom(roomId: roomId).asObservable();
     groupMembers = isGroup
@@ -181,20 +196,63 @@ abstract class _ChatRoomStore with Store {
 
   void _watchInitialMessageLoad(Stream<List<ChatMessageModel>> messageStream) {
     _initialMessageLoadSubscription?.cancel();
+    _initialMessageLoadFallbackTimer?.cancel();
 
     var emissionCount = 0;
+    var didCompleteInitialLoad = false;
+    final activeRoomId = roomId;
+
+    void completeInitialLoad({
+      required bool enforceMinimumDuration,
+      required bool markRemoteLoaded,
+    }) {
+      if (didCompleteInitialLoad) return;
+      didCompleteInitialLoad = true;
+
+      final delay = enforceMinimumDuration
+          ? const Duration(milliseconds: 700)
+          : Duration.zero;
+
+      Future<void>.delayed(
+        delay,
+        () {
+          if (roomId != activeRoomId) return;
+          if (markRemoteLoaded && activeRoomId != null) {
+            _initialRemoteLoadedRoomIds.add(activeRoomId);
+          }
+          runInAction(() => isInitialMessagesLoading.value = false);
+        },
+      );
+
+      _initialMessageLoadFallbackTimer?.cancel();
+      _initialMessageLoadFallbackTimer = null;
+      _initialMessageLoadSubscription?.cancel();
+      _initialMessageLoadSubscription = null;
+    }
+
+    _initialMessageLoadFallbackTimer = Timer(const Duration(seconds: 3), () {
+      completeInitialLoad(
+        enforceMinimumDuration: false,
+        markRemoteLoaded: false,
+      );
+    });
+
     _initialMessageLoadSubscription = messageStream.listen(
       (messages) {
         emissionCount += 1;
 
-        if (messages.isNotEmpty || emissionCount >= 2) {
-          runInAction(() => isInitialMessagesLoading.value = false);
-          _initialMessageLoadSubscription?.cancel();
-          _initialMessageLoadSubscription = null;
+        if (emissionCount >= 2) {
+          completeInitialLoad(
+            enforceMinimumDuration: true,
+            markRemoteLoaded: true,
+          );
         }
       },
       onError: (_, __) {
-        runInAction(() => isInitialMessagesLoading.value = false);
+        completeInitialLoad(
+          enforceMinimumDuration: false,
+          markRemoteLoaded: false,
+        );
       },
     );
   }
@@ -378,6 +436,7 @@ abstract class _ChatRoomStore with Store {
     try {
       await chatRepository.sendMessage(
         roomId: roomId!,
+        targetUid: targetUid,
         text: messageText,
         imageFile: uploadImageFile ?? imageFile,
         localImagePath: localImagePath,
@@ -519,6 +578,7 @@ abstract class _ChatRoomStore with Store {
 
       await chatRepository.sendMessage(
         roomId: activeRoomId,
+        targetUid: targetUid,
         text: messageText,
         videoFile: uploadVideoFile,
         clientMessageId: uploadingMessage.id,
@@ -642,6 +702,7 @@ abstract class _ChatRoomStore with Store {
     try {
       await chatRepository.sendMessage(
         roomId: roomId!,
+        targetUid: targetUid,
         file: File(localFilePath),
         localFilePath: localFilePath,
         fileName: fileName,
@@ -726,6 +787,7 @@ abstract class _ChatRoomStore with Store {
     try {
       await chatRepository.sendMessage(
         roomId: roomId!,
+        targetUid: targetUid,
         audioFile: File(localAudioPath),
         localAudioPath: localAudioPath,
         audioDurationSeconds: durationSeconds,
@@ -788,6 +850,7 @@ abstract class _ChatRoomStore with Store {
     try {
       await chatRepository.sendMessage(
         roomId: roomId!,
+        targetUid: targetUid,
         type: MessageType.contact,
         contactName: contactName,
         contactPhone: contactPhone,
@@ -1089,6 +1152,7 @@ abstract class _ChatRoomStore with Store {
   }
 
   void _scheduleResetUnread() {
+    if (room?.value == null) return;
     _resetUnreadTimer?.cancel();
     _resetUnreadTimer = Timer(const Duration(milliseconds: 600), _resetUnread);
   }
@@ -1099,6 +1163,7 @@ abstract class _ChatRoomStore with Store {
   @action
   void onTypingChanged(String text) {
     if (roomId == null || currentUid == null) return;
+    if (room?.value == null) return;
 
     final nextIsTyping = text.trim().isNotEmpty;
 
@@ -1151,6 +1216,7 @@ abstract class _ChatRoomStore with Store {
 
   Future<void> _resetUnread() async {
     if (roomId == null || currentUid == null) return;
+    if (room?.value == null) return;
 
     try {
       await chatRepository.resetUnread(
@@ -1175,7 +1241,7 @@ abstract class _ChatRoomStore with Store {
   // -----------------------
   @action
   void dispose() {
-    if (roomId != null && currentUid != null) {
+    if (roomId != null && currentUid != null && room?.value != null) {
       chatRepository
           .setTyping(
         roomId: roomId!,
@@ -1197,14 +1263,17 @@ abstract class _ChatRoomStore with Store {
 
     _typingTimer?.cancel();
     _resetUnreadTimer?.cancel();
+    _initialMessageLoadFallbackTimer?.cancel();
     _initialMessageLoadSubscription?.cancel();
     _initialMessageLoadSubscription = null;
+    _initialMessageLoadFallbackTimer = null;
     _messageStatusDisposer?.call();
     _messageStatusDisposer = null;
     _deliveredMessageIds.clear();
     _readMessageIds.clear();
     _didCaptureUnreadDivider = false;
     roomId = null;
+    targetUid = null;
     _serverMessages = null;
     targetUser = null;
     currentUser = null;

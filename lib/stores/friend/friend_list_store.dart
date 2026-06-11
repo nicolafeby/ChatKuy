@@ -137,28 +137,11 @@ abstract class _FriendListStore with Store {
   }) async {
     if (currentUid == null) return;
 
-    isLoading = true;
     errorMessage = null;
-
-    try {
-      roomId = await chatRepository.createOrGetRoom(
-        currentUid: currentUid!,
-        targetUid: targetUid,
-      );
-    } catch (e, stackTrace) {
-      AppErrorLogger.recordError(
-        e,
-        stackTrace,
-        reason: 'Open chat from friend list failed',
-        context: {
-          'current_uid': currentUid,
-          'target_uid': targetUid,
-        },
-      );
-      errorMessage = e.toString();
-    } finally {
-      isLoading = false;
-    }
+    roomId = chatRepository.directRoomId(
+      currentUid: currentUid!,
+      targetUid: targetUid,
+    );
   }
 
   // ======================

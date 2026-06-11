@@ -191,6 +191,7 @@ Future<void> chatServiceTest() async {
     });
 
     when(roomDoc.get()).thenAnswer((_) async => roomSnapshot);
+    when(roomSnapshot.exists).thenReturn(true);
     when(roomSnapshot.data()).thenReturn({
       ChatRoomField.participants: ['user-1', 'user-2'],
     });
@@ -215,7 +216,7 @@ Future<void> chatServiceTest() async {
 
     verify(mockBatch.set(
       messageDocRef,
-      argThat(predicate<Map<String, dynamic>>((data) {
+      argThat(predicate<Map>((data) {
         return data[MessageField.text] == 'Hi' &&
             data[MessageField.senderId] == 'user-1' &&
             data[MessageField.senderName] == 'Budi' &&
@@ -231,9 +232,9 @@ Future<void> chatServiceTest() async {
       null,
     )).called(1);
 
-    verify(mockBatch.update(
+    verify(mockBatch.set(
       roomDoc,
-      argThat(predicate<Map<Object, Object?>>((data) {
+      argThat(predicate<Map>((data) {
         return data[ChatRoomField.lastMessage] == 'Hi' &&
             data[ChatRoomField.lastSenderId] == 'user-1' &&
             data[ChatRoomField.imageUrl] == null &&
@@ -244,9 +245,140 @@ Future<void> chatServiceTest() async {
             data.containsKey('${ChatRoomField.archivedFor}.user-1') &&
             !data.containsKey('${ChatRoomField.archivedFor}.user-2');
       })),
+      any,
     )).called(1);
 
     verify(mockBatch.commit()).called(1);
+  });
+
+  test('sendMessage creates direct room when room doc is not readable yet',
+      () async {
+    when(auth.currentUser).thenReturn(mockUser);
+    when(mockUser.uid).thenReturn('user-1');
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('user-1_user-2')).thenReturn(roomDoc);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
+
+    when(messagesCollection.doc()).thenReturn(messageDocRef);
+    when(messageDocRef.id).thenReturn('msg-1');
+
+    when(firestore.batch()).thenReturn(mockBatch);
+
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
+    when(usersCollection.doc('user-1')).thenReturn(userDoc);
+    when(userDoc.get()).thenAnswer((_) async => userSnapshot);
+    when(userSnapshot.data()).thenReturn({
+      FriendField.name: 'Budi',
+    });
+
+    when(roomDoc.get()).thenThrow(
+      FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
+      ),
+    );
+
+    when(mockBatch.commit()).thenAnswer((_) async {});
+
+    await service.sendMessage(
+      roomId: 'user-1_user-2',
+      targetUid: 'user-2',
+      text: 'Halo pertama',
+      type: MessageType.text,
+    );
+
+    verify(mockBatch.set(
+      roomDoc,
+      argThat(predicate<Map>((data) {
+        return data[ChatRoomField.lastMessage] == 'Halo pertama' &&
+            data[ChatRoomField.participants] is List<String> &&
+            (data[ChatRoomField.participants] as List<String>)
+                .contains('user-1') &&
+            (data[ChatRoomField.participants] as List<String>)
+                .contains('user-2') &&
+            data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
+            data.containsKey('${ChatRoomField.unreadCount}.user-2');
+      })),
+      any,
+    )).called(1);
+
+    verify(mockBatch.commit()).called(1);
+  });
+
+  test('sendMessage retries existing direct room without participants update',
+      () async {
+    final retryBatch = MockWriteBatch();
+
+    when(auth.currentUser).thenReturn(mockUser);
+    when(mockUser.uid).thenReturn('user-1');
+
+    when(firestore.collection(FirebaseCollections.chatRooms))
+        .thenReturn(roomsCollection);
+    when(roomsCollection.doc('user-1_user-2')).thenReturn(roomDoc);
+    when(roomDoc.collection(FirestoreCollection.messages))
+        .thenReturn(messagesCollection);
+
+    when(messagesCollection.doc()).thenReturn(messageDocRef);
+    when(messageDocRef.id).thenReturn('msg-1');
+
+    var batchCallCount = 0;
+    when(firestore.batch()).thenAnswer((_) {
+      batchCallCount += 1;
+      return batchCallCount == 1 ? mockBatch : retryBatch;
+    });
+
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
+    when(usersCollection.doc('user-1')).thenReturn(userDoc);
+    when(userDoc.get()).thenAnswer((_) async => userSnapshot);
+    when(userSnapshot.data()).thenReturn({
+      FriendField.name: 'Budi',
+    });
+
+    when(roomDoc.get()).thenThrow(
+      FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
+      ),
+    );
+
+    when(mockBatch.commit()).thenThrow(
+      FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
+      ),
+    );
+    when(retryBatch.commit()).thenAnswer((_) async {});
+
+    await service.sendMessage(
+      roomId: 'user-1_user-2',
+      targetUid: 'user-2',
+      text: 'Existing room',
+      type: MessageType.text,
+    );
+
+    verify(mockBatch.set(
+      roomDoc,
+      argThat(predicate<Map>((data) {
+        return data.containsKey(ChatRoomField.participants);
+      })),
+      any,
+    )).called(1);
+
+    verify(retryBatch.set(
+      roomDoc,
+      argThat(predicate<Map<String, dynamic>>((data) {
+        return data[ChatRoomField.lastMessage] == 'Existing room' &&
+            !data.containsKey(ChatRoomField.participants);
+      })),
+      any,
+    )).called(1);
+
+    verify(retryBatch.commit()).called(1);
   });
 
   // ==========================================================
@@ -427,7 +559,7 @@ Future<void> chatServiceTest() async {
     expect(messageBox.get('msg-1')!.deletedFor['user-1'], isTrue);
     expect(messageBox.get('msg-2')!.deletedFor['user-1'], isTrue);
 
-    verify(roomDoc.update(argThat(predicate<Map<Object, Object?>>((data) {
+    verify(roomDoc.update(argThat(predicate<Map>((data) {
       return data['${ChatRoomField.deletedChatListFor}.user-1'] == true &&
           data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
           data['${ChatRoomField.deletedMessagesFor}.user-1.msg-1'] == true &&
