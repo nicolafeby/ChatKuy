@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:chatkuy/core/constants/app_strings.dart';
+import 'package:chatkuy/core/widgets/media_viewer_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -8,60 +7,36 @@ class ImageViewerArgument {
   final String? imageUrl;
   final String? localImagePath;
   final String heroTag;
+  final List<MediaViewerItem> mediaItems;
+  final int initialIndex;
 
   const ImageViewerArgument({
     required this.imageUrl,
     this.localImagePath,
     String? heroTag,
+    this.mediaItems = const [],
+    this.initialIndex = 0,
   }) : heroTag = heroTag ?? imageUrl ?? AppStrings.dummyNetworkImage;
 }
 
-class ImageViewerScreen extends StatefulWidget {
+class ImageViewerScreen extends StatelessWidget {
   const ImageViewerScreen({super.key});
 
   @override
-  State<ImageViewerScreen> createState() => _ImageViewerScreenState();
-}
-
-class _ImageViewerScreenState extends State<ImageViewerScreen> {
-  ImageViewerArgument? argument;
-
-  @override
-  void initState() {
-    super.initState();
-    argument = Get.arguments as ImageViewerArgument?;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Center(
-          child: Hero(
-            tag: argument?.heroTag ?? AppStrings.dummyNetworkImage,
-            child: InteractiveViewer(
-              child: _buildImage(),
-            ),
-          ),
-        ),
-      ),
+    final argument = Get.arguments as ImageViewerArgument?;
+    final fallbackItem = MediaViewerItem(
+      heroTag: argument?.heroTag ?? AppStrings.dummyNetworkImage,
+      imageUrl: argument?.imageUrl,
+      localImagePath: argument?.localImagePath,
     );
-  }
+    final items = argument?.mediaItems.isNotEmpty == true
+        ? argument!.mediaItems
+        : [fallbackItem];
 
-  Widget _buildImage() {
-    final localImagePath = argument?.localImagePath;
-    if (localImagePath != null && File(localImagePath).existsSync()) {
-      return Image.file(
-        File(localImagePath),
-        fit: BoxFit.contain,
-      );
-    }
-
-    return Image.network(
-      argument?.imageUrl ?? AppStrings.dummyNetworkImage,
-      fit: BoxFit.contain,
+    return MediaViewer(
+      items: items,
+      initialIndex: argument?.initialIndex ?? 0,
     );
   }
 }

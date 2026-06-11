@@ -6,6 +6,7 @@ import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/extension/date.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/image_viewer_widget.dart';
+import 'package:chatkuy/core/widgets/media_viewer_widget.dart';
 import 'package:chatkuy/core/widgets/profile_avatar_widget.dart';
 import 'package:chatkuy/core/widgets/video_viewer_widget.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
@@ -56,6 +57,7 @@ class ChatBubbleWidget extends StatefulWidget {
     this.senderPhotoUrl,
     this.onSenderAvatarTap,
     this.searchQuery = '',
+    this.mediaMessages = const [],
   });
 
   final ChatMessageModel message;
@@ -77,6 +79,7 @@ class ChatBubbleWidget extends StatefulWidget {
   final String? senderPhotoUrl;
   final VoidCallback? onSenderAvatarTap;
   final String searchQuery;
+  final List<ChatMessageModel> mediaMessages;
 
   final bool isFirstInGroup;
   final bool isSameGroup;
@@ -471,14 +474,11 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InkWell(
-                onTap: imageUrl == null
+                onTap: (imageUrl == null && localImagePath == null)
                     ? null
-                    : () => Get.toNamed(
-                          AppRouteName.IMAGE_VIEWER_SCREEN,
-                          arguments: ImageViewerArgument(imageUrl: imageUrl),
-                        ),
+                    : _openImageViewer,
                 child: Hero(
-                  tag: imageUrl ?? widget.message.id,
+                  tag: _mediaHeroTag(widget.message),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4.r),
                     child: _buildImagePreview(
@@ -1424,6 +1424,8 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
     required String? localVideoPath,
   }) {
     if (videoUrl == null && localVideoPath == null) return;
+    final mediaItems = _mediaViewerItems();
+    final initialIndex = _mediaInitialIndex(mediaItems);
 
     Get.toNamed(
       AppRouteName.VIDEO_VIEWER_SCREEN,
@@ -1431,8 +1433,82 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
         videoUrl: videoUrl,
         localVideoPath: localVideoPath,
         heroTag: _videoHeroTag(videoUrl, localVideoPath),
+        mediaItems: mediaItems,
+        initialIndex: initialIndex,
       ),
     );
+  }
+
+  void _openImageViewer() {
+    final imageUrl = widget.message.imageUrl;
+    final localImagePath = _existingFilePath(widget.message.localImagePath);
+    if (imageUrl == null && localImagePath == null) return;
+
+    final heroTag = imageUrl ?? localImagePath ?? widget.message.id;
+    final mediaItems = _mediaViewerItems();
+    final initialIndex = _mediaInitialIndex(mediaItems);
+
+    Get.toNamed(
+      AppRouteName.IMAGE_VIEWER_SCREEN,
+      arguments: ImageViewerArgument(
+        imageUrl: imageUrl,
+        localImagePath: localImagePath,
+        heroTag: heroTag,
+        mediaItems: mediaItems,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
+  List<MediaViewerItem> _mediaViewerItems() {
+    final sourceMessages = widget.mediaMessages.isNotEmpty
+        ? widget.mediaMessages
+        : [widget.message];
+
+    return sourceMessages
+        .where(_isViewableMediaMessage)
+        .map(
+          (message) => MediaViewerItem(
+            heroTag: _mediaHeroTag(message),
+            imageUrl: message.imageUrl,
+            localImagePath: _existingFilePath(message.localImagePath),
+            videoUrl: message.videoUrl,
+            localVideoPath: _existingFilePath(message.localVideoPath),
+          ),
+        )
+        .toList();
+  }
+
+  int _mediaInitialIndex(List<MediaViewerItem> items) {
+    final index = items.indexWhere(
+      (item) => item.heroTag == _mediaHeroTag(widget.message),
+    );
+    return index < 0 ? 0 : index;
+  }
+
+  bool _isViewableMediaMessage(ChatMessageModel message) {
+    if (message.type == MessageType.image) {
+      return message.imageUrl?.isNotEmpty == true ||
+          _existingFilePath(message.localImagePath) != null;
+    }
+
+    if (message.type == MessageType.video) {
+      return message.videoUrl?.isNotEmpty == true ||
+          _existingFilePath(message.localVideoPath) != null;
+    }
+
+    return false;
+  }
+
+  String _mediaHeroTag(ChatMessageModel message) {
+    if (message.type == MessageType.video) {
+      return _videoHeroTag(
+          message.videoUrl, _existingFilePath(message.localVideoPath));
+    }
+
+    return message.imageUrl ??
+        _existingFilePath(message.localImagePath) ??
+        message.id;
   }
 
   String _videoHeroTag(String? videoUrl, String? localVideoPath) {
