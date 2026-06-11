@@ -18,6 +18,10 @@ class AppRoute {
       page: () => LoginScreen(),
     ),
     GetPage(
+      name: AppRouteName.FORGOT_PASSWORD_SCREEN,
+      page: () => ForgotPasswordScreen(),
+    ),
+    GetPage(
       name: AppRouteName.REGISTER_SCREEN,
       page: () => RegisterScreen(),
     ),

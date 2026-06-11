@@ -159,6 +159,14 @@ class AppTranslationKey {
   static const login = 'login';
   static const welcomeBack = 'welcomeBack';
   static const forgotPassword = 'forgotPassword';
+  static const resetPassword = 'resetPassword';
+  static const forgotPasswordInstruction = 'forgotPasswordInstruction';
+  static const usernameOrEmail = 'usernameOrEmail';
+  static const enterUsernameOrEmail = 'enterUsernameOrEmail';
+  static const sendResetLink = 'sendResetLink';
+  static const resetLinkSentTitle = 'resetLinkSentTitle';
+  static const resetLinkSentMessage = 'resetLinkSentMessage';
+  static const backToLogin = 'backToLogin';
   static const dontHaveAccount = 'dontHaveAccount';
   static const register = 'register';
   static const welcome = 'welcome';
@@ -422,6 +430,16 @@ const Map<String, String> _id = {
   AppTranslationKey.login: 'Masuk',
   AppTranslationKey.welcomeBack: 'Welcome Back',
   AppTranslationKey.forgotPassword: 'Lupa Password?',
+  AppTranslationKey.resetPassword: 'Reset Password',
+  AppTranslationKey.forgotPasswordInstruction:
+      'Masukkan username atau email akun kamu. Jika akun ditemukan, kami akan mengirim link reset password ke email terdaftar.',
+  AppTranslationKey.usernameOrEmail: 'Username atau Email',
+  AppTranslationKey.enterUsernameOrEmail: 'Masukan username atau email',
+  AppTranslationKey.sendResetLink: 'Kirim Link Reset',
+  AppTranslationKey.resetLinkSentTitle: 'Cek Email Kamu',
+  AppTranslationKey.resetLinkSentMessage:
+      'Jika akun ditemukan, link reset password sudah kami kirim ke email terdaftar.',
+  AppTranslationKey.backToLogin: 'Kembali ke Login',
   AppTranslationKey.dontHaveAccount: 'Tidak punya akun? ',
   AppTranslationKey.register: 'Daftar',
   AppTranslationKey.welcome: 'Selamat Datang',
@@ -684,6 +702,16 @@ const Map<String, String> _en = {
   AppTranslationKey.login: 'Sign in',
   AppTranslationKey.welcomeBack: 'Welcome Back',
   AppTranslationKey.forgotPassword: 'Forgot Password?',
+  AppTranslationKey.resetPassword: 'Reset Password',
+  AppTranslationKey.forgotPasswordInstruction:
+      'Enter your account username or email. If the account is found, we will send a password reset link to the registered email.',
+  AppTranslationKey.usernameOrEmail: 'Username or Email',
+  AppTranslationKey.enterUsernameOrEmail: 'Enter username or email',
+  AppTranslationKey.sendResetLink: 'Send Reset Link',
+  AppTranslationKey.resetLinkSentTitle: 'Check Your Email',
+  AppTranslationKey.resetLinkSentMessage:
+      'If the account is found, we have sent a password reset link to the registered email.',
+  AppTranslationKey.backToLogin: 'Back to Sign In',
   AppTranslationKey.dontHaveAccount: 'Do not have an account? ',
   AppTranslationKey.register: 'Sign up',
   AppTranslationKey.welcome: 'Welcome',
