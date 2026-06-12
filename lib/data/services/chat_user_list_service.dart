@@ -340,6 +340,7 @@ class ChatUserListService implements ChatUserListRepository {
   }
 
   String? _resolveLastMessage(ChatMessageModel message) {
+    if (message.deletedForEveryone) return 'Pesan ini telah dihapus';
     final text = message.text?.trim();
     if (text != null && text.isNotEmpty) return text;
     if (message.type == MessageType.image) return 'Foto';

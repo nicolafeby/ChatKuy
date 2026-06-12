@@ -125,6 +125,46 @@ service cloud.firestore {
         ]);
     }
 
+    function isUpdatingOwnTextMessage() {
+      return resource.data.senderId == request.auth.uid
+        && resource.data.type == 'text'
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.senderId == resource.data.senderId
+        && request.resource.data.get('deletedForEveryone', false) != true
+        && request.resource.data.editedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'text',
+          'editedAt'
+        ]);
+    }
+
+    function isDeletingOwnMessageForEveryone() {
+      return resource.data.senderId == request.auth.uid
+        && request.resource.data.senderId == resource.data.senderId
+        && request.resource.data.deletedForEveryone == true
+        && request.resource.data.deletedForEveryoneAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'text',
+          'imageUrl',
+          'localImagePath',
+          'videoUrl',
+          'localVideoPath',
+          'fileUrl',
+          'localFilePath',
+          'fileName',
+          'fileSize',
+          'fileExtension',
+          'contactName',
+          'contactPhone',
+          'audioUrl',
+          'localAudioPath',
+          'audioDurationSeconds',
+          'reactions',
+          'deletedForEveryone',
+          'deletedForEveryoneAt'
+        ]);
+    }
+
     function isVerifiedOwnEmailUpdate() {
       return request.resource.data.email == request.auth.token.email
         && resource.data.pendingEmail == request.auth.token.email;
@@ -225,6 +265,8 @@ service cloud.firestore {
               'deletedFor',
               'reactions'
             ]) ||
+            isUpdatingOwnTextMessage() ||
+            isDeletingOwnMessageForEveryone() ||
             isUpdatingCallMessage()
           );
 

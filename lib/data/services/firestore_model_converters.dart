@@ -145,6 +145,7 @@ abstract class FirestoreModelConverters {
       'mentionedUserIds': data[MessageField.mentionedUserIds] ?? <String>[],
       'mentionedUserNames': data[MessageField.mentionedUserNames] ?? <String>[],
       'reactions': data[MessageField.reactions] ?? <String, String>{},
+      'deletedForEveryone': data[MessageField.deletedForEveryone] ?? false,
     };
   }
 

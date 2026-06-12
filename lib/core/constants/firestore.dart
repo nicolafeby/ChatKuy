@@ -105,6 +105,9 @@ abstract class MessageField {
   static const mentionedUserIds = 'mentionedUserIds';
   static const mentionedUserNames = 'mentionedUserNames';
   static const reactions = 'reactions';
+  static const editedAt = 'editedAt';
+  static const deletedForEveryone = 'deletedForEveryone';
+  static const deletedForEveryoneAt = 'deletedForEveryoneAt';
 }
 
 /// ==============================

@@ -76,6 +76,7 @@ class ChatMessageWriteModel {
       'readBy': <String, bool>{},
       'deletedFor': <String, bool>{},
       'reactions': <String, String>{},
+      'deletedForEveryone': false,
     };
   }
 

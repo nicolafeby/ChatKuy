@@ -152,6 +152,25 @@ class _FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String text,
+    required String uid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteMessageForEveryone({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> setMessageReaction({
     required String roomId,
     required String messageId,

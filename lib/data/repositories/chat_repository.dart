@@ -120,6 +120,19 @@ abstract class ChatRepository {
     required String uid,
   });
 
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String text,
+    required String uid,
+  });
+
+  Future<void> deleteMessageForEveryone({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  });
+
   Future<void> setMessageReaction({
     required String roomId,
     required String messageId,
