@@ -40,7 +40,10 @@ abstract class _ChatRoomStore with Store {
   ObservableStream<ChatRoomModel>? room;
   ObservableStream<List<UserModel>>? groupMembers;
   ObservableStream<Map<String, bool>>? typing;
-  final Observable<ChatMessageModel?> replyToMessage = Observable<ChatMessageModel?>(null);
+  final Observable<ChatMessageModel?> replyToMessage =
+      Observable<ChatMessageModel?>(null);
+  final Observable<ChatMessageModel?> editingMessage =
+      Observable<ChatMessageModel?>(null);
   final Observable<String?> unreadDividerMessageId = Observable<String?>(null);
   final Observable<bool> isInitialMessagesLoading = Observable<bool>(true);
 
@@ -61,10 +64,13 @@ abstract class _ChatRoomStore with Store {
   @observable
   String searchQuery = '';
 
-  final ObservableList<ChatMessageModel> uploadingMessages = ObservableList<ChatMessageModel>();
+  final ObservableList<ChatMessageModel> uploadingMessages =
+      ObservableList<ChatMessageModel>();
 
-  final ObservableMap<String, int> uploadProgressByMessageId = ObservableMap<String, int>();
-  final ObservableMap<String, int> uploadProgressByLocalPath = ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByMessageId =
+      ObservableMap<String, int>();
+  final ObservableMap<String, int> uploadProgressByLocalPath =
+      ObservableMap<String, int>();
 
   Timer? _resetUnreadTimer;
   Timer? _typingTimer;
@@ -91,14 +97,17 @@ abstract class _ChatRoomStore with Store {
 
       list = box.values
           .where(
-            (m) => m.roomId == roomId && (currentUid == null || m.deletedFor[currentUid] != true),
+            (m) =>
+                m.roomId == roomId &&
+                (currentUid == null || m.deletedFor[currentUid] != true),
           )
           .toList()
         ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     if (uploadingMessages.isNotEmpty) {
-      final visibleUploadingMessages = uploadingMessages.where((uploadingMessage) {
+      final visibleUploadingMessages =
+          uploadingMessages.where((uploadingMessage) {
         return !list.any(
           (message) =>
               message.type == uploadingMessage.type &&
@@ -107,7 +116,8 @@ abstract class _ChatRoomStore with Store {
         );
       });
 
-      list = [...list, ...visibleUploadingMessages]..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
+      list = [...list, ...visibleUploadingMessages]
+        ..sort((a, b) => a.createdAtClient.compareTo(b.createdAtClient));
     }
 
     return list;
@@ -123,7 +133,9 @@ abstract class _ChatRoomStore with Store {
       final replyText = message.replyToText?.toLowerCase() ?? '';
       final typeLabel = _messageTypeLabel(message.type).toLowerCase();
 
-      return text.contains(query) || replyText.contains(query) || typeLabel.contains(query);
+      return text.contains(query) ||
+          replyText.contains(query) ||
+          typeLabel.contains(query);
     }).toList();
   }
 
@@ -148,10 +160,12 @@ abstract class _ChatRoomStore with Store {
     this.targetUid = targetUid;
     _didCaptureUnreadDivider = false;
     unreadDividerMessageId.value = null;
-    final shouldFetchInitialRemote = !_initialRemoteLoadedRoomIds.contains(roomId);
+    final shouldFetchInitialRemote =
+        !_initialRemoteLoadedRoomIds.contains(roomId);
     isInitialMessagesLoading.value = shouldFetchInitialRemote;
 
-    final messageStream = chatRepository.watchMessages(roomId: roomId).asBroadcastStream();
+    final messageStream =
+        chatRepository.watchMessages(roomId: roomId).asBroadcastStream();
     if (shouldFetchInitialRemote) {
       _watchInitialMessageLoad(messageStream);
     } else {
@@ -163,8 +177,12 @@ abstract class _ChatRoomStore with Store {
     _serverMessages = messageStream.asObservable();
 
     room = chatRepository.watchRoom(roomId: roomId).asObservable();
-    groupMembers = isGroup ? chatRepository.watchGroupMembers(roomId: roomId).asObservable() : null;
-    targetUser = targetUid == null ? null : userRepository.watchUser(targetUid).asObservable();
+    groupMembers = isGroup
+        ? chatRepository.watchGroupMembers(roomId: roomId).asObservable()
+        : null;
+    targetUser = targetUid == null
+        ? null
+        : userRepository.watchUser(targetUid).asObservable();
     currentUser = userRepository.watchUser(currentUid).asObservable();
     typing = chatRepository.watchTyping(roomId: roomId).asObservable();
 
@@ -193,7 +211,9 @@ abstract class _ChatRoomStore with Store {
       if (didCompleteInitialLoad) return;
       didCompleteInitialLoad = true;
 
-      final delay = enforceMinimumDuration ? const Duration(milliseconds: 700) : Duration.zero;
+      final delay = enforceMinimumDuration
+          ? const Duration(milliseconds: 700)
+          : Duration.zero;
 
       Future<void>.delayed(
         delay,
@@ -290,7 +310,8 @@ abstract class _ChatRoomStore with Store {
   void insertMention(UserModel user) {
     final text = messageController.text;
     final selection = messageController.selection;
-    final cursor = selection.baseOffset < 0 ? text.length : selection.baseOffset;
+    final cursor =
+        selection.baseOffset < 0 ? text.length : selection.baseOffset;
     final start = text.lastIndexOf('@', cursor - 1);
     if (start == -1) return;
 
@@ -344,12 +365,35 @@ abstract class _ChatRoomStore with Store {
 
   @action
   void setReplyToMessage(ChatMessageModel message) {
-    runInAction(() => replyToMessage.value = message);
+    runInAction(() {
+      replyToMessage.value = message;
+      editingMessage.value = null;
+    });
   }
 
   @action
   void clearReplyToMessage() {
     runInAction(() => replyToMessage.value = null);
+  }
+
+  @action
+  void setEditingMessage(ChatMessageModel message) {
+    runInAction(() {
+      editingMessage.value = message;
+      replyToMessage.value = null;
+      messageController.text = message.text?.trim() ?? '';
+      messageController.selection = TextSelection.collapsed(
+        offset: messageController.text.length,
+      );
+    });
+  }
+
+  @action
+  void clearEditingMessage() {
+    runInAction(() {
+      editingMessage.value = null;
+      messageController.clear();
+    });
   }
 
   // -----------------------
@@ -361,6 +405,12 @@ abstract class _ChatRoomStore with Store {
 
     final messageText = text?.trim();
     final imageFile = image ?? pickedImage;
+    final editTarget = editingMessage.value;
+
+    if (editTarget != null && imageFile == null) {
+      await editMessage(editTarget, messageText ?? '');
+      return;
+    }
 
     if ((messageText == null || messageText.isEmpty) && imageFile == null) {
       return;
@@ -374,6 +424,7 @@ abstract class _ChatRoomStore with Store {
     onTypingChanged('');
     clearPickedImage();
     clearReplyToMessage();
+    editingMessage.value = null;
 
     ChatMessageModel? uploadingMessage;
     String? localImagePath;
@@ -446,7 +497,9 @@ abstract class _ChatRoomStore with Store {
         context: {
           'room_id': roomId,
           'current_uid': currentUid,
-          'message_type': imageFile != null ? MessageType.image.name : MessageType.text.name,
+          'message_type': imageFile != null
+              ? MessageType.image.name
+              : MessageType.text.name,
           'has_text': messageText?.isNotEmpty == true,
         },
       );
@@ -456,7 +509,8 @@ abstract class _ChatRoomStore with Store {
         );
 
         if (index != -1) {
-          uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+          uploadingMessages[index] =
+              uploadingMessage.copyWith(status: MessageStatus.failed);
         }
       }
 
@@ -516,7 +570,8 @@ abstract class _ChatRoomStore with Store {
         videoFile: video,
         onProgress: (progress) {
           runInAction(() {
-            final mappedProgress = (progress * 0.5).round().clamp(0, 50).toInt();
+            final mappedProgress =
+                (progress * 0.5).round().clamp(0, 50).toInt();
             uploadProgressByMessageId[uploadingMessage.id] = mappedProgress;
             uploadProgressByLocalPath[video.path] = mappedProgress;
           });
@@ -545,8 +600,12 @@ abstract class _ChatRoomStore with Store {
         }
 
         uploadProgressByMessageId[uploadingMessage.id] =
-            uploadProgressByMessageId[uploadingMessage.id]?.clamp(0, 50).toInt() ?? 50;
-        uploadProgressByLocalPath[localVideoPath] = uploadProgressByMessageId[uploadingMessage.id] ?? 50;
+            uploadProgressByMessageId[uploadingMessage.id]
+                    ?.clamp(0, 50)
+                    .toInt() ??
+                50;
+        uploadProgressByLocalPath[localVideoPath] =
+            uploadProgressByMessageId[uploadingMessage.id] ?? 50;
       });
 
       await chatRepository.sendMessage(
@@ -564,8 +623,10 @@ abstract class _ChatRoomStore with Store {
         onUploadProgress: (progress) {
           runInAction(() {
             final mappedProgress = (50 + (progress * 0.5)).round();
-            uploadProgressByMessageId[uploadingMessage.id] = mappedProgress.clamp(50, 100).toInt();
-            uploadProgressByLocalPath[localVideoPath] = mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByMessageId[uploadingMessage.id] =
+                mappedProgress.clamp(50, 100).toInt();
+            uploadProgressByLocalPath[localVideoPath] =
+                mappedProgress.clamp(50, 100).toInt();
           });
         },
       );
@@ -585,7 +646,8 @@ abstract class _ChatRoomStore with Store {
       );
 
       if (index != -1) {
-        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] =
+            uploadingMessage.copyWith(status: MessageStatus.failed);
       }
       await Hive.box<ChatMessageModel>('chat_messages').put(
         uploadingMessage.id,
@@ -640,7 +702,8 @@ abstract class _ChatRoomStore with Store {
     final now = DateTime.now();
     final fileName = p.basename(file.path);
     final fileSize = await file.length();
-    final fileExtension = p.extension(fileName).replaceFirst('.', '').toUpperCase();
+    final fileExtension =
+        p.extension(fileName).replaceFirst('.', '').toUpperCase();
     final localFilePath = await saveFileToLocal(file: file, roomId: roomId!);
     final uploadingMessage = ChatMessageModel(
       id: 'uploading_${now.microsecondsSinceEpoch}',
@@ -703,7 +766,8 @@ abstract class _ChatRoomStore with Store {
       );
 
       if (index != -1) {
-        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] =
+            uploadingMessage.copyWith(status: MessageStatus.failed);
       }
 
       rethrow;
@@ -785,7 +849,8 @@ abstract class _ChatRoomStore with Store {
       );
 
       if (index != -1) {
-        uploadingMessages[index] = uploadingMessage.copyWith(status: MessageStatus.failed);
+        uploadingMessages[index] =
+            uploadingMessage.copyWith(status: MessageStatus.failed);
       }
 
       rethrow;
@@ -880,7 +945,8 @@ abstract class _ChatRoomStore with Store {
       final username = member.username?.trim();
       final patterns = <String>[
         '@${name.toLowerCase()}',
-        if (username != null && username.isNotEmpty) '@${username.toLowerCase()}',
+        if (username != null && username.isNotEmpty)
+          '@${username.toLowerCase()}',
       ];
 
       if (patterns.any(lowerText.contains)) {
@@ -944,6 +1010,9 @@ abstract class _ChatRoomStore with Store {
     if (roomId == null || currentUid == null) return;
 
     clearReplyToMessage();
+    if (editingMessage.value?.id == message.id) {
+      clearEditingMessage();
+    }
     uploadProgressByMessageId.remove(message.id);
 
     final localMediaPath = _localMediaPath(message);
@@ -951,7 +1020,8 @@ abstract class _ChatRoomStore with Store {
       uploadProgressByLocalPath.remove(localMediaPath);
     }
 
-    final isUploadingMessage = uploadingMessages.any((item) => item.id == message.id);
+    final isUploadingMessage =
+        uploadingMessages.any((item) => item.id == message.id);
     uploadingMessages.removeWhere((item) => item.id == message.id);
     if (isUploadingMessage) return;
 
@@ -987,8 +1057,13 @@ abstract class _ChatRoomStore with Store {
     if (uniqueMessages.isEmpty) return;
 
     clearReplyToMessage();
+    if (uniqueMessages
+        .any((message) => message.id == editingMessage.value?.id)) {
+      clearEditingMessage();
+    }
 
-    final uploadingMessageIds = uploadingMessages.map((item) => item.id).toSet();
+    final uploadingMessageIds =
+        uploadingMessages.map((item) => item.id).toSet();
 
     for (final message in uniqueMessages) {
       uploadProgressByMessageId.remove(message.id);
@@ -1003,7 +1078,9 @@ abstract class _ChatRoomStore with Store {
       (item) => uniqueMessages.any((message) => message.id == item.id),
     );
 
-    final persistedMessages = uniqueMessages.where((message) => !uploadingMessageIds.contains(message.id)).toList();
+    final persistedMessages = uniqueMessages
+        .where((message) => !uploadingMessageIds.contains(message.id))
+        .toList();
 
     if (persistedMessages.isEmpty) return;
 
@@ -1033,6 +1110,93 @@ abstract class _ChatRoomStore with Store {
   }
 
   @action
+  Future<void> editMessage(ChatMessageModel message, String text) async {
+    if (roomId == null || currentUid == null) return;
+    if (message.senderId != currentUid) return;
+    if (message.type != MessageType.text) return;
+    if (message.deletedForEveryone) return;
+
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) return;
+
+    final previousText = message.text?.trim() ?? '';
+    if (cleanText == previousText) {
+      clearEditingMessage();
+      onTypingChanged('');
+      return;
+    }
+
+    try {
+      await chatRepository.editMessage(
+        roomId: roomId!,
+        messageId: message.id,
+        text: cleanText,
+        uid: currentUid!,
+      );
+      clearEditingMessage();
+      onTypingChanged('');
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Edit chat message failed',
+        context: {
+          'room_id': roomId,
+          'message_id': message.id,
+          'current_uid': currentUid,
+        },
+      );
+    }
+  }
+
+  @action
+  Future<void> deleteMessagesForEveryone(
+    Iterable<ChatMessageModel> messages,
+  ) async {
+    if (roomId == null || currentUid == null) return;
+
+    final uniqueMessages = <String, ChatMessageModel>{
+      for (final message in messages) message.id: message,
+    }.values.where((message) {
+      return message.senderId == currentUid &&
+          message.status == MessageStatus.sent &&
+          !message.deletedForEveryone;
+    }).toList();
+
+    if (uniqueMessages.isEmpty) return;
+
+    clearReplyToMessage();
+    if (uniqueMessages
+        .any((message) => message.id == editingMessage.value?.id)) {
+      clearEditingMessage();
+    }
+
+    try {
+      await Future.wait(
+        uniqueMessages.map(
+          (message) => chatRepository.deleteMessageForEveryone(
+            roomId: roomId!,
+            messageId: message.id,
+            uid: currentUid!,
+          ),
+        ),
+      );
+    } catch (e, stackTrace) {
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason: 'Delete selected chat messages for everyone failed',
+        context: {
+          'room_id': roomId,
+          'message_count': uniqueMessages.length,
+          'current_uid': currentUid,
+        },
+      );
+      rethrow;
+    }
+  }
+
+  @action
   Future<void> toggleMessageReaction(
     ChatMessageModel message,
     String emoji,
@@ -1044,7 +1208,8 @@ abstract class _ChatRoomStore with Store {
     if (selectedEmoji.isEmpty) return;
 
     final currentReaction = message.reactions[currentUid];
-    final nextReaction = currentReaction == selectedEmoji ? null : selectedEmoji;
+    final nextReaction =
+        currentReaction == selectedEmoji ? null : selectedEmoji;
 
     try {
       await chatRepository.setMessageReaction(
@@ -1085,7 +1250,8 @@ abstract class _ChatRoomStore with Store {
     for (final message in messages) {
       if (message.senderId == currentUid) continue;
 
-      if (!message.deliveredTo.containsKey(currentUid) && _deliveredMessageIds.add(message.id)) {
+      if (!message.deliveredTo.containsKey(currentUid) &&
+          _deliveredMessageIds.add(message.id)) {
         chatRepository
             .markDelivered(
           roomId: roomId!,
@@ -1106,7 +1272,8 @@ abstract class _ChatRoomStore with Store {
         });
       }
 
-      if (!message.readBy.containsKey(currentUid) && _readMessageIds.add(message.id)) {
+      if (!message.readBy.containsKey(currentUid) &&
+          _readMessageIds.add(message.id)) {
         chatRepository
             .markRead(
           roomId: roomId!,
@@ -1139,7 +1306,9 @@ abstract class _ChatRoomStore with Store {
     _didCaptureUnreadDivider = true;
 
     final firstUnreadIndex = messages.indexWhere(
-      (message) => message.senderId != currentUid && !message.readBy.containsKey(currentUid),
+      (message) =>
+          message.senderId != currentUid &&
+          !message.readBy.containsKey(currentUid),
     );
     if (firstUnreadIndex == -1) return;
 

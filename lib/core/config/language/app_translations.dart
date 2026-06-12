@@ -99,6 +99,14 @@ class AppTranslationKey {
   static const errorTicketHelp = 'errorTicketHelp';
   static const ok = 'ok';
   static const deleteForMe = 'deleteForMe';
+  static const deleteForEveryone = 'deleteForEveryone';
+  static const deleteMessagesForEveryoneContent =
+      'deleteMessagesForEveryoneContent';
+  static const editMessage = 'editMessage';
+  static const messageCannotBeEdited = 'messageCannotBeEdited';
+  static const edited = 'edited';
+  static const youDeletedThisMessage = 'youDeletedThisMessage';
+  static const thisMessageWasDeleted = 'thisMessageWasDeleted';
   static const deleteChatTitle = 'deleteChatTitle';
   static const deleteChatsTitle = 'deleteChatsTitle';
   static const deleteChatContent = 'deleteChatContent';
@@ -367,6 +375,14 @@ const Map<String, String> _id = {
       'Berikan ID tiket ini ke tim teknis agar error bisa dicek pada sistem',
   AppTranslationKey.ok: 'Oke',
   AppTranslationKey.deleteForMe: 'Hapus untuk saya',
+  AppTranslationKey.deleteForEveryone: 'Hapus untuk semua orang',
+  AppTranslationKey.deleteMessagesForEveryoneContent:
+      'Pilih apakah pesan dihapus hanya dari chat Anda atau untuk semua orang.',
+  AppTranslationKey.editMessage: 'Edit pesan',
+  AppTranslationKey.messageCannotBeEdited: 'Pesan ini tidak bisa diedit',
+  AppTranslationKey.edited: 'diedit',
+  AppTranslationKey.youDeletedThisMessage: 'Anda menghapus pesan ini',
+  AppTranslationKey.thisMessageWasDeleted: 'Pesan ini telah dihapus',
   AppTranslationKey.deleteChatTitle: 'Hapus chat dengan @name?',
   AppTranslationKey.deleteChatsTitle: 'Hapus @count chat?',
   AppTranslationKey.deleteChatContent:
@@ -641,6 +657,14 @@ const Map<String, String> _en = {
       'Share this ticket ID with the technical team so the error can be checked in the system',
   AppTranslationKey.ok: 'OK',
   AppTranslationKey.deleteForMe: 'Delete for me',
+  AppTranslationKey.deleteForEveryone: 'Delete for everyone',
+  AppTranslationKey.deleteMessagesForEveryoneContent:
+      'Choose whether to delete the messages only from your chat or for everyone.',
+  AppTranslationKey.editMessage: 'Edit message',
+  AppTranslationKey.messageCannotBeEdited: 'This message cannot be edited',
+  AppTranslationKey.edited: 'edited',
+  AppTranslationKey.youDeletedThisMessage: 'You deleted this message',
+  AppTranslationKey.thisMessageWasDeleted: 'This message was deleted',
   AppTranslationKey.deleteChatTitle: 'Delete chat with @name?',
   AppTranslationKey.deleteChatsTitle: 'Delete @count chats?',
   AppTranslationKey.deleteChatContent:

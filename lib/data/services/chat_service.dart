@@ -95,31 +95,52 @@ class ChatService implements ChatRepository {
               Map<String, bool>.from(data[MessageField.readBy] ?? {});
           final deletedFor = _deletedForFromData(data);
           final reactions = _reactionsFromData(data);
+          final deletedForEveryone =
+              data[MessageField.deletedForEveryone] == true;
 
           updates[messageId] = ChatMessageModel(
             id: existing.id,
             roomId: existing.roomId,
             senderId: existing.senderId,
             senderName: existing.senderName ?? data[MessageField.senderName],
-            text: existing.text,
-            imageUrl: existing.imageUrl ?? data[MessageField.imageUrl],
+            text: deletedForEveryone
+                ? null
+                : data[MessageField.text] ?? existing.text,
+            imageUrl: deletedForEveryone
+                ? null
+                : existing.imageUrl ?? data[MessageField.imageUrl],
             localImagePath: _existingFilePath(existing.localImagePath),
-            videoUrl: existing.videoUrl ?? data[MessageField.videoUrl],
+            videoUrl: deletedForEveryone
+                ? null
+                : existing.videoUrl ?? data[MessageField.videoUrl],
             localVideoPath: _existingFilePath(existing.localVideoPath),
-            fileUrl: existing.fileUrl ?? data[MessageField.fileUrl],
+            fileUrl: deletedForEveryone
+                ? null
+                : existing.fileUrl ?? data[MessageField.fileUrl],
             localFilePath: _existingFilePath(existing.localFilePath),
-            fileName: existing.fileName ?? data[MessageField.fileName],
-            fileSize: existing.fileSize ??
-                (data[MessageField.fileSize] as num?)?.toInt(),
-            fileExtension:
-                existing.fileExtension ?? data[MessageField.fileExtension],
-            contactName: existing.contactName ?? data[MessageField.contactName],
-            contactPhone:
-                existing.contactPhone ?? data[MessageField.contactPhone],
-            audioUrl: existing.audioUrl ?? data[MessageField.audioUrl],
+            fileName: deletedForEveryone
+                ? null
+                : existing.fileName ?? data[MessageField.fileName],
+            fileSize: deletedForEveryone
+                ? null
+                : existing.fileSize ??
+                    (data[MessageField.fileSize] as num?)?.toInt(),
+            fileExtension: deletedForEveryone
+                ? null
+                : existing.fileExtension ?? data[MessageField.fileExtension],
+            contactName: deletedForEveryone
+                ? null
+                : existing.contactName ?? data[MessageField.contactName],
+            contactPhone: deletedForEveryone
+                ? null
+                : existing.contactPhone ?? data[MessageField.contactPhone],
+            audioUrl: deletedForEveryone
+                ? null
+                : existing.audioUrl ?? data[MessageField.audioUrl],
             localAudioPath: _existingFilePath(existing.localAudioPath),
-            audioDurationSeconds:
-                (data[MessageField.audioDurationSeconds] as num?)?.toInt() ??
+            audioDurationSeconds: deletedForEveryone
+                ? null
+                : (data[MessageField.audioDurationSeconds] as num?)?.toInt() ??
                     existing.audioDurationSeconds,
             type: existing.type,
             createdAt: existing.createdAt,
@@ -141,7 +162,7 @@ class ChatService implements ChatRepository {
             replyToType: existing.replyToType ??
                 _nullableMessageTypeFromString(data[MessageField.replyToType]),
             deletedFor: deletedFor,
-            reactions: reactions,
+            reactions: deletedForEveryone ? const {} : reactions,
             mentionedUserIds: _stringListFromData(
               data[MessageField.mentionedUserIds],
             ),
@@ -154,6 +175,12 @@ class ChatService implements ChatRepository {
             callDurationSeconds:
                 (data[MessageField.callDurationSeconds] as num?)?.toInt() ??
                     existing.callDurationSeconds,
+            editedAt: _dateFromFirestore(data[MessageField.editedAt]) ??
+                existing.editedAt,
+            deletedForEveryone: deletedForEveryone,
+            deletedForEveryoneAt:
+                _dateFromFirestore(data[MessageField.deletedForEveryoneAt]) ??
+                    existing.deletedForEveryoneAt,
           );
 
           continue;
@@ -214,6 +241,10 @@ class ChatService implements ChatRepository {
           callType: data[MessageField.callType],
           callDurationSeconds:
               (data[MessageField.callDurationSeconds] as num?)?.toInt(),
+          editedAt: _dateFromFirestore(data[MessageField.editedAt]),
+          deletedForEveryone: data[MessageField.deletedForEveryone] == true,
+          deletedForEveryoneAt:
+              _dateFromFirestore(data[MessageField.deletedForEveryoneAt]),
         );
       }
 
@@ -1133,6 +1164,114 @@ class ChatService implements ChatRepository {
             messageId: messageId,
           ).toFirestoreJson(),
         );
+  }
+
+  @override
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String text,
+    required String uid,
+  }) async {
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) return;
+
+    final messageRef = _chatRoomsRef
+        .doc(roomId)
+        .collection(FirestoreCollection.messages)
+        .doc(messageId);
+
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(messageRef);
+      final data = snapshot.data();
+      if (data == null) {
+        throw StateError('Pesan tidak ditemukan');
+      }
+      if (data[MessageField.senderId] != uid) {
+        throw StateError('Hanya pengirim yang dapat mengedit pesan');
+      }
+      if (data[MessageField.deletedForEveryone] == true) {
+        throw StateError('Pesan sudah dihapus');
+      }
+
+      transaction.update(
+        messageRef,
+        ChatMessageUpdateModel.edit(text: cleanText).toFirestoreJson(),
+      );
+    });
+
+    final existing = _messageBox.get(messageId);
+    if (existing != null) {
+      await _messageBox.put(
+        messageId,
+        existing.copyWith(
+          text: cleanText,
+          editedAt: DateTime.now(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteMessageForEveryone({
+    required String roomId,
+    required String messageId,
+    required String uid,
+  }) async {
+    final messageRef = _chatRoomsRef
+        .doc(roomId)
+        .collection(FirestoreCollection.messages)
+        .doc(messageId);
+
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(messageRef);
+      final data = snapshot.data();
+      if (data == null) {
+        throw StateError('Pesan tidak ditemukan');
+      }
+      if (data[MessageField.senderId] != uid) {
+        throw StateError('Hanya pengirim yang dapat menghapus pesan');
+      }
+
+      transaction.update(
+        messageRef,
+        const ChatMessageUpdateModel.deleteForEveryone().toFirestoreJson(),
+      );
+    });
+
+    final existing = _messageBox.get(messageId);
+    if (existing != null) {
+      await _messageBox.put(
+        messageId,
+        ChatMessageModel(
+          id: existing.id,
+          roomId: existing.roomId,
+          senderId: existing.senderId,
+          senderName: existing.senderName,
+          createdAt: existing.createdAt,
+          createdAtClient: existing.createdAtClient,
+          clientMessageId: existing.clientMessageId,
+          deliveredTo: existing.deliveredTo,
+          readBy: existing.readBy,
+          status: existing.status,
+          type: existing.type,
+          replyToMessageId: existing.replyToMessageId,
+          replyToSenderId: existing.replyToSenderId,
+          replyToSenderName: existing.replyToSenderName,
+          replyToText: existing.replyToText,
+          replyToType: existing.replyToType,
+          deletedFor: existing.deletedFor,
+          callId: existing.callId,
+          callStatus: existing.callStatus,
+          callType: existing.callType,
+          callDurationSeconds: existing.callDurationSeconds,
+          mentionedUserIds: existing.mentionedUserIds,
+          mentionedUserNames: existing.mentionedUserNames,
+          deletedForEveryone: true,
+          deletedForEveryoneAt: DateTime.now(),
+        ),
+      );
+    }
   }
 
   @override

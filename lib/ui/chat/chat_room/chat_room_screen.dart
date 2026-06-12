@@ -285,6 +285,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                         .contains(message.id);
                                     final canShowReactionPicker =
                                         message.status == MessageStatus.sent &&
+                                            !message.deletedForEveryone &&
                                             (!isSelectionMode ||
                                                 (_selectedMessageIds.length ==
                                                         1 &&
@@ -374,7 +375,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                               : null,
                                           onReply: !isSelectionMode &&
                                                   message.status ==
-                                                      MessageStatus.sent
+                                                      MessageStatus.sent &&
+                                                  !message.deletedForEveryone
                                               ? () => store
                                                   .setReplyToMessage(message)
                                               : null,
@@ -417,6 +419,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   currentUid: argument!.currentUid,
                                   targetName: user?.name,
                                   onClose: store.clearReplyToMessage,
+                                ),
+                              if (store.editingMessage.value != null)
+                                _EditPreviewBar(
+                                  message: store.editingMessage.value!,
+                                  onClose: store.clearEditingMessage,
                                 ),
                               _buildMentionSuggestions(),
                               ChatFieldV2(
@@ -686,9 +693,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       actions: [
         IconButton(
           tooltip: AppTranslationKey.deleteForMe.tr,
-          onPressed: () => _deleteSelectedMessagesForMe(messages),
+          onPressed: () => _deleteSelectedMessages(messages),
           icon: const Icon(Icons.delete_outline),
         ),
+        if (_selectedMessageIds.length == 1)
+          IconButton(
+            tooltip: AppTranslationKey.editMessage.tr,
+            onPressed: () => _editSelectedMessage(messages),
+            icon: const Icon(Icons.edit_outlined),
+          ),
       ],
     );
   }
@@ -822,6 +835,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
   List<ChatMessageModel> _mediaMessages(List<ChatMessageModel> messages) {
     return messages.where((message) {
+      if (message.deletedForEveryone) return false;
+
       if (message.type == MessageType.image) {
         return message.imageUrl?.isNotEmpty == true ||
             _existingFilePath(message.localImagePath) != null;
@@ -880,7 +895,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     }
   }
 
-  Future<void> _deleteSelectedMessagesForMe(
+  Future<void> _deleteSelectedMessages(
     List<ChatMessageModel> messages,
   ) async {
     final selectedMessages = messages
@@ -892,30 +907,51 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final canDeleteForEveryone = selectedMessages.every(
+      (message) =>
+          message.senderId == argument?.currentUid &&
+          message.status == MessageStatus.sent &&
+          !message.deletedForEveryone,
+    );
+
+    final action = await showDialog<_DeleteMessageAction>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppTranslationKey.deleteMessagesTitle.trParams({
           'count': '${selectedMessages.length}',
         })),
-        content: Text(AppTranslationKey.deleteMessagesContent.tr),
+        content: Text(
+          canDeleteForEveryone
+              ? AppTranslationKey.deleteMessagesForEveryoneContent.tr
+              : AppTranslationKey.deleteMessagesContent.tr,
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text(AppTranslationKey.cancel.tr),
           ),
+          if (canDeleteForEveryone)
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(_DeleteMessageAction.everyone),
+              child: Text(AppTranslationKey.deleteForEveryone.tr),
+            ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(AppTranslationKey.delete.tr),
+            onPressed: () => Navigator.of(context).pop(_DeleteMessageAction.me),
+            child: Text(AppTranslationKey.deleteForMe.tr),
           ),
         ],
       ),
     );
 
-    if (confirmed != true) return;
+    if (action == null) return;
 
     try {
-      await store.deleteMessagesForMe(selectedMessages);
+      if (action == _DeleteMessageAction.everyone) {
+        await store.deleteMessagesForEveryone(selectedMessages);
+      } else {
+        await store.deleteMessagesForMe(selectedMessages);
+      }
       _clearSelectedMessages();
     } catch (_) {
       if (!mounted) return;
@@ -926,6 +962,33 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         snackPosition: SnackPosition.BOTTOM,
       );
     }
+  }
+
+  void _editSelectedMessage(List<ChatMessageModel> messages) {
+    ChatMessageModel? message;
+    for (final item in messages) {
+      if (_selectedMessageIds.contains(item.id)) {
+        message = item;
+        break;
+      }
+    }
+    if (message == null) return;
+
+    final canEdit = message.senderId == argument?.currentUid &&
+        message.status == MessageStatus.sent &&
+        message.type == MessageType.text &&
+        !message.deletedForEveryone;
+    if (!canEdit) {
+      Get.snackbar(
+        AppTranslationKey.chat.tr,
+        AppTranslationKey.messageCannotBeEdited.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    setState(_selectedMessageIds.clear);
+    store.setEditingMessage(message);
   }
 
   void _startCall(
@@ -949,6 +1012,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     );
   }
 }
+
+enum _DeleteMessageAction { me, everyone }
 
 class _ReplyPreviewBar extends StatelessWidget {
   const _ReplyPreviewBar({
@@ -1048,6 +1113,90 @@ class _ReplyPreviewBar extends StatelessWidget {
       return AppTranslationKey.contact.tr;
     }
     return AppTranslationKey.message.tr;
+  }
+}
+
+class _EditPreviewBar extends StatelessWidget {
+  const _EditPreviewBar({
+    required this.message,
+    required this.onClose,
+  });
+
+  final ChatMessageModel message;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 0),
+      color: colorScheme.surface,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3.w,
+              height: 38.h,
+              decoration: BoxDecoration(
+                color: AppColor.primaryColor,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            8.horizontalSpace,
+            Icon(
+              Icons.edit_outlined,
+              size: 18.r,
+              color: AppColor.primaryColor,
+            ),
+            8.horizontalSpace,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    AppTranslationKey.editMessage.tr,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColor.primaryColor,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  2.verticalSpace,
+                  Text(
+                    message.text?.trim() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: onClose,
+              icon: Icon(
+                Icons.close,
+                size: 18.r,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

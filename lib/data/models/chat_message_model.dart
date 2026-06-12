@@ -161,6 +161,18 @@ class ChatMessageModel {
   @JsonKey(defaultValue: <String, String>{})
   final Map<String, String> reactions;
 
+  @HiveField(39)
+  @JsonKey(fromJson: _nullableFromTimestamp, toJson: _nullableToTimestamp)
+  final DateTime? editedAt;
+
+  @HiveField(40, defaultValue: false)
+  @JsonKey(defaultValue: false)
+  final bool deletedForEveryone;
+
+  @HiveField(41)
+  @JsonKey(fromJson: _nullableFromTimestamp, toJson: _nullableToTimestamp)
+  final DateTime? deletedForEveryoneAt;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -201,6 +213,9 @@ class ChatMessageModel {
     this.mentionedUserNames = const [],
     this.senderName,
     this.reactions = const {},
+    this.editedAt,
+    this.deletedForEveryone = false,
+    this.deletedForEveryoneAt,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
@@ -226,12 +241,16 @@ class ChatMessageModel {
     List<String>? mentionedUserNames,
     String? senderName,
     Map<String, String>? reactions,
+    String? text,
+    DateTime? editedAt,
+    bool? deletedForEveryone,
+    DateTime? deletedForEveryoneAt,
   }) {
     return ChatMessageModel(
       id: id,
       roomId: roomId,
       senderId: senderId,
-      text: text,
+      text: text ?? this.text,
       createdAt: createdAt,
       createdAtClient: createdAtClient,
       clientMessageId: clientMessageId,
@@ -257,6 +276,9 @@ class ChatMessageModel {
       mentionedUserNames: mentionedUserNames ?? this.mentionedUserNames,
       senderName: senderName ?? this.senderName,
       reactions: reactions ?? this.reactions,
+      editedAt: editedAt ?? this.editedAt,
+      deletedForEveryone: deletedForEveryone ?? this.deletedForEveryone,
+      deletedForEveryoneAt: deletedForEveryoneAt ?? this.deletedForEveryoneAt,
       replyToMessageId: replyToMessageId,
       replyToSenderId: replyToSenderId,
       replyToSenderName: replyToSenderName,
@@ -276,7 +298,17 @@ class ChatMessageModel {
     return value.toDate();
   }
 
+  static DateTime? _nullableFromTimestamp(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return value.toDate();
+  }
+
   static dynamic _toTimestamp(DateTime date) {
+    return date;
+  }
+
+  static dynamic _nullableToTimestamp(DateTime? date) {
     return date;
   }
 }
