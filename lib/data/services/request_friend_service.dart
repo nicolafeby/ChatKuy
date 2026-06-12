@@ -1,4 +1,7 @@
 import 'package:chatkuy/data/models/request_friend_model.dart';
+import 'package:chatkuy/data/models/user_model.dart';
+import 'package:chatkuy/data/models/friend_link_model.dart';
+import 'package:chatkuy/data/services/firestore_model_converters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -10,6 +13,21 @@ class FriendRequestService implements FriendRequestRepository {
 
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
+
+  CollectionReference<UserModel> get _usersModelRef =>
+      FirestoreModelConverters.usersRef(firestore);
+
+  CollectionReference<FriendRequestModel> get _incomingRequestsModelRef =>
+      FirestoreModelConverters.incomingFriendRequestsRef(
+        firestore: firestore,
+        uid: _uid,
+      );
+
+  CollectionReference<FriendRequestModel> get _outgoingRequestsModelRef =>
+      FirestoreModelConverters.outgoingFriendRequestsRef(
+        firestore: firestore,
+        uid: _uid,
+      );
 
   String get _uid {
     final user = auth.currentUser;
@@ -24,9 +42,7 @@ class FriendRequestService implements FriendRequestRepository {
   /// ======================================================
   @override
   Stream<List<FriendRequestModel>> streamIncomingFriendRequests() {
-    return firestore
-        .doc(FirestorePaths.user(_uid))
-        .collection(FirestoreCollection.friendRequests)
+    return _incomingRequestsModelRef
         .where(
           FriendRequestField.status,
           isEqualTo: FriendRequestStatus.pending,
@@ -37,7 +53,7 @@ class FriendRequestService implements FriendRequestRepository {
         )
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs.map(FriendRequestModel.fromFirestore).toList(),
+          (snapshot) => snapshot.docs.map((doc) => doc.data()).toList(),
         );
   }
 
@@ -46,9 +62,7 @@ class FriendRequestService implements FriendRequestRepository {
   /// ======================================================
   @override
   Stream<List<FriendRequestModel>> streamOutgoingFriendRequests() {
-    return firestore
-        .doc(FirestorePaths.user(_uid))
-        .collection(FirestoreCollection.outgoingFriendRequests)
+    return _outgoingRequestsModelRef
         .where(
           FriendRequestField.status,
           isEqualTo: FriendRequestStatus.pending,
@@ -59,7 +73,7 @@ class FriendRequestService implements FriendRequestRepository {
         )
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs.map(FriendRequestModel.fromFirestore).toList(),
+          (snapshot) => snapshot.docs.map((doc) => doc.data()).toList(),
         );
   }
 
@@ -71,8 +85,7 @@ class FriendRequestService implements FriendRequestRepository {
     // ============================
     // CARI USER BERDASARKAN USERNAME
     // ============================
-    final query = await firestore
-        .collection(FirebaseCollections.users)
+    final query = await _usersModelRef
         .where(FriendField.username, isEqualTo: username)
         .limit(1)
         .get();
@@ -82,6 +95,7 @@ class FriendRequestService implements FriendRequestRepository {
     }
 
     final targetSnap = query.docs.first;
+    final targetUser = targetSnap.data();
     final targetUid = targetSnap.id;
 
     // ============================
@@ -91,14 +105,17 @@ class FriendRequestService implements FriendRequestRepository {
       throw Exception('Tidak bisa menambahkan diri sendiri');
     }
 
-    if (targetSnap.data()[FriendField.isEmailVerified] != true) {
+    if (targetUser.isEmailVerified != true) {
       throw Exception('User belum memverifikasi email');
     }
 
     // ============================
     // CEK SUDAH BERTEMAN
     // ============================
-    final friendSnap = await firestore.collection(FirestorePaths.userFriends(_uid)).doc(targetUid).get();
+    final friendSnap = await firestore
+        .collection(FirestorePaths.userFriends(_uid))
+        .doc(targetUid)
+        .get();
 
     if (friendSnap.exists) {
       throw Exception('Anda sudah berteman');
@@ -126,7 +143,11 @@ class FriendRequestService implements FriendRequestRepository {
     // ============================
     // SNAPSHOT USER SAYA
     // ============================
-    final mySnap = await firestore.doc(FirestorePaths.user(_uid)).get();
+    final mySnap = await _usersModelRef.doc(_uid).get();
+    final myUser = mySnap.data();
+    if (myUser == null) {
+      throw Exception('User saya tidak ditemukan');
+    }
 
     // ============================
     // MODEL INCOMING (TARGET)
@@ -136,9 +157,9 @@ class FriendRequestService implements FriendRequestRepository {
       id: '',
       fromUid: _uid,
       toUid: targetUid,
-      username: mySnap[FriendField.username],
-      displayName: mySnap[FriendField.name],
-      photoUrl: mySnap.data()?[FriendField.photoUrl],
+      username: myUser.username ?? '',
+      displayName: myUser.name,
+      photoUrl: myUser.photoUrl,
       status: FriendRequestStatus.pending,
       createdAt: DateTime.now(),
     );
@@ -151,9 +172,9 @@ class FriendRequestService implements FriendRequestRepository {
       id: '',
       fromUid: _uid,
       toUid: targetUid,
-      username: targetSnap[FriendField.username],
-      displayName: targetSnap[FriendField.name],
-      photoUrl: targetSnap.data()[FriendField.photoUrl],
+      username: targetUser.username ?? '',
+      displayName: targetUser.name,
+      photoUrl: targetUser.photoUrl,
       status: FriendRequestStatus.pending,
       createdAt: DateTime.now(),
     );
@@ -163,7 +184,9 @@ class FriendRequestService implements FriendRequestRepository {
     // ============================
     final batch = firestore.batch();
 
-    final incomingRef = firestore.collection(FirestorePaths.userFriendRequests(targetUid)).doc();
+    final incomingRef = firestore
+        .collection(FirestorePaths.userFriendRequests(targetUid))
+        .doc();
 
     final outgoingRef = firestore
         .doc(FirestorePaths.user(_uid))
@@ -205,10 +228,14 @@ class FriendRequestService implements FriendRequestRepository {
     // ============================
     final batch = firestore.batch();
 
-    final incomingRef = firestore.collection(FirestorePaths.userFriendRequests(targetUid)).doc(requestId);
+    final incomingRef = firestore
+        .collection(FirestorePaths.userFriendRequests(targetUid))
+        .doc(requestId);
 
-    final outgoingRef =
-        firestore.doc(FirestorePaths.user(_uid)).collection(FirestoreCollection.outgoingFriendRequests).doc(requestId);
+    final outgoingRef = firestore
+        .doc(FirestorePaths.user(_uid))
+        .collection(FirestoreCollection.outgoingFriendRequests)
+        .doc(requestId);
 
     batch.delete(incomingRef);
     batch.delete(outgoingRef);
@@ -231,8 +258,10 @@ class FriendRequestService implements FriendRequestRepository {
     // ============================
     // 1️⃣ HAPUS INCOMING REQUEST
     // ============================
-    final incomingRef =
-        firestore.doc(FirestorePaths.user(myUid)).collection(FirestoreCollection.friendRequests).doc(requestId);
+    final incomingRef = firestore
+        .doc(FirestorePaths.user(myUid))
+        .collection(FirestoreCollection.friendRequests)
+        .doc(requestId);
 
     batch.delete(incomingRef);
 
@@ -253,10 +282,7 @@ class FriendRequestService implements FriendRequestRepository {
       firestore.doc(
         FirestorePaths.userFriendDoc(myUid, fromUid),
       ),
-      {
-        FriendField.uid: fromUid,
-        FriendField.createdAt: FieldValue.serverTimestamp(),
-      },
+      FriendLinkModel(uid: fromUid).toFirestoreJson(),
     );
 
     // ============================
@@ -266,10 +292,7 @@ class FriendRequestService implements FriendRequestRepository {
       firestore.doc(
         FirestorePaths.userFriendDoc(fromUid, myUid),
       ),
-      {
-        FriendField.uid: myUid,
-        FriendField.createdAt: FieldValue.serverTimestamp(),
-      },
+      FriendLinkModel(uid: myUid).toFirestoreJson(),
     );
 
     await batch.commit();
@@ -305,7 +328,9 @@ class FriendRequestService implements FriendRequestRepository {
     final batch = firestore.batch();
 
     // Hapus incoming request (punya saya)
-    final incomingRef = firestore.collection(FirestorePaths.userFriendRequests(_uid)).doc(requestId);
+    final incomingRef = firestore
+        .collection(FirestorePaths.userFriendRequests(_uid))
+        .doc(requestId);
 
     // Hapus outgoing request (punya pengirim)
     final outgoingRef = firestore

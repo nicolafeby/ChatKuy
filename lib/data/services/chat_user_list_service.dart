@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
+import 'package:chatkuy/data/models/chat_room_write_model.dart';
 import 'package:chatkuy/data/models/chat_user_item_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_user_list_repository.dart';
+import 'package:chatkuy/data/services/firestore_model_converters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 
@@ -17,8 +19,14 @@ class ChatUserListService implements ChatUserListRepository {
   CollectionReference<Map<String, dynamic>> get _chatRoomsRef =>
       firestore.collection(FirebaseCollections.chatRooms);
 
-  CollectionReference<Map<String, dynamic>> get _usersRef =>
-      firestore.collection(FirebaseCollections.users);
+  CollectionReference<UserModel> get _usersModelRef =>
+      FirestoreModelConverters.usersRef(firestore);
+
+  CollectionReference<ChatMessageModel> _messagesModelRef(String roomId) =>
+      FirestoreModelConverters.messagesRef(
+        firestore: firestore,
+        roomId: roomId,
+      );
 
   /// HIVE BOX
   final Box<ChatUserItemModel> _chatListBox =
@@ -37,7 +45,7 @@ class ChatUserListService implements ChatUserListRepository {
     StreamSubscription<BoxEvent>? localSubscription;
     StreamSubscription<BoxEvent>? messageSubscription;
     final userSubscriptions =
-        <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
+        <String, StreamSubscription<DocumentSnapshot<UserModel>>>{};
     var isApplyingRemoteRooms = false;
 
     List<ChatUserItemModel> localItems() {
@@ -91,10 +99,7 @@ class ChatUserListService implements ChatUserListRepository {
                 return !_isChatListDeletedForUser(doc.id, myUid) &&
                     _shouldShowRoomInChatList(data);
               })
-              .map((doc) => ChatRoomModel.fromJson({
-                    'id': doc.id,
-                    ...doc.data(),
-                  }))
+              .map(FirestoreModelConverters.chatRoomFromSnapshot)
               .toList();
 
           final localItemsByRoomId = {
@@ -118,14 +123,12 @@ class ChatUserListService implements ChatUserListRepository {
               targetUids.where((uid) => !_userCache.containsKey(uid)).toList();
 
           final userSnaps = await Future.wait(
-            missingTargetUids.map((uid) => _usersRef.doc(uid).get()),
+            missingTargetUids.map((uid) => _usersModelRef.doc(uid).get()),
           );
           for (final snap in userSnaps) {
             if (!snap.exists) continue;
-            final user = UserModel.fromJson({
-              'id': snap.id,
-              ...snap.data()!,
-            });
+            final user = snap.data();
+            if (user == null) continue;
             _userCache[snap.id] = user;
             await _userBox.put(user.id, user);
           }
@@ -268,9 +271,9 @@ class ChatUserListService implements ChatUserListRepository {
       );
     }
 
-    await _chatRoomsRef.doc(roomId).update({
-      '${ChatRoomField.archivedFor}.$uid': true,
-    });
+    await _chatRoomsRef
+        .doc(roomId)
+        .update(ChatRoomWriteModel.archiveForUser(uid).toFirestoreJson());
   }
 
   @override
@@ -286,9 +289,9 @@ class ChatUserListService implements ChatUserListRepository {
       );
     }
 
-    await _chatRoomsRef.doc(roomId).update({
-      '${ChatRoomField.archivedFor}.$uid': FieldValue.delete(),
-    });
+    await _chatRoomsRef
+        .doc(roomId)
+        .update(ChatRoomWriteModel.unarchiveForUser(uid).toFirestoreJson());
   }
 
   bool _isChatListDeletedForUser(String roomId, String uid) {
@@ -384,21 +387,14 @@ class ChatUserListService implements ChatUserListRepository {
   }
 
   Future<ChatMessageModel?> _latestMessageForRoom(String roomId) async {
-    final snapshot = await _chatRoomsRef
-        .doc(roomId)
-        .collection(FirestoreCollection.messages)
+    final snapshot = await _messagesModelRef(roomId)
         .orderBy(MessageField.createdAtClient, descending: true)
         .limit(1)
         .get();
 
     if (snapshot.docs.isEmpty) return null;
 
-    final doc = snapshot.docs.first;
-    return ChatMessageModel.fromJson({
-      'id': doc.id,
-      'roomId': roomId,
-      ...doc.data(),
-    });
+    return snapshot.docs.first.data();
   }
 
   Future<void> _syncLocalChatListItemFromMessage({
@@ -442,8 +438,7 @@ class ChatUserListService implements ChatUserListRepository {
 
   void _syncUserSubscriptions({
     required Set<String> targetUids,
-    required Map<String,
-            StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
+    required Map<String, StreamSubscription<DocumentSnapshot<UserModel>>>
         userSubscriptions,
   }) {
     final staleUids = userSubscriptions.keys
@@ -456,15 +451,11 @@ class ChatUserListService implements ChatUserListRepository {
     for (final uid in targetUids) {
       if (userSubscriptions.containsKey(uid)) continue;
 
-      userSubscriptions[uid] = _usersRef.doc(uid).snapshots().listen(
+      userSubscriptions[uid] = _usersModelRef.doc(uid).snapshots().listen(
         (snapshot) async {
-          final data = snapshot.data();
-          if (!snapshot.exists || data == null) return;
+          final user = snapshot.data();
+          if (!snapshot.exists || user == null) return;
 
-          final user = UserModel.fromJson({
-            'id': snapshot.id,
-            ...data,
-          });
           _userCache[user.id] = user;
           await _userBox.put(user.id, user);
 
