@@ -46,6 +46,7 @@ class ChatBubbleWidget extends StatefulWidget {
     this.onReplyPreviewTap,
     this.onDelete,
     this.onSelect,
+    this.onReact,
     this.selectionMode = false,
     this.isSelected = false,
     this.isJumpHighlighted = false,
@@ -68,6 +69,7 @@ class ChatBubbleWidget extends StatefulWidget {
   final VoidCallback? onReplyPreviewTap;
   final VoidCallback? onDelete;
   final VoidCallback? onSelect;
+  final ValueChanged<String>? onReact;
   final bool selectionMode;
   final bool isSelected;
   final bool isJumpHighlighted;
@@ -91,6 +93,14 @@ class ChatBubbleWidget extends StatefulWidget {
 class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
   static const double _maxDragOffset = 72;
   static const double _replyTriggerOffset = 46;
+  static const List<String> _quickReactions = [
+    '👍',
+    '❤️',
+    '😂',
+    '😮',
+    '😢',
+    '🙏'
+  ];
 
   AudioPlayer? _audioPlayer;
   StreamSubscription<PlayerState>? _playerStateSubscription;
@@ -185,176 +195,264 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       color: widget.isSelected ? selectedRowColor : Colors.transparent,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: widget.isSameGroup ? 1.5.h : 8.h,
-          bottom: widget.isSelected ? 1.5.h : 0,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment:
-              widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-          children: [
-            if (widget.showSenderInfo) ...[
-              SizedBox(
-                width: 32.r,
-                child: showSenderAvatar
-                    ? GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: widget.onSenderAvatarTap,
-                        child: ProfileAvatarWidget(
-                          base64Image: widget.senderUser?.photoUrl ??
-                              widget.senderPhotoUrl,
-                          size: 28,
+      child: GestureDetector(
+        behavior: widget.selectionMode
+            ? HitTestBehavior.opaque
+            : HitTestBehavior.deferToChild,
+        onTap: widget.selectionMode ? widget.onSelect : null,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 10.w,
+            right: 10.w,
+            top: widget.isSameGroup ? 1.5.h : 8.h,
+            bottom: widget.isSelected ? 1.5.h : 0,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment:
+                widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (widget.showSenderInfo) ...[
+                SizedBox(
+                  width: 32.r,
+                  child: showSenderAvatar
+                      ? GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.selectionMode
+                              ? widget.onSelect
+                              : widget.onSenderAvatarTap,
+                          child: ProfileAvatarWidget(
+                            base64Image: widget.senderUser?.photoUrl ??
+                                widget.senderPhotoUrl,
+                            size: 28,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                4.horizontalSpace,
+              ],
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width *
+                      (widget.showSenderInfo ? 0.68 : 0.8),
+                ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Positioned(
+                      left: 12.w,
+                      child: Opacity(
+                        opacity: replyProgress,
+                        child: Transform.scale(
+                          scale: 0.82 + (replyProgress * 0.18),
+                          child: Container(
+                            width: 32.r,
+                            height: 32.r,
+                            decoration: BoxDecoration(
+                              color:
+                                  AppColor.primaryColor.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.reply,
+                              size: 18.r,
+                              color: AppColor.primaryColor,
+                            ),
+                          ),
                         ),
-                      )
-                    : const SizedBox.shrink(),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: widget.selectionMode
+                          ? widget.onSelect
+                          : widget.message.status == MessageStatus.failed
+                              ? widget.onRetry
+                              : null,
+                      onLongPressStart:
+                          widget.onSelect == null && widget.onReact == null
+                              ? null
+                              : _handleLongPressStart,
+                      onHorizontalDragStart:
+                          widget.onReply == null || widget.selectionMode
+                              ? null
+                              : _onHorizontalDragStart,
+                      onHorizontalDragUpdate:
+                          widget.onReply == null || widget.selectionMode
+                              ? null
+                              : _onHorizontalDragUpdate,
+                      onHorizontalDragEnd:
+                          widget.onReply == null || widget.selectionMode
+                              ? null
+                              : _onHorizontalDragEnd,
+                      onHorizontalDragCancel:
+                          widget.onReply == null || widget.selectionMode
+                              ? null
+                              : _resetDrag,
+                      child: AnimatedContainer(
+                        duration: _isDragging
+                            ? Duration.zero
+                            : const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        transform: Matrix4.translationValues(_dragOffset, 0, 0),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 9.w,
+                          vertical: 6.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: bubbleColor,
+                          borderRadius: _bubbleRadius(),
+                          border: shouldHighlightBubble
+                              ? Border.all(
+                                  color: _isMentionedCurrentUser()
+                                      ? AppColor.primaryColor
+                                      : highlightBorderColor,
+                                  width: widget.isJumpHighlighted ? 2 : 1.5,
+                                )
+                              : null,
+                        ),
+                        child: _buildContent(colorScheme, isDarkMode),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              4.horizontalSpace,
             ],
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width *
-                    (widget.showSenderInfo ? 0.68 : 0.8),
-              ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.centerLeft,
-                children: [
-                  Positioned(
-                    left: 12.w,
-                    child: Opacity(
-                      opacity: replyProgress,
-                      child: Transform.scale(
-                        scale: 0.82 + (replyProgress * 0.18),
-                        child: Container(
-                          width: 32.r,
-                          height: 32.r,
-                          decoration: BoxDecoration(
-                            color:
-                                AppColor.primaryColor.withValues(alpha: 0.14),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.reply,
-                            size: 18.r,
-                            color: AppColor.primaryColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: widget.selectionMode
-                        ? widget.onSelect
-                        : widget.message.status == MessageStatus.failed
-                            ? widget.onRetry
-                            : null,
-                    onLongPress:
-                        widget.onSelect == null && widget.onDelete == null
-                            ? null
-                            : _handleLongPress,
-                    onHorizontalDragStart:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _onHorizontalDragStart,
-                    onHorizontalDragUpdate:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _onHorizontalDragUpdate,
-                    onHorizontalDragEnd:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _onHorizontalDragEnd,
-                    onHorizontalDragCancel:
-                        widget.onReply == null || widget.selectionMode
-                            ? null
-                            : _resetDrag,
-                    child: AnimatedContainer(
-                      duration: _isDragging
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      transform: Matrix4.translationValues(_dragOffset, 0, 0),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 9.w,
-                        vertical: 6.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: bubbleColor,
-                        borderRadius: _bubbleRadius(),
-                        border: shouldHighlightBubble
-                            ? Border.all(
-                                color: _isMentionedCurrentUser()
-                                    ? AppColor.primaryColor
-                                    : highlightBorderColor,
-                                width: widget.isJumpHighlighted ? 2 : 1.5,
-                              )
-                            : null,
-                      ),
-                      child: _buildContent(colorScheme, isDarkMode),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _handleLongPress() {
+  Future<void> _handleLongPressStart(LongPressStartDetails details) async {
     HapticFeedback.selectionClick();
 
-    if (widget.onSelect != null) {
+    if (!widget.isSelected && widget.onSelect != null) {
       widget.onSelect?.call();
-      return;
     }
 
-    _showMessageActions();
+    if (widget.onReact == null) return;
+
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+
+    _showReactionMenu(details.globalPosition);
   }
 
-  void _showMessageActions() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        final colorScheme = Theme.of(context).colorScheme;
+  Future<void> _showReactionMenu(Offset globalPosition) async {
+    final overlay = Overlay.of(context).context.findRenderObject();
+    if (overlay is! RenderBox) return;
 
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.onReply != null)
-                ListTile(
-                  leading: Icon(
-                    Icons.reply,
-                    color: colorScheme.onSurface,
-                  ),
-                  title: Text(AppTranslationKey.reply.tr),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    widget.onReply?.call();
-                  },
-                ),
-              if (widget.onDelete != null)
-                ListTile(
-                  leading: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
-                  ),
-                  title: Text(AppTranslationKey.deleteForMe.tr),
-                  textColor: Colors.redAccent,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    widget.onDelete?.call();
-                  },
-                ),
-            ],
+    final size = overlay.size;
+    final menuWidth = 328.w.clamp(240.0, size.width - 24.w);
+    final left = (globalPosition.dx - (menuWidth / 2)).clamp(
+      12.0,
+      size.width - menuWidth - 12.w,
+    );
+    final top = (globalPosition.dy - 68.h).clamp(
+      MediaQuery.of(context).padding.top + 8.h,
+      size.height - 72.h,
+    );
+
+    final selectedReaction = await showGeneralDialog<String>(
+      context: context,
+      barrierColor: Colors.transparent,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss reactions',
+      transitionDuration: const Duration(milliseconds: 120),
+      pageBuilder: (routeContext, animation, secondaryAnimation) {
+        return Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              width: menuWidth,
+              child: Material(
+                type: MaterialType.transparency,
+                child: _buildReactionPicker(routeContext),
+              ),
+            ),
+          ],
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          ),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: child,
           ),
         );
       },
+    );
+
+    if (selectedReaction == null || !mounted) return;
+    widget.onReact?.call(selectedReaction);
+  }
+
+  Widget _buildReactionPicker(BuildContext routeContext) {
+    final currentReaction = widget.currentUid == null
+        ? null
+        : widget.message.reactions[widget.currentUid];
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDarkMode = isDarkModeOf(context);
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? const Color(0xFF1F2C33)
+            : colorScheme.surface.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(28.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.28 : 0.16),
+            blurRadius: 18.r,
+            offset: Offset(0, 8.h),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: _quickReactions.map((emoji) {
+          final isSelected = currentReaction == emoji;
+
+          return InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              Navigator.of(routeContext).pop(emoji);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              width: 44.r,
+              height: 44.r,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColor.primaryColor.withValues(alpha: 0.16)
+                    : colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.72),
+                shape: BoxShape.circle,
+                border: isSelected
+                    ? Border.all(color: AppColor.primaryColor, width: 1.2)
+                    : null,
+              ),
+              child: Text(
+                emoji,
+                style: TextStyle(fontSize: 22.sp),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -543,6 +641,10 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           ),
         ],
         if (!isTextMessage) _buildMessageMeta(metaTextColor),
+        if (widget.message.reactions.isNotEmpty) ...[
+          5.verticalSpace,
+          _buildReactionSummary(isDarkMode),
+        ],
       ],
     );
 
@@ -656,6 +758,50 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> with BaseLayout {
           _buildStatusIcon(),
         ],
       ],
+    );
+  }
+
+  Widget _buildReactionSummary(bool isDarkMode) {
+    final counts = <String, int>{};
+    for (final emoji in widget.message.reactions.values) {
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+    }
+
+    final currentReaction = widget.currentUid == null
+        ? null
+        : widget.message.reactions[widget.currentUid];
+    final chipBackground = widget.isMe
+        ? (isDarkMode ? const Color(0xFF174B41) : const Color(0xFFD8F5E7))
+        : (isDarkMode ? const Color(0xFF2A3942) : Colors.white);
+    final chipBorderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.08);
+
+    return Align(
+      alignment: widget.isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Wrap(
+        spacing: 4.w,
+        runSpacing: 4.h,
+        children: counts.entries.map((entry) {
+          final isMine = currentReaction == entry.key;
+
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+            decoration: BoxDecoration(
+              color: chipBackground,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: isMine ? AppColor.primaryColor : chipBorderColor,
+                width: isMine ? 1.2 : 1,
+              ),
+            ),
+            child: Text(
+              entry.value > 1 ? '${entry.key} ${entry.value}' : entry.key,
+              style: TextStyle(fontSize: 11.sp, height: 1.1),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 

@@ -92,6 +92,7 @@ class ChatService implements ChatRepository {
           final newRead =
               Map<String, bool>.from(data[MessageField.readBy] ?? {});
           final deletedFor = _deletedForFromData(data);
+          final reactions = _reactionsFromData(data);
 
           updates[messageId] = ChatMessageModel(
             id: existing.id,
@@ -138,6 +139,7 @@ class ChatService implements ChatRepository {
             replyToType: existing.replyToType ??
                 _nullableMessageTypeFromString(data[MessageField.replyToType]),
             deletedFor: deletedFor,
+            reactions: reactions,
             mentionedUserIds: _stringListFromData(
               data[MessageField.mentionedUserIds],
             ),
@@ -156,6 +158,7 @@ class ChatService implements ChatRepository {
         }
 
         final deletedFor = _deletedForFromData(data);
+        final reactions = _reactionsFromData(data);
 
         updates[messageId] = ChatMessageModel(
           id: messageId,
@@ -197,6 +200,7 @@ class ChatService implements ChatRepository {
           replyToType:
               _nullableMessageTypeFromString(data[MessageField.replyToType]),
           deletedFor: deletedFor,
+          reactions: reactions,
           mentionedUserIds: _stringListFromData(
             data[MessageField.mentionedUserIds],
           ),
@@ -522,6 +526,7 @@ class ChatService implements ChatRepository {
         MessageField.deliveredTo: <String, bool>{},
         MessageField.readBy: <String, bool>{},
         MessageField.deletedFor: <String, bool>{},
+        MessageField.reactions: <String, String>{},
         MessageField.senderName: senderName,
         MessageField.type: type.name,
         MessageField.replyToMessageId: replyToMessage?.id,
@@ -698,6 +703,10 @@ class ChatService implements ChatRepository {
 
   Map<String, bool> _deletedForFromData(Map<String, dynamic> data) {
     return Map<String, bool>.from(data[MessageField.deletedFor] ?? {});
+  }
+
+  Map<String, String> _reactionsFromData(Map<String, dynamic> data) {
+    return Map<String, String>.from(data[MessageField.reactions] ?? {});
   }
 
   List<String> _stringListFromData(dynamic value) {
@@ -1165,6 +1174,55 @@ class ChatService implements ChatRepository {
     return _chatRoomsRef.doc(roomId).update({
       '${ChatRoomField.deletedMessagesFor}.$uid.$messageId': true,
     });
+  }
+
+  @override
+  Future<void> setMessageReaction({
+    required String roomId,
+    required String messageId,
+    required String uid,
+    required String? emoji,
+  }) async {
+    final existing = _messageBox.get(messageId);
+    final previousReactions =
+        existing == null ? null : Map<String, String>.from(existing.reactions);
+
+    if (existing != null) {
+      final reactions = Map<String, String>.from(previousReactions!);
+      if (emoji == null || emoji.isEmpty) {
+        reactions.remove(uid);
+      } else {
+        reactions[uid] = emoji;
+      }
+
+      await _messageBox.put(
+        messageId,
+        existing.copyWith(reactions: reactions),
+      );
+
+      if (existing.status != MessageStatus.sent) return;
+    }
+
+    try {
+      return await _chatRoomsRef
+          .doc(roomId)
+          .collection(FirestoreCollection.messages)
+          .doc(messageId)
+          .update({
+        '${MessageField.reactions}.$uid':
+            emoji == null || emoji.isEmpty ? FieldValue.delete() : emoji,
+      });
+    } on FirebaseException catch (e) {
+      if (existing != null && previousReactions != null) {
+        await _messageBox.put(
+          messageId,
+          existing.copyWith(reactions: previousReactions),
+        );
+      }
+
+      if (e.code == 'permission-denied') return;
+      rethrow;
+    }
   }
 
   @override

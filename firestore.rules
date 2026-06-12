@@ -120,7 +120,8 @@ service cloud.firestore {
           'callDurationSeconds',
           'deliveredTo',
           'readBy',
-          'deletedFor'
+          'deletedFor',
+          'reactions'
         ]);
     }
 
@@ -218,7 +219,12 @@ service cloud.firestore {
 
         allow update: if isParentRoomParticipant(roomId)
           && (
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'deletedFor']) ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'deliveredTo',
+              'readBy',
+              'deletedFor',
+              'reactions'
+            ]) ||
             isUpdatingCallMessage()
           );
 
