@@ -120,6 +120,13 @@ abstract class ChatRepository {
     required String uid,
   });
 
+  Future<void> setMessageReaction({
+    required String roomId,
+    required String messageId,
+    required String uid,
+    required String? emoji,
+  });
+
   Future<void> resetUnread({
     required String roomId,
     required String uid,

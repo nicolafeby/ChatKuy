@@ -157,6 +157,10 @@ class ChatMessageModel {
   @HiveField(37)
   final String? senderName;
 
+  @HiveField(38, defaultValue: <String, String>{})
+  @JsonKey(defaultValue: <String, String>{})
+  final Map<String, String> reactions;
+
   ChatMessageModel({
     required this.id,
     required this.roomId,
@@ -196,6 +200,7 @@ class ChatMessageModel {
     this.mentionedUserIds = const [],
     this.mentionedUserNames = const [],
     this.senderName,
+    this.reactions = const {},
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) =>
@@ -220,6 +225,7 @@ class ChatMessageModel {
     List<String>? mentionedUserIds,
     List<String>? mentionedUserNames,
     String? senderName,
+    Map<String, String>? reactions,
   }) {
     return ChatMessageModel(
       id: id,
@@ -250,6 +256,7 @@ class ChatMessageModel {
       mentionedUserIds: mentionedUserIds ?? this.mentionedUserIds,
       mentionedUserNames: mentionedUserNames ?? this.mentionedUserNames,
       senderName: senderName ?? this.senderName,
+      reactions: reactions ?? this.reactions,
       replyToMessageId: replyToMessageId,
       replyToSenderId: replyToSenderId,
       replyToSenderName: replyToSenderName,

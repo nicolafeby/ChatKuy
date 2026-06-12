@@ -112,6 +112,7 @@ class AppTranslationKey {
   static const cancel = 'cancel';
   static const send = 'send';
   static const delete = 'delete';
+  static const select = 'select';
   static const reply = 'reply';
   static const videoCall = 'videoCall';
   static const voiceCall = 'voiceCall';
@@ -381,6 +382,7 @@ const Map<String, String> _id = {
   AppTranslationKey.cancel: 'Batal',
   AppTranslationKey.send: 'Kirim',
   AppTranslationKey.delete: 'Hapus',
+  AppTranslationKey.select: 'Pilih',
   AppTranslationKey.reply: 'Balas',
   AppTranslationKey.videoCall: 'Panggilan video',
   AppTranslationKey.voiceCall: 'Telepon suara',
@@ -654,6 +656,7 @@ const Map<String, String> _en = {
   AppTranslationKey.cancel: 'Cancel',
   AppTranslationKey.send: 'Send',
   AppTranslationKey.delete: 'Delete',
+  AppTranslationKey.select: 'Select',
   AppTranslationKey.reply: 'Reply',
   AppTranslationKey.videoCall: 'Video call',
   AppTranslationKey.voiceCall: 'Voice call',

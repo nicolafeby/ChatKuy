@@ -264,7 +264,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                               : ListView.builder(
                                   controller: _scrollController,
                                   padding: EdgeInsets.fromLTRB(
-                                      10.w, 8.h, 10.w, 12.h),
+                                    0,
+                                    8.h,
+                                    0,
+                                    12.h,
+                                  ),
                                   reverse: true,
                                   cacheExtent: 600,
                                   itemCount: messages.length,
@@ -374,6 +378,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                               : null,
                                           onDelete: () =>
                                               _deleteMessageForMe(message),
+                                          onReact: message.status ==
+                                                  MessageStatus.sent
+                                              ? (emoji) =>
+                                                  store.toggleMessageReaction(
+                                                    message,
+                                                    emoji,
+                                                  )
+                                              : null,
                                           onSelect: () =>
                                               _toggleSelectedMessage(
                                                   message.id),

@@ -107,6 +107,7 @@ abstract class MessageField {
   static const audioDurationSeconds = 'audioDurationSeconds';
   static const mentionedUserIds = 'mentionedUserIds';
   static const mentionedUserNames = 'mentionedUserNames';
+  static const reactions = 'reactions';
 }
 
 /// ==============================
