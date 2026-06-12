@@ -2,6 +2,7 @@
 
 abstract class AppRouteName {
   static const LOGIN_SCREEN = '/login';
+  static const FORGOT_PASSWORD_SCREEN = '/forgot_password';
   static const REGISTER_SCREEN = '/register';
   static const BASE_SCREEN = '/base';
   static const CHAT_ROOM_SCREEN = '/room-chat';

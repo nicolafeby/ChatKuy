@@ -189,6 +189,49 @@ class AuthService implements AuthRepository {
   }
 
   @override
+  Future<void> sendPasswordResetLink({required String identifier}) async {
+    final rawIdentifier = identifier.trim();
+    final normalizedIdentifier = identifier.trim().toLowerCase();
+    if (normalizedIdentifier.isEmpty) return;
+
+    QuerySnapshot<Map<String, dynamic>>? query;
+
+    if (normalizedIdentifier.contains('@')) {
+      for (final emailToCheck in {rawIdentifier, normalizedIdentifier}) {
+        query = await firestore
+            .collection(FirebaseCollections.users)
+            .where(
+              UserModelFields.email,
+              isEqualTo: emailToCheck,
+            )
+            .limit(1)
+            .get();
+
+        if (query.docs.isNotEmpty) break;
+      }
+    } else {
+      query = await firestore
+          .collection(FirebaseCollections.users)
+          .where(
+            UserModelFields.username,
+            isEqualTo: normalizedIdentifier,
+          )
+          .limit(1)
+          .get();
+    }
+
+    if (query == null || query.docs.isEmpty) return;
+
+    final rawUserData = query.docs.first.data();
+    if (_isDeletedAccount(rawUserData[UserModelFields.accountStatus])) {
+      return;
+    }
+
+    final userData = UserModel.fromJson(rawUserData);
+    await auth.sendPasswordResetEmail(email: userData.email);
+  }
+
+  @override
   Future<bool> checkUsernameAvailable(String username) async {
     final query = await firestore
         .collection(FirebaseCollections.users)

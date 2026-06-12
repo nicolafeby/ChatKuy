@@ -173,6 +173,8 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               Align(
                 alignment: Alignment.centerRight,
                 child: InkWell(
+                  onTap: () =>
+                      Get.toNamed(AppRouteName.FORGOT_PASSWORD_SCREEN),
                   child: Text(
                     AppTranslationKey.forgotPassword.tr,
                     style: TextStyle(
