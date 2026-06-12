@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -53,7 +52,7 @@ class UserEmailUpdateModel {
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      if (clearPendingEmail) UserModelFields.pendingEmail: FieldValue.delete(),
+      if (clearPendingEmail) 'pendingEmail': FieldValue.delete(),
     };
   }
 

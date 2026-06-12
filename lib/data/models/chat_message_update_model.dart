@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -50,16 +49,17 @@ class ChatMessageUpdateModel {
   Map<String, dynamic> toFirestoreJson() {
     return switch (type) {
       ChatMessageUpdateType.delivered => {
-          '${MessageField.deliveredTo}.$uid': true,
+          'deliveredTo.$uid': true,
         },
       ChatMessageUpdateType.read => {
-          '${MessageField.readBy}.$uid': true,
+          'readBy.$uid': true,
         },
       ChatMessageUpdateType.deletedFor => {
-          '${MessageField.deletedFor}.$uid': true,
+          'deletedFor.$uid': true,
         },
       ChatMessageUpdateType.reaction => {
-          '${MessageField.reactions}.$uid': emoji == null || emoji!.isEmpty ? FieldValue.delete() : emoji,
+          'reactions.$uid':
+              emoji == null || emoji!.isEmpty ? FieldValue.delete() : emoji,
         },
     };
   }

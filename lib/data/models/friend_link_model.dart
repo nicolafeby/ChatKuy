@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -17,7 +16,7 @@ class FriendLinkModel {
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      FriendField.createdAt: FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }

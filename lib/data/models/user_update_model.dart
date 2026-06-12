@@ -1,6 +1,3 @@
-import 'package:chatkuy/core/constants/app_strings.dart';
-import 'package:chatkuy/core/constants/firestore.dart';
-import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -8,10 +5,8 @@ part 'user_update_model.g.dart';
 
 @JsonSerializable(createFactory: false, includeIfNull: false)
 class UserUpdateModel {
-  @JsonKey(name: AppStrings.fcmToken)
   final String? fcmToken;
 
-  @JsonKey(name: FriendField.photoUrl)
   final String? photoUrl;
 
   final String? accountStatus;
@@ -53,9 +48,9 @@ class UserUpdateModel {
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      if (updatePhotoUrl) FriendField.photoUrl: photoUrl,
+      if (updatePhotoUrl) 'photoUrl': photoUrl,
       if (markDeletionRequested)
-        UserModelFields.deletionRequestedAt: FieldValue.serverTimestamp(),
+        'deletionRequestedAt': FieldValue.serverTimestamp(),
     };
   }
 }

@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -80,13 +79,12 @@ class ChatRoomWriteModel {
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      if (useServerLastMessageAt) ChatRoomField.lastMessage: null,
-      if (useServerLastMessageAt)
-        ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-      if (useServerLastMessageAt) ChatRoomField.lastSenderId: null,
-      if (archiveUid != null) '${ChatRoomField.archivedFor}.$archiveUid': true,
+      if (useServerLastMessageAt) 'lastMessage': null,
+      if (useServerLastMessageAt) 'lastMessageAt': FieldValue.serverTimestamp(),
+      if (useServerLastMessageAt) 'lastSenderId': null,
+      if (archiveUid != null) 'archivedFor.$archiveUid': true,
       if (unarchiveUid != null)
-        '${ChatRoomField.archivedFor}.$unarchiveUid': FieldValue.delete(),
+        'archivedFor.$unarchiveUid': FieldValue.delete(),
     };
   }
 }

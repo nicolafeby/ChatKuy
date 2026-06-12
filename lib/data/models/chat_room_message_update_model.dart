@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -8,8 +7,7 @@ part 'chat_room_message_update_model.g.dart';
 class ChatRoomMessageUpdateModel {
   final String lastMessage;
 
-  @JsonKey(name: ChatRoomField.lastSenderId)
-  final String senderId;
+  final String lastSenderId;
 
   final String? imageUrl;
   final String type;
@@ -20,26 +18,26 @@ class ChatRoomMessageUpdateModel {
 
   const ChatRoomMessageUpdateModel({
     required this.lastMessage,
-    required this.senderId,
+    required String senderId,
     required this.type,
     required this.recipientUids,
     this.imageUrl,
     this.participants,
-  });
+  }) : lastSenderId = senderId;
 
   Map<String, dynamic> toJson() => _$ChatRoomMessageUpdateModelToJson(this);
 
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-      '${ChatRoomField.unreadCount}.$senderId': 0,
-      '${ChatRoomField.deletedChatListFor}.$senderId': FieldValue.delete(),
-      '${ChatRoomField.archivedFor}.$senderId': FieldValue.delete(),
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      'unreadCount.$lastSenderId': 0,
+      'deletedChatListFor.$lastSenderId': FieldValue.delete(),
+      'archivedFor.$lastSenderId': FieldValue.delete(),
       for (final uid in recipientUids)
-        '${ChatRoomField.unreadCount}.$uid': FieldValue.increment(1),
+        'unreadCount.$uid': FieldValue.increment(1),
       for (final uid in recipientUids)
-        '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
+        'deletedChatListFor.$uid': FieldValue.delete(),
     };
   }
 }

@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -72,11 +71,11 @@ class ChatMessageWriteModel {
   Map<String, Object?> toFirestoreJson() {
     return {
       ...toJson(),
-      MessageField.createdAt: FieldValue.serverTimestamp(),
-      MessageField.deliveredTo: <String, bool>{},
-      MessageField.readBy: <String, bool>{},
-      MessageField.deletedFor: <String, bool>{},
-      MessageField.reactions: <String, String>{},
+      'createdAt': FieldValue.serverTimestamp(),
+      'deliveredTo': <String, bool>{},
+      'readBy': <String, bool>{},
+      'deletedFor': <String, bool>{},
+      'reactions': <String, String>{},
     };
   }
 

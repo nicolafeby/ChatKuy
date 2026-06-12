@@ -53,9 +53,6 @@ abstract class FirestorePaths {
 abstract class ChatRoomField {
   static const participants = 'participants';
   static const admins = 'admins';
-  static const createdBy = 'createdBy';
-  static const name = 'name';
-  static const photoUrl = 'photoUrl';
   static const isGroup = 'isGroup';
   static const lastMessage = 'lastMessage';
   static const lastMessageAt = 'lastMessageAt';
@@ -126,10 +123,8 @@ abstract class CallField {
   static const answer = 'answer';
   static const videoUpgradeStatus = 'videoUpgradeStatus';
   static const videoUpgradeRequestedBy = 'videoUpgradeRequestedBy';
-  static const videoUpgradeRequestedAt = 'videoUpgradeRequestedAt';
   static const videoOffer = 'videoOffer';
   static const videoAnswer = 'videoAnswer';
-  static const videoUpgradedAt = 'videoUpgradedAt';
   static const createdAt = 'createdAt';
   static const answeredAt = 'answeredAt';
   static const endedAt = 'endedAt';
@@ -160,7 +155,6 @@ abstract class FriendField {
   static const name = 'name';
   static const photoUrl = 'photoUrl';
   static const createdAt = 'createdAt';
-  static const isEmailVerified = 'isEmailVerified';
 }
 
 /// ==============================

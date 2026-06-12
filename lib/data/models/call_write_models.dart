@@ -12,8 +12,11 @@ class CallCreateModel {
   final String callerName;
   final String calleeName;
 
-  @JsonKey(name: CallField.type)
+  @JsonKey(name: 'type')
   final String callType;
+  final List<String> participants;
+  final String status;
+  final String videoUpgradeStatus;
 
   const CallCreateModel({
     required this.roomId,
@@ -22,17 +25,17 @@ class CallCreateModel {
     required this.callerName,
     required this.calleeName,
     required this.callType,
-  });
+  })  : participants = const [],
+        status = CallStatus.calling,
+        videoUpgradeStatus = VideoUpgradeStatus.none;
 
   Map<String, dynamic> toJson() => _$CallCreateModelToJson(this);
 
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      CallField.participants: [callerId, calleeId],
-      CallField.status: CallStatus.calling,
-      CallField.videoUpgradeStatus: VideoUpgradeStatus.none,
-      CallField.createdAt: FieldValue.serverTimestamp(),
+      'participants': [callerId, calleeId],
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }
@@ -101,13 +104,17 @@ class CallUpdateModel {
 
   const CallUpdateModel.videoUpgradeResponse(bool accepted)
       : this(
-          videoUpgradeStatus: accepted ? VideoUpgradeStatus.accepted : VideoUpgradeStatus.declined,
+          videoUpgradeStatus: accepted
+              ? VideoUpgradeStatus.accepted
+              : VideoUpgradeStatus.declined,
           useVideoUpgradedAtServerTimestamp: accepted,
         );
 
-  const CallUpdateModel.videoOffer(Map<String, dynamic> offer) : this(videoOffer: offer);
+  const CallUpdateModel.videoOffer(Map<String, dynamic> offer)
+      : this(videoOffer: offer);
 
-  const CallUpdateModel.videoAnswer(Map<String, dynamic> answer) : this(videoAnswer: answer);
+  const CallUpdateModel.videoAnswer(Map<String, dynamic> answer)
+      : this(videoAnswer: answer);
 
   const CallUpdateModel.active()
       : this(
@@ -128,12 +135,15 @@ class CallUpdateModel {
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      if (useAnsweredAtServerTimestamp) CallField.answeredAt: FieldValue.serverTimestamp(),
-      if (useEndedAtServerTimestamp) CallField.endedAt: FieldValue.serverTimestamp(),
-      if (useVideoUpgradeRequestedAtServerTimestamp) CallField.videoUpgradeRequestedAt: FieldValue.serverTimestamp(),
-      if (useVideoUpgradedAtServerTimestamp) CallField.videoUpgradedAt: FieldValue.serverTimestamp(),
-      if (clearVideoOffer) CallField.videoOffer: FieldValue.delete(),
-      if (clearVideoAnswer) CallField.videoAnswer: FieldValue.delete(),
+      if (useAnsweredAtServerTimestamp)
+        'answeredAt': FieldValue.serverTimestamp(),
+      if (useEndedAtServerTimestamp) 'endedAt': FieldValue.serverTimestamp(),
+      if (useVideoUpgradeRequestedAtServerTimestamp)
+        'videoUpgradeRequestedAt': FieldValue.serverTimestamp(),
+      if (useVideoUpgradedAtServerTimestamp)
+        'videoUpgradedAt': FieldValue.serverTimestamp(),
+      if (clearVideoOffer) 'videoOffer': FieldValue.delete(),
+      if (clearVideoAnswer) 'videoAnswer': FieldValue.delete(),
     };
   }
 }
@@ -197,11 +207,11 @@ class CallMessageWriteModel {
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson(),
-      if (createMessage) MessageField.createdAt: FieldValue.serverTimestamp(),
-      if (createMessage) MessageField.deliveredTo: <String, bool>{},
-      if (createMessage) MessageField.readBy: <String, bool>{},
-      if (createMessage) MessageField.deletedFor: <String, bool>{},
-      if (createMessage) MessageField.type: 'call',
+      if (createMessage) 'createdAt': FieldValue.serverTimestamp(),
+      if (createMessage) 'deliveredTo': <String, bool>{},
+      if (createMessage) 'readBy': <String, bool>{},
+      if (createMessage) 'deletedFor': <String, bool>{},
+      if (createMessage) 'type': 'call',
     };
   }
 
@@ -210,11 +220,9 @@ class CallMessageWriteModel {
 
 @JsonSerializable(createFactory: false, includeIfNull: false)
 class CallRoomUpdateModel {
-  @JsonKey(name: ChatRoomField.lastMessage)
-  final String text;
-
-  @JsonKey(name: ChatRoomField.lastSenderId)
-  final String callerId;
+  final String lastMessage;
+  final String lastSenderId;
+  final String type;
 
   final String? calleeId;
 
@@ -222,28 +230,34 @@ class CallRoomUpdateModel {
   final bool incrementCalleeUnread;
 
   const CallRoomUpdateModel.calling({
-    required this.text,
-    required this.callerId,
+    required String text,
+    required String callerId,
     required this.calleeId,
-  }) : incrementCalleeUnread = true;
+  })  : lastMessage = text,
+        lastSenderId = callerId,
+        type = 'call',
+        incrementCalleeUnread = true;
 
   const CallRoomUpdateModel.finished({
-    required this.text,
-    required this.callerId,
+    required String text,
+    required String callerId,
     required this.calleeId,
-  }) : incrementCalleeUnread = false;
+  })  : lastMessage = text,
+        lastSenderId = callerId,
+        type = 'call',
+        incrementCalleeUnread = false;
 
   Map<String, dynamic> toJson() => _$CallRoomUpdateModelToJson(this);
 
   Map<String, dynamic> toFirestoreJson() {
     return {
       ...toJson()..remove('calleeId'),
-      ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-      ChatRoomField.type: 'call',
-      '${ChatRoomField.unreadCount}.$callerId': 0,
-      if (calleeId != null && incrementCalleeUnread) '${ChatRoomField.unreadCount}.$calleeId': FieldValue.increment(1),
-      '${ChatRoomField.deletedChatListFor}.$callerId': FieldValue.delete(),
-      if (calleeId != null) '${ChatRoomField.deletedChatListFor}.$calleeId': FieldValue.delete(),
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      'unreadCount.$lastSenderId': 0,
+      if (calleeId != null && incrementCalleeUnread)
+        'unreadCount.$calleeId': FieldValue.increment(1),
+      'deletedChatListFor.$lastSenderId': FieldValue.delete(),
+      if (calleeId != null) 'deletedChatListFor.$calleeId': FieldValue.delete(),
     };
   }
 }

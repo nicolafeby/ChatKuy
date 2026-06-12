@@ -1,4 +1,3 @@
-import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -95,26 +94,23 @@ class ChatRoomUpdateModel {
     return {
       ...toJson(),
       if (invitedMemberUids != null) ...{
-        ChatRoomField.participants: FieldValue.arrayUnion(invitedMemberUids),
+        'participants': FieldValue.arrayUnion(invitedMemberUids),
+        for (final uid in invitedMemberUids) 'unreadCount.$uid': 0,
         for (final uid in invitedMemberUids)
-          '${ChatRoomField.unreadCount}.$uid': 0,
-        for (final uid in invitedMemberUids)
-          '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
+          'deletedChatListFor.$uid': FieldValue.delete(),
       },
       if (promotedAdminUid != null)
-        ChatRoomField.admins: FieldValue.arrayUnion([promotedAdminUid]),
+        'admins': FieldValue.arrayUnion([promotedAdminUid]),
       if (removedMemberUid != null) ...{
-        ChatRoomField.participants: FieldValue.arrayRemove([removedMemberUid]),
-        ChatRoomField.admins: FieldValue.arrayRemove([removedMemberUid]),
-        '${ChatRoomField.unreadCount}.$removedMemberUid': FieldValue.delete(),
-        '${ChatRoomField.deletedChatListFor}.$removedMemberUid': true,
+        'participants': FieldValue.arrayRemove([removedMemberUid]),
+        'admins': FieldValue.arrayRemove([removedMemberUid]),
+        'unreadCount.$removedMemberUid': FieldValue.delete(),
+        'deletedChatListFor.$removedMemberUid': true,
       },
       if (typingUid != null) 'typing.$typingUid': isTyping,
       if (deletedMessageUid != null && deletedMessageId != null)
-        '${ChatRoomField.deletedMessagesFor}.$deletedMessageUid.$deletedMessageId':
-            true,
-      if (resetUnreadUid != null)
-        '${ChatRoomField.unreadCount}.$resetUnreadUid': 0,
+        'deletedMessagesFor.$deletedMessageUid.$deletedMessageId': true,
+      if (resetUnreadUid != null) 'unreadCount.$resetUnreadUid': 0,
     };
   }
 }
