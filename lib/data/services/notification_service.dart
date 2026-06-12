@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
+import 'package:chatkuy/data/models/user_update_model.dart';
 import 'package:chatkuy/data/repositories/notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
@@ -47,7 +47,7 @@ class NotificationService implements NotificationRepository {
         await FirebaseFirestore.instance
             .collection(FirebaseCollections.users)
             .doc(user.uid)
-            .update({AppStrings.fcmToken: ''});
+            .update(UserUpdateModel.fcmToken('').toFirestoreJson());
       }
 
       await messaging.deleteToken();
@@ -125,7 +125,7 @@ class NotificationService implements NotificationRepository {
       await FirebaseFirestore.instance
           .collection(FirebaseCollections.users)
           .doc(uid)
-          .update({AppStrings.fcmToken: token});
+          .update(UserUpdateModel.fcmToken(token).toFirestoreJson());
     } catch (error, stackTrace) {
       await AppErrorLogger.recordError(
         error,

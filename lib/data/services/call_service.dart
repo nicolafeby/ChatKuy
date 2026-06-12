@@ -1,4 +1,5 @@
 import 'package:chatkuy/core/constants/firestore.dart';
+import 'package:chatkuy/data/models/call_write_models.dart';
 import 'package:chatkuy/data/repositories/call_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -7,8 +8,7 @@ class CallService implements CallRepository {
 
   final FirebaseFirestore firestore;
 
-  CollectionReference<Map<String, dynamic>> get _callsRef =>
-      firestore.collection(FirebaseCollections.calls);
+  CollectionReference<Map<String, dynamic>> get _callsRef => firestore.collection(FirebaseCollections.calls);
 
   @override
   Future<DocumentReference<Map<String, dynamic>>> createCall({
@@ -20,51 +20,46 @@ class CallService implements CallRepository {
     String callType = 'voice',
   }) async {
     final doc = _callsRef.doc();
-    final chatRoomRef =
-        firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
-    final messageRef =
-        chatRoomRef.collection(FirestoreCollection.messages).doc(doc.id);
+    final chatRoomRef = firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
+    final messageRef = chatRoomRef.collection(FirestoreCollection.messages).doc(doc.id);
     final batch = firestore.batch();
 
-    batch.set(doc, {
-      CallField.roomId: roomId,
-      CallField.callerId: callerId,
-      CallField.calleeId: calleeId,
-      CallField.callerName: callerName,
-      CallField.calleeName: calleeName,
-      CallField.participants: [callerId, calleeId],
-      CallField.status: CallStatus.calling,
-      CallField.type: callType,
-      CallField.videoUpgradeStatus: VideoUpgradeStatus.none,
-      CallField.createdAt: FieldValue.serverTimestamp(),
-    });
+    final callText = _callMessageText(CallStatus.calling, callType);
 
-    batch.set(messageRef, {
-      MessageField.senderId: callerId,
-      MessageField.text: _callMessageText(CallStatus.calling, callType),
-      MessageField.createdAt: FieldValue.serverTimestamp(),
-      MessageField.createdAtClient: DateTime.now(),
-      MessageField.deliveredTo: <String, bool>{},
-      MessageField.readBy: <String, bool>{},
-      MessageField.deletedFor: <String, bool>{},
-      MessageField.senderName: callerName,
-      MessageField.type: MessageTypeName.call,
-      MessageField.callId: doc.id,
-      MessageField.callStatus: CallStatus.calling,
-      MessageField.callType: callType,
-      MessageField.callDurationSeconds: 0,
-    });
+    batch.set(
+      doc,
+      CallCreateModel(
+        roomId: roomId,
+        callerId: callerId,
+        calleeId: calleeId,
+        callerName: callerName,
+        calleeName: calleeName,
+        callType: callType,
+      ).toFirestoreJson(),
+    );
 
-    batch.update(chatRoomRef, {
-      ChatRoomField.lastMessage: _callMessageText(CallStatus.calling, callType),
-      ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-      ChatRoomField.lastSenderId: callerId,
-      '${ChatRoomField.unreadCount}.$callerId': 0,
-      '${ChatRoomField.unreadCount}.$calleeId': FieldValue.increment(1),
-      ChatRoomField.type: MessageTypeName.call,
-      '${ChatRoomField.deletedChatListFor}.$callerId': FieldValue.delete(),
-      '${ChatRoomField.deletedChatListFor}.$calleeId': FieldValue.delete(),
-    });
+    batch.set(
+      messageRef,
+      CallMessageWriteModel.create(
+        senderId: callerId,
+        text: callText,
+        createdAtClient: DateTime.now(),
+        senderName: callerName,
+        callId: doc.id,
+        callStatus: CallStatus.calling,
+        callType: callType,
+        callDurationSeconds: 0,
+      ).toFirestoreJson(),
+    );
+
+    batch.update(
+      chatRoomRef,
+      CallRoomUpdateModel.calling(
+        text: callText,
+        callerId: callerId,
+        calleeId: calleeId,
+      ).toFirestoreJson(),
+    );
 
     await batch.commit();
     return doc;
@@ -90,7 +85,7 @@ class CallService implements CallRepository {
     required String callId,
     required Map<String, dynamic> offer,
   }) {
-    return _callsRef.doc(callId).update({CallField.offer: offer});
+    return _callsRef.doc(callId).update(CallUpdateModel.offer(offer).toFirestoreJson());
   }
 
   @override
@@ -98,11 +93,7 @@ class CallService implements CallRepository {
     required String callId,
     required Map<String, dynamic> answer,
   }) {
-    return _callsRef.doc(callId).update({
-      CallField.answer: answer,
-      CallField.status: CallStatus.active,
-      CallField.answeredAt: FieldValue.serverTimestamp(),
-    });
+    return _callsRef.doc(callId).update(CallUpdateModel.answer(answer).toFirestoreJson());
   }
 
   @override
@@ -110,13 +101,7 @@ class CallService implements CallRepository {
     required String callId,
     required String requestedBy,
   }) {
-    return _callsRef.doc(callId).update({
-      CallField.videoUpgradeStatus: VideoUpgradeStatus.requested,
-      CallField.videoUpgradeRequestedBy: requestedBy,
-      CallField.videoUpgradeRequestedAt: FieldValue.serverTimestamp(),
-      CallField.videoOffer: FieldValue.delete(),
-      CallField.videoAnswer: FieldValue.delete(),
-    });
+    return _callsRef.doc(callId).update(CallUpdateModel.videoUpgradeRequest(requestedBy).toFirestoreJson());
   }
 
   @override
@@ -124,11 +109,7 @@ class CallService implements CallRepository {
     required String callId,
     required bool accepted,
   }) {
-    return _callsRef.doc(callId).update({
-      CallField.videoUpgradeStatus:
-          accepted ? VideoUpgradeStatus.accepted : VideoUpgradeStatus.declined,
-      if (accepted) CallField.videoUpgradedAt: FieldValue.serverTimestamp(),
-    });
+    return _callsRef.doc(callId).update(CallUpdateModel.videoUpgradeResponse(accepted).toFirestoreJson());
   }
 
   @override
@@ -136,7 +117,7 @@ class CallService implements CallRepository {
     required String callId,
     required Map<String, dynamic> offer,
   }) {
-    return _callsRef.doc(callId).update({CallField.videoOffer: offer});
+    return _callsRef.doc(callId).update(CallUpdateModel.videoOffer(offer).toFirestoreJson());
   }
 
   @override
@@ -144,7 +125,7 @@ class CallService implements CallRepository {
     required String callId,
     required Map<String, dynamic> answer,
   }) {
-    return _callsRef.doc(callId).update({CallField.videoAnswer: answer});
+    return _callsRef.doc(callId).update(CallUpdateModel.videoAnswer(answer).toFirestoreJson());
   }
 
   @override
@@ -153,14 +134,9 @@ class CallService implements CallRepository {
     required bool isCaller,
     required Map<String, dynamic> candidate,
   }) {
-    final collection = isCaller
-        ? FirestoreCollection.callerCandidates
-        : FirestoreCollection.calleeCandidates;
+    final collection = isCaller ? FirestoreCollection.callerCandidates : FirestoreCollection.calleeCandidates;
 
-    return _callsRef.doc(callId).collection(collection).add({
-      ...candidate,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    return _callsRef.doc(callId).collection(collection).add(CallCandidateModel(candidate).toFirestoreJson());
   }
 
   @override
@@ -168,23 +144,14 @@ class CallService implements CallRepository {
     required String callId,
     required bool isCaller,
   }) {
-    final collection = isCaller
-        ? FirestoreCollection.calleeCandidates
-        : FirestoreCollection.callerCandidates;
+    final collection = isCaller ? FirestoreCollection.calleeCandidates : FirestoreCollection.callerCandidates;
 
-    return _callsRef
-        .doc(callId)
-        .collection(collection)
-        .orderBy('createdAt')
-        .snapshots();
+    return _callsRef.doc(callId).collection(collection).orderBy('createdAt').snapshots();
   }
 
   @override
   Future<void> markActive(String callId) {
-    return _callsRef.doc(callId).update({
-      CallField.status: CallStatus.active,
-      CallField.answeredAt: FieldValue.serverTimestamp(),
-    });
+    return _callsRef.doc(callId).update(CallUpdateModel.active().toFirestoreJson());
   }
 
   @override
@@ -205,10 +172,7 @@ class CallService implements CallRepository {
     final callSnap = await callRef.get();
     final data = callSnap.data();
     if (data == null) {
-      await callRef.update({
-        CallField.status: status,
-        CallField.endedAt: FieldValue.serverTimestamp(),
-      });
+      await callRef.update(CallUpdateModel.finished(status).toFirestoreJson());
       return;
     }
 
@@ -222,38 +186,32 @@ class CallService implements CallRepository {
     );
     final batch = firestore.batch();
 
-    batch.update(callRef, {
-      CallField.status: status,
-      CallField.endedAt: FieldValue.serverTimestamp(),
-    });
+    batch.update(callRef, CallUpdateModel.finished(status).toFirestoreJson());
 
     if (roomId != null && roomId.isNotEmpty) {
-      final chatRoomRef =
-          firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
-      final messageRef =
-          chatRoomRef.collection(FirestoreCollection.messages).doc(callId);
+      final chatRoomRef = firestore.collection(FirebaseCollections.chatRooms).doc(roomId);
+      final messageRef = chatRoomRef.collection(FirestoreCollection.messages).doc(callId);
 
       batch.set(
         messageRef,
-        {
-          MessageField.text: messageText,
-          MessageField.callStatus: status,
-          MessageField.callType: callType,
-          MessageField.callDurationSeconds: durationSeconds,
-        },
+        CallMessageWriteModel.finished(
+          text: messageText,
+          callId: callId,
+          callStatus: status,
+          callType: callType,
+          callDurationSeconds: durationSeconds,
+        ).toFirestoreJson(),
         SetOptions(merge: true),
       );
 
-      batch.update(chatRoomRef, {
-        ChatRoomField.lastMessage: messageText,
-        ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-        ChatRoomField.lastSenderId: data[CallField.callerId],
-        ChatRoomField.type: MessageTypeName.call,
-        '${ChatRoomField.deletedChatListFor}.${data[CallField.callerId]}':
-            FieldValue.delete(),
-        '${ChatRoomField.deletedChatListFor}.${data[CallField.calleeId]}':
-            FieldValue.delete(),
-      });
+      batch.update(
+        chatRoomRef,
+        CallRoomUpdateModel.finished(
+          text: messageText,
+          callerId: data[CallField.callerId] as String,
+          calleeId: data[CallField.calleeId] as String?,
+        ).toFirestoreJson(),
+      );
     }
 
     await batch.commit();
@@ -279,8 +237,4 @@ class CallService implements CallRepository {
     if (durationSeconds > 0) return '$label selesai';
     return '$label berakhir';
   }
-}
-
-abstract class MessageTypeName {
-  static const call = 'call';
 }

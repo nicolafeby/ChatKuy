@@ -2,6 +2,7 @@ import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/data/models/friend_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/friend_repository.dart';
+import 'package:chatkuy/data/services/firestore_model_converters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive/hive.dart';
@@ -29,8 +30,8 @@ class FriendService implements FriendRepository {
   CollectionReference<Map<String, dynamic>> get _friendRef =>
       firestore.collection(FirestorePaths.userFriends(_uid));
 
-  CollectionReference<Map<String, dynamic>> get _userRef =>
-      firestore.collection(FirebaseCollections.users);
+  CollectionReference<UserModel> get _usersModelRef =>
+      FirestoreModelConverters.usersRef(firestore);
 
   Box<UserModel> get _userBox => Hive.box<UserModel>('user_model');
 
@@ -67,14 +68,12 @@ class FriendService implements FriendRepository {
         (i + chunkSize > friendUids.length) ? friendUids.length : i + chunkSize,
       );
 
-      final snap =
-          await _userRef.where(FieldPath.documentId, whereIn: chunk).get();
+      final snap = await _usersModelRef
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
 
       for (final doc in snap.docs) {
-        final user = UserModel.fromJson({
-          'id': doc.id,
-          ...doc.data(),
-        });
+        final user = doc.data();
         usersById[doc.id] = user;
       }
     }

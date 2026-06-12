@@ -283,6 +283,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                         argument!.currentUid;
                                     final isSelected = _selectedMessageIds
                                         .contains(message.id);
+                                    final canShowReactionPicker =
+                                        message.status == MessageStatus.sent &&
+                                            (!isSelectionMode ||
+                                                (_selectedMessageIds.length ==
+                                                        1 &&
+                                                    isSelected));
 
                                     final prevMessage = realIndex > 0
                                         ? messages[realIndex - 1]
@@ -378,13 +384,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                               : null,
                                           onDelete: () =>
                                               _deleteMessageForMe(message),
-                                          onReact: message.status ==
-                                                  MessageStatus.sent
-                                              ? (emoji) =>
+                                          onReact: canShowReactionPicker
+                                              ? (emoji) {
+                                                  _selectedMessageIds
+                                                      .remove(message.id);
                                                   store.toggleMessageReaction(
-                                                    message,
-                                                    emoji,
-                                                  )
+                                                      message, emoji);
+                                                }
                                               : null,
                                           onSelect: () =>
                                               _toggleSelectedMessage(

@@ -2,8 +2,11 @@ import 'package:chatkuy/core/constants/app_strings.dart';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/utils/extension/user_model_fields.dart';
 import 'package:chatkuy/data/models/edit_profile_model.dart';
+import 'package:chatkuy/data/models/user_email_update_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
+import 'package:chatkuy/data/models/user_update_model.dart';
 import 'package:chatkuy/data/repositories/auth_repository.dart';
+import 'package:chatkuy/data/services/firestore_model_converters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -12,6 +15,9 @@ class AuthService implements AuthRepository {
 
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
+
+  CollectionReference<UserModel> get _usersRef =>
+      FirestoreModelConverters.usersRef(firestore);
 
   @override
   Stream<UserModel?> authStateChanges() {
@@ -34,7 +40,7 @@ class AuthService implements AuthRepository {
         return null;
       }
 
-      return UserModel.fromJson(data).copyWith(id: doc.id);
+      return FirestoreModelConverters.userFromSnapshot(doc);
     });
   }
 
@@ -65,7 +71,7 @@ class AuthService implements AuthRepository {
       );
     }
 
-    final userData = UserModel.fromJson(rawUserData);
+    final userData = FirestoreModelConverters.userFromSnapshot(userDoc);
     final pendingEmail = rawUserData[UserModelFields.pendingEmail] as String?;
 
     UserCredential cred;
@@ -96,16 +102,19 @@ class AuthService implements AuthRepository {
     final userRef =
         firestore.collection(FirebaseCollections.users).doc(userDoc.id);
 
+    final lastOnlineAt = DateTime.now();
     final updatedUser = userData.copyWith(
       email: emailUsed,
       isOnline: true,
-      lastOnlineAt: DateTime.now(),
+      lastOnlineAt: lastOnlineAt,
     );
 
-    await userRef.update({
-      ...updatedUser.toJson(),
-      UserModelFields.pendingEmail: FieldValue.delete(),
-    });
+    await userRef.update(
+      UserEmailUpdateModel.loginVerified(
+        email: emailUsed,
+        lastOnlineAt: lastOnlineAt,
+      ).toFirestoreJson(),
+    );
 
     return updatedUser.copyWith(id: userDoc.id);
   }
@@ -157,25 +166,24 @@ class AuthService implements AuthRepository {
       return false;
     }
 
-    final doc = await firestore
-        .collection(FirebaseCollections.users)
-        .doc(firebaseUser.uid)
-        .get();
+    final doc = await _usersRef.doc(firebaseUser.uid).get();
 
-    final currentUser = UserModel.fromJson(doc.data()!);
+    final currentUser = doc.data();
+    if (currentUser == null) {
+      throw StateError('User ${firebaseUser.uid} not found');
+    }
 
-    final updatedUser = currentUser.copyWith(
-      email: firebaseUser.email,
-      isEmailVerified: true,
-    );
+    final verifiedEmail = firebaseUser.email;
+    if (verifiedEmail == null || verifiedEmail.isEmpty) {
+      return false;
+    }
 
     await firestore
         .collection(FirebaseCollections.users)
         .doc(firebaseUser.uid)
-        .update({
-      ...updatedUser.toJson(),
-      UserModelFields.pendingEmail: FieldValue.delete(),
-    });
+        .update(
+          UserEmailUpdateModel.verified(email: verifiedEmail).toFirestoreJson(),
+        );
 
     return true;
   }
@@ -222,12 +230,13 @@ class AuthService implements AuthRepository {
 
     if (query == null || query.docs.isEmpty) return;
 
-    final rawUserData = query.docs.first.data();
+    final userDoc = query.docs.first;
+    final rawUserData = userDoc.data();
     if (_isDeletedAccount(rawUserData[UserModelFields.accountStatus])) {
       return;
     }
 
-    final userData = UserModel.fromJson(rawUserData);
+    final userData = FirestoreModelConverters.userFromSnapshot(userDoc);
     await auth.sendPasswordResetEmail(email: userData.email);
   }
 
@@ -289,20 +298,22 @@ class AuthService implements AuthRepository {
         .collection(FirebaseCollections.users)
         .doc(currentUid)
         .update(
-      {AppStrings.fcmToken: token},
-    );
+          UserUpdateModel.fcmToken(token).toFirestoreJson(),
+        );
   }
 
   @override
   Future<UserModel> getUserProfile(String uid) async {
-    final doc =
-        await firestore.collection(FirebaseCollections.users).doc(uid).get();
+    final doc = await _usersRef.doc(uid).get();
 
     if (!doc.exists) {
       throw Exception('User profile not found');
     }
 
-    final userData = UserModel.fromJson(doc.data()!);
+    final userData = doc.data();
+    if (userData == null) {
+      throw Exception('User profile not found');
+    }
     return userData;
   }
 
@@ -325,9 +336,10 @@ class AuthService implements AuthRepository {
       throw Exception('User belum login');
     }
 
-    await firestore.collection(FirebaseCollections.users).doc(user.uid).update({
-      UserModelFields.pendingEmail: newEmail,
-    });
+    await firestore.collection(FirebaseCollections.users).doc(user.uid).update(
+          UserEmailUpdateModel.pendingVerification(email: newEmail)
+              .toFirestoreJson(),
+        );
 
     await user.verifyBeforeUpdateEmail(newEmail);
   }
@@ -353,11 +365,9 @@ class AuthService implements AuthRepository {
     await firestore
         .collection(FirebaseCollections.users)
         .doc(reloadedUser!.uid)
-        .update({
-      UserModelFields.email: verifiedEmail,
-      UserModelFields.pendingEmail: FieldValue.delete(),
-      UserModelFields.isEmailVerified: true,
-    });
+        .update(
+          UserEmailUpdateModel.verified(email: verifiedEmail).toFirestoreJson(),
+        );
 
     return true;
   }
@@ -422,7 +432,7 @@ class AuthService implements AuthRepository {
     await firestore
         .collection(FirebaseCollections.users)
         .doc(currentUid)
-        .update({FriendField.photoUrl: imageUrl});
+        .update(UserUpdateModel.profilePicture(imageUrl).toFirestoreJson());
   }
 
   @override
@@ -445,12 +455,10 @@ class AuthService implements AuthRepository {
 
     await user.reauthenticateWithCredential(credential);
 
-    await firestore.collection(FirebaseCollections.users).doc(user.uid).update({
-      UserModelFields.accountStatus: AccountStatus.pendingDelete,
-      UserModelFields.deletionRequestedAt: FieldValue.serverTimestamp(),
-      UserModelFields.isOnline: false,
-      AppStrings.fcmToken: '',
-    });
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(user.uid)
+        .update(UserUpdateModel.accountDeletionRequested().toFirestoreJson());
 
     await auth.signOut();
   }
@@ -462,10 +470,4 @@ class AuthService implements AuthRepository {
     return status == AccountStatus.pendingDelete ||
         status == AccountStatus.deleted;
   }
-}
-
-abstract class AccountStatus {
-  static const active = 'active';
-  static const pendingDelete = 'pending_delete';
-  static const deleted = 'deleted';
 }

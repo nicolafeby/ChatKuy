@@ -4,9 +4,15 @@ import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
+import 'package:chatkuy/data/models/chat_message_update_model.dart';
+import 'package:chatkuy/data/models/chat_message_write_model.dart';
+import 'package:chatkuy/data/models/chat_room_message_update_model.dart';
 import 'package:chatkuy/data/models/chat_room_model.dart';
+import 'package:chatkuy/data/models/chat_room_update_model.dart';
+import 'package:chatkuy/data/models/chat_room_write_model.dart';
 import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/chat_repository.dart';
+import 'package:chatkuy/data/services/firestore_model_converters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -46,12 +52,8 @@ class ChatService implements ChatRepository {
         .map(
           (snapshot) => snapshot.docs
               .where((doc) => !_isChatListDeletedForUser(doc.data(), uid))
-              .map((doc) {
-            return ChatRoomModel.fromJson({
-              'id': doc.id,
-              ...doc.data(),
-            });
-          }).toList(),
+              .map(FirestoreModelConverters.chatRoomFromSnapshot)
+              .toList(),
         );
   }
 
@@ -503,62 +505,44 @@ class ChatService implements ChatRepository {
         );
       }
 
-      final messageData = <String, Object?>{
-        MessageField.senderId: uid,
-        MessageField.text: text,
-        MessageField.imageUrl: uploadedImageUrl,
-        MessageField.localImagePath: localPath,
-        MessageField.videoUrl: uploadedVideoUrl,
-        MessageField.localVideoPath: localVideo,
-        MessageField.fileUrl: uploadedFileUrl,
-        MessageField.localFilePath: resolvedLocalFilePath,
-        MessageField.fileName: resolvedFileName,
-        MessageField.fileSize: resolvedFileSize,
-        MessageField.fileExtension: resolvedFileExtension,
-        MessageField.contactName: contactName,
-        MessageField.contactPhone: contactPhone,
-        MessageField.audioUrl: uploadedAudioUrl,
-        MessageField.localAudioPath: resolvedLocalAudioPath,
-        MessageField.audioDurationSeconds: audioDurationSeconds,
-        MessageField.createdAt: FieldValue.serverTimestamp(),
-        MessageField.createdAtClient: createdAtClient,
-        MessageField.clientMessageId: clientMessageId,
-        MessageField.deliveredTo: <String, bool>{},
-        MessageField.readBy: <String, bool>{},
-        MessageField.deletedFor: <String, bool>{},
-        MessageField.reactions: <String, String>{},
-        MessageField.senderName: senderName,
-        MessageField.type: type.name,
-        MessageField.replyToMessageId: replyToMessage?.id,
-        MessageField.replyToSenderId: replyToMessage?.senderId,
-        MessageField.replyToSenderName: replyToSenderName,
-        MessageField.replyToText: _replyPreviewText(replyToMessage),
-        MessageField.replyToType: replyToMessage?.type.name,
-        MessageField.mentionedUserIds: mentionedUserIds,
-        MessageField.mentionedUserNames: mentionedUserNames,
-      };
+      final messageData = ChatMessageWriteModel(
+        senderId: uid,
+        text: text,
+        imageUrl: uploadedImageUrl,
+        localImagePath: localPath,
+        videoUrl: uploadedVideoUrl,
+        localVideoPath: localVideo,
+        fileUrl: uploadedFileUrl,
+        localFilePath: resolvedLocalFilePath,
+        fileName: resolvedFileName,
+        fileSize: resolvedFileSize,
+        fileExtension: resolvedFileExtension,
+        contactName: contactName,
+        contactPhone: contactPhone,
+        audioUrl: uploadedAudioUrl,
+        localAudioPath: resolvedLocalAudioPath,
+        audioDurationSeconds: audioDurationSeconds,
+        createdAtClient: createdAtClient,
+        clientMessageId: clientMessageId,
+        senderName: senderName,
+        type: type.name,
+        replyToMessageId: replyToMessage?.id,
+        replyToSenderId: replyToMessage?.senderId,
+        replyToSenderName: replyToSenderName,
+        replyToText: _replyPreviewText(replyToMessage),
+        replyToType: replyToMessage?.type.name,
+        mentionedUserIds: mentionedUserIds,
+        mentionedUserNames: mentionedUserNames,
+      ).toFirestoreJson();
 
-      final roomUpdates = <String, dynamic>{
-        ChatRoomField.lastMessage: _resolveLastMessage(text, type),
-        ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-        ChatRoomField.lastSenderId: uid,
-        '${ChatRoomField.unreadCount}.$uid': 0,
-        ChatRoomField.imageUrl: uploadedImageUrl,
-        ChatRoomField.type: type.name,
-        '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
-        '${ChatRoomField.archivedFor}.$uid': FieldValue.delete(),
-      };
-
-      if (!roomExists) {
-        roomUpdates[ChatRoomField.participants] = participants;
-      }
-
-      for (final recipientUid in recipientUids) {
-        roomUpdates['${ChatRoomField.unreadCount}.$recipientUid'] =
-            FieldValue.increment(1);
-        roomUpdates['${ChatRoomField.deletedChatListFor}.$recipientUid'] =
-            FieldValue.delete();
-      }
+      final roomUpdates = ChatRoomMessageUpdateModel(
+        lastMessage: _resolveLastMessage(text, type),
+        senderId: uid,
+        imageUrl: uploadedImageUrl,
+        type: type.name,
+        participants: roomExists ? null : participants,
+        recipientUids: recipientUids,
+      ).toFirestoreJson();
 
       await _commitMessageAndRoom(
         messageRef: messageRef,
@@ -804,16 +788,12 @@ class ChatService implements ChatRepository {
       return roomId;
     }
 
-    await roomRef.set({
-      ChatRoomField.participants: [currentUid, targetUid],
-      ChatRoomField.lastMessage: null,
-      ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-      ChatRoomField.lastSenderId: null,
-      ChatRoomField.unreadCount: {
-        currentUid: 0,
-        targetUid: 0,
-      },
-    });
+    await roomRef.set(
+      ChatRoomWriteModel.directRoom(
+        currentUid: currentUid,
+        targetUid: targetUid,
+      ).toFirestoreJson(),
+    );
 
     return roomId;
   }
@@ -836,34 +816,25 @@ class ChatService implements ChatRepository {
     }
 
     final roomRef = _chatRoomsRef.doc();
-    await roomRef.set({
-      ChatRoomField.participants: participants,
-      ChatRoomField.admins: [currentUid],
-      ChatRoomField.createdBy: currentUid,
-      ChatRoomField.name: cleanName,
-      ChatRoomField.photoUrl: photoUrl,
-      ChatRoomField.isGroup: true,
-      ChatRoomField.lastMessage: null,
-      ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-      ChatRoomField.lastSenderId: null,
-      ChatRoomField.unreadCount: {
-        for (final uid in participants) uid: 0,
-      },
-    });
+    await roomRef.set(
+      ChatRoomWriteModel.groupRoom(
+        currentUid: currentUid,
+        name: cleanName,
+        participants: participants,
+        photoUrl: photoUrl,
+      ).toFirestoreJson(),
+    );
 
     return roomRef.id;
   }
 
   @override
   Stream<ChatRoomModel> watchRoom({required String roomId}) {
-    return _chatRoomsRef.doc(roomId).snapshots().where((doc) {
-      return doc.exists && doc.data() != null;
-    }).map((doc) {
-      return ChatRoomModel.fromJson({
-        'id': doc.id,
-        ...doc.data()!,
-      });
-    });
+    return _chatRoomsRef
+        .doc(roomId)
+        .snapshots()
+        .where((doc) => doc.exists && doc.data() != null)
+        .map(FirestoreModelConverters.chatRoomFromSnapshot);
   }
 
   @override
@@ -916,12 +887,9 @@ class ChatService implements ChatRepository {
           .where(FieldPath.documentId, whereIn: chunk)
           .get();
 
-      users.addAll(snapshot.docs.map((doc) {
-        return UserModel.fromJson({
-          'id': doc.id,
-          ...doc.data(),
-        });
-      }));
+      users.addAll(
+        snapshot.docs.map(FirestoreModelConverters.userFromSnapshot),
+      );
     }
 
     return _sortUsersByParticipantOrder(users, userIds);
@@ -977,12 +945,10 @@ class ChatService implements ChatRepository {
           cleanMemberUids.where((uid) => !participants.contains(uid)).toList();
       if (newMembers.isEmpty) return;
 
-      transaction.update(roomRef, {
-        ChatRoomField.participants: FieldValue.arrayUnion(newMembers),
-        for (final uid in newMembers) '${ChatRoomField.unreadCount}.$uid': 0,
-        for (final uid in newMembers)
-          '${ChatRoomField.deletedChatListFor}.$uid': FieldValue.delete(),
-      });
+      transaction.update(
+        roomRef,
+        ChatRoomUpdateModel.inviteMembers(newMembers).toFirestoreJson(),
+      );
     });
   }
 
@@ -1004,9 +970,10 @@ class ChatService implements ChatRepository {
         throw StateError('Member belum bergabung di grup');
       }
 
-      transaction.update(roomRef, {
-        ChatRoomField.admins: FieldValue.arrayUnion([memberUid]),
-      });
+      transaction.update(
+        roomRef,
+        ChatRoomUpdateModel.promoteAdmin(memberUid).toFirestoreJson(),
+      );
     });
   }
 
@@ -1029,12 +996,10 @@ class ChatService implements ChatRepository {
         throw StateError('Grup membutuhkan minimal 2 member');
       }
 
-      transaction.update(roomRef, {
-        ChatRoomField.participants: FieldValue.arrayRemove([memberUid]),
-        ChatRoomField.admins: FieldValue.arrayRemove([memberUid]),
-        '${ChatRoomField.unreadCount}.$memberUid': FieldValue.delete(),
-        '${ChatRoomField.deletedChatListFor}.$memberUid': true,
-      });
+      transaction.update(
+        roomRef,
+        ChatRoomUpdateModel.removeMember(memberUid).toFirestoreJson(),
+      );
     });
   }
 
@@ -1046,13 +1011,10 @@ class ChatService implements ChatRepository {
     String? photoUrl,
   }) async {
     final cleanName = name?.trim();
-    final updates = <Object, Object?>{};
-    if (cleanName != null && cleanName.isNotEmpty) {
-      updates[ChatRoomField.name] = cleanName;
-    }
-    if (photoUrl != null) {
-      updates[ChatRoomField.photoUrl] = photoUrl;
-    }
+    final updates = ChatRoomUpdateModel.groupInfo(
+      name: cleanName,
+      photoUrl: photoUrl,
+    ).toFirestoreJson();
     if (updates.isEmpty) return;
 
     final roomRef = _chatRoomsRef.doc(roomId);
@@ -1097,9 +1059,9 @@ class ChatService implements ChatRepository {
     required String uid,
     required bool isTyping,
   }) {
-    return _chatRoomsRef.doc(roomId).update({
-      'typing.$uid': isTyping,
-    });
+    return _chatRoomsRef.doc(roomId).update(
+        ChatRoomUpdateModel.typing(uid: uid, isTyping: isTyping)
+            .toFirestoreJson());
   }
 
   // -------------------------------
@@ -1115,9 +1077,7 @@ class ChatService implements ChatRepository {
         .doc(roomId)
         .collection(FirestoreCollection.messages)
         .doc(messageId)
-        .update({
-      '${MessageField.deliveredTo}.$uid': true,
-    });
+        .update(ChatMessageUpdateModel.delivered(uid).toFirestoreJson());
   }
 
   // -------------------------------
@@ -1133,9 +1093,7 @@ class ChatService implements ChatRepository {
         .doc(roomId)
         .collection(FirestoreCollection.messages)
         .doc(messageId)
-        .update({
-      '${MessageField.readBy}.$uid': true,
-    });
+        .update(ChatMessageUpdateModel.read(uid).toFirestoreJson());
   }
 
   @override
@@ -1164,16 +1122,17 @@ class ChatService implements ChatRepository {
           .doc(roomId)
           .collection(FirestoreCollection.messages)
           .doc(messageId)
-          .update({
-        '${MessageField.deletedFor}.$uid': true,
-      });
+          .update(ChatMessageUpdateModel.deletedFor(uid).toFirestoreJson());
     } on FirebaseException catch (e) {
       if (e.code != 'permission-denied') rethrow;
     }
 
-    return _chatRoomsRef.doc(roomId).update({
-      '${ChatRoomField.deletedMessagesFor}.$uid.$messageId': true,
-    });
+    return _chatRoomsRef.doc(roomId).update(
+          ChatRoomUpdateModel.deletedMessageFor(
+            uid: uid,
+            messageId: messageId,
+          ).toFirestoreJson(),
+        );
   }
 
   @override
@@ -1208,10 +1167,8 @@ class ChatService implements ChatRepository {
           .doc(roomId)
           .collection(FirestoreCollection.messages)
           .doc(messageId)
-          .update({
-        '${MessageField.reactions}.$uid':
-            emoji == null || emoji.isEmpty ? FieldValue.delete() : emoji,
-      });
+          .update(ChatMessageUpdateModel.reaction(uid: uid, emoji: emoji)
+              .toFirestoreJson());
     } on FirebaseException catch (e) {
       if (existing != null && previousReactions != null) {
         await _messageBox.put(
@@ -1230,9 +1187,9 @@ class ChatService implements ChatRepository {
     required String roomId,
     required String uid,
   }) {
-    return _chatRoomsRef.doc(roomId).update({
-      '${ChatRoomField.unreadCount}.$uid': 0,
-    });
+    return _chatRoomsRef
+        .doc(roomId)
+        .update(ChatRoomUpdateModel.resetUnread(uid).toFirestoreJson());
   }
 
   // -------------------------------

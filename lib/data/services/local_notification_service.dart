@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
+import 'package:chatkuy/data/models/call_write_models.dart';
+import 'package:chatkuy/data/models/chat_message_update_model.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
 import 'package:chatkuy/ui/chat/chat_room/chat_room_screen.dart';
 import 'package:chatkuy/ui/chat/call/call_argument.dart';
@@ -212,9 +214,8 @@ class LocalNotificationService implements LocalNotificationRepository {
           .doc(roomId)
           .collection(FirestoreCollection.messages)
           .doc(messageId)
-          .update({
-        '${MessageField.deliveredTo}.$deliveredUid': true,
-      });
+          .update(
+              ChatMessageUpdateModel.delivered(deliveredUid).toFirestoreJson());
     } catch (error, stackTrace) {
       await AppErrorLogger.recordError(
         error,
@@ -368,7 +369,8 @@ class LocalNotificationService implements LocalNotificationRepository {
         final snapshot = await transaction.get(callRef);
         final status = snapshot.data()?[CallField.status];
         if (status == null || status == CallStatus.calling) {
-          transaction.update(callRef, {CallField.status: CallStatus.ringing});
+          transaction.update(
+              callRef, CallUpdateModel.ringing().toFirestoreJson());
         }
       });
     } catch (error, stackTrace) {
@@ -753,10 +755,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     final callData = callSnap.data();
 
     if (callData == null) {
-      await callRef.update({
-        CallField.status: status,
-        CallField.endedAt: FieldValue.serverTimestamp(),
-      });
+      await callRef.update(CallUpdateModel.finished(status).toFirestoreJson());
       return;
     }
 
@@ -771,10 +770,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     );
     final batch = firestore.batch();
 
-    batch.update(callRef, {
-      CallField.status: status,
-      CallField.endedAt: FieldValue.serverTimestamp(),
-    });
+    batch.update(callRef, CallUpdateModel.finished(status).toFirestoreJson());
 
     if (roomId != null && roomId.isNotEmpty) {
       final chatRoomRef =
@@ -784,25 +780,24 @@ class LocalNotificationService implements LocalNotificationRepository {
 
       batch.set(
         messageRef,
-        {
-          MessageField.text: text,
-          MessageField.callStatus: status,
-          MessageField.callType: callType,
-          MessageField.callDurationSeconds: durationSeconds,
-        },
+        CallMessageWriteModel.finished(
+          text: text,
+          callId: callId,
+          callStatus: status,
+          callType: callType,
+          callDurationSeconds: durationSeconds,
+        ).toFirestoreJson(),
         SetOptions(merge: true),
       );
 
-      batch.update(chatRoomRef, {
-        ChatRoomField.lastMessage: text,
-        ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
-        ChatRoomField.lastSenderId: callData[CallField.callerId],
-        ChatRoomField.type: 'call',
-        '${ChatRoomField.deletedChatListFor}.${callData[CallField.callerId]}':
-            FieldValue.delete(),
-        '${ChatRoomField.deletedChatListFor}.${callData[CallField.calleeId]}':
-            FieldValue.delete(),
-      });
+      batch.update(
+        chatRoomRef,
+        CallRoomUpdateModel.finished(
+          text: text,
+          callerId: callData[CallField.callerId] as String,
+          calleeId: callData[CallField.calleeId] as String?,
+        ).toFirestoreJson(),
+      );
     }
 
     await batch.commit();
