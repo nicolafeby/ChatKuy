@@ -34,10 +34,8 @@ class ChatRoomMessageUpdateModel {
       'unreadCount.$lastSenderId': 0,
       'deletedChatListFor.$lastSenderId': FieldValue.delete(),
       'archivedFor.$lastSenderId': FieldValue.delete(),
-      for (final uid in recipientUids)
-        'unreadCount.$uid': FieldValue.increment(1),
-      for (final uid in recipientUids)
-        'deletedChatListFor.$uid': FieldValue.delete(),
+      for (final uid in recipientUids) 'unreadCount.$uid': FieldValue.increment(1),
+      for (final uid in recipientUids) 'deletedChatListFor.$uid': FieldValue.delete(),
     };
   }
 }
