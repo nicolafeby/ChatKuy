@@ -289,6 +289,13 @@ abstract class _ChatRoomStore with Store {
     return activeRoom.admins.contains(uid);
   }
 
+  bool get isMuted {
+    final uid = currentUid;
+    final activeRoom = room?.value;
+    if (uid == null || activeRoom == null) return false;
+    return activeRoom.isMutedFor(uid);
+  }
+
   List<UserModel> get mentionSuggestions {
     final text = messageController.text;
     final cursor = messageController.selection.baseOffset;
@@ -360,6 +367,23 @@ abstract class _ChatRoomStore with Store {
       adminUid: currentUid!,
       name: name,
       photoUrl: photoUrl,
+    );
+  }
+
+  Future<void> muteChatUntil(DateTime mutedUntil) async {
+    if (roomId == null || currentUid == null) return;
+    await chatRepository.muteChatUntil(
+      roomId: roomId!,
+      uid: currentUid!,
+      mutedUntil: mutedUntil,
+    );
+  }
+
+  Future<void> unmuteChat() async {
+    if (roomId == null || currentUid == null) return;
+    await chatRepository.unmuteChat(
+      roomId: roomId!,
+      uid: currentUid!,
     );
   }
 
@@ -686,6 +710,7 @@ abstract class _ChatRoomStore with Store {
         groupPhotoUrl: existing.groupPhotoUrl,
         participants: existing.participants,
         admins: existing.admins,
+        mutedUntil: existing.mutedUntil,
       ),
     );
   }

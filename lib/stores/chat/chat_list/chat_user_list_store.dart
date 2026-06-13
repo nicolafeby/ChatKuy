@@ -206,6 +206,77 @@ abstract class _ChatUserListStore with Store {
     await _setChatsArchived(items, false);
   }
 
+  Future<void> muteChatsUntil(
+    List<ChatUserItemModel> items,
+    DateTime mutedUntil,
+  ) async {
+    await _setChatsMuted(items, mutedUntil: mutedUntil);
+  }
+
+  Future<void> unmuteChats(List<ChatUserItemModel> items) async {
+    await _setChatsMuted(items, mutedUntil: null);
+  }
+
+  Future<void> _setChatsMuted(
+    List<ChatUserItemModel> items, {
+    required DateTime? mutedUntil,
+  }) async {
+    final uid = currentUid;
+    if (uid == null || uid.isEmpty) return;
+    if (items.isEmpty) return;
+
+    runInAction(() {
+      errorMessage = null;
+    });
+
+    final previousItems = chatUsers.toList();
+    final roomIds = items.map((item) => item.roomId).toSet();
+    runInAction(() {
+      for (var i = 0; i < chatUsers.length; i++) {
+        final item = chatUsers[i];
+        if (!roomIds.contains(item.roomId)) continue;
+
+        chatUsers[i] = mutedUntil == null
+            ? item.copyWith(clearMutedUntil: true)
+            : item.copyWith(mutedUntil: mutedUntil);
+      }
+    });
+
+    try {
+      for (final item in items) {
+        if (mutedUntil == null) {
+          await repository.unmuteChat(roomId: item.roomId, uid: uid);
+        } else {
+          await repository.muteChatUntil(
+            roomId: item.roomId,
+            uid: uid,
+            mutedUntil: mutedUntil,
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      runInAction(() {
+        chatUsers
+          ..clear()
+          ..addAll(previousItems);
+      });
+      AppErrorLogger.recordError(
+        e,
+        stackTrace,
+        reason:
+            mutedUntil == null ? 'Unmute chats failed' : 'Mute chats failed',
+        context: {
+          'room_ids': roomIds.join(','),
+          'uid': uid,
+        },
+      );
+      runInAction(() {
+        errorMessage = e.toString();
+      });
+      rethrow;
+    }
+  }
+
   Future<void> _setChatsArchived(
     List<ChatUserItemModel> items,
     bool archived,

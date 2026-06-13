@@ -185,6 +185,7 @@ class ChatUserListService implements ChatUserListRepository {
               groupPhotoUrl: room.photoUrl,
               participants: room.participants,
               admins: room.admins,
+              mutedUntil: room.mutedUntil[myUid],
             );
 
             items.add(item);
@@ -292,6 +293,46 @@ class ChatUserListService implements ChatUserListRepository {
     await _chatRoomsRef
         .doc(roomId)
         .update(ChatRoomWriteModel.unarchiveForUser(uid).toFirestoreJson());
+  }
+
+  @override
+  Future<void> muteChatUntil({
+    required String roomId,
+    required String uid,
+    required DateTime mutedUntil,
+  }) async {
+    final existing = _chatListBox.get(roomId);
+    if (existing != null) {
+      await _chatListBox.put(
+        roomId,
+        existing.copyWith(mutedUntil: mutedUntil),
+      );
+    }
+
+    await _chatRoomsRef.doc(roomId).update(
+          ChatRoomWriteModel.muteForUser(
+            uid: uid,
+            mutedUntil: mutedUntil,
+          ).toFirestoreJson(),
+        );
+  }
+
+  @override
+  Future<void> unmuteChat({
+    required String roomId,
+    required String uid,
+  }) async {
+    final existing = _chatListBox.get(roomId);
+    if (existing != null) {
+      await _chatListBox.put(
+        roomId,
+        existing.copyWith(clearMutedUntil: true),
+      );
+    }
+
+    await _chatRoomsRef
+        .doc(roomId)
+        .update(ChatRoomWriteModel.unmuteForUser(uid).toFirestoreJson());
   }
 
   bool _isChatListDeletedForUser(String roomId, String uid) {
@@ -433,6 +474,7 @@ class ChatUserListService implements ChatUserListRepository {
         groupPhotoUrl: existing.groupPhotoUrl,
         participants: existing.participants,
         admins: existing.admins,
+        mutedUntil: existing.mutedUntil,
       ),
     );
   }
@@ -491,6 +533,7 @@ class ChatUserListService implements ChatUserListRepository {
           groupPhotoUrl: item.groupPhotoUrl,
           participants: item.participants,
           admins: item.admins,
+          mutedUntil: item.mutedUntil,
         ),
       );
     }

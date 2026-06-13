@@ -189,6 +189,23 @@ class _FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Future<void> muteChatUntil({
+    required String roomId,
+    required String uid,
+    required DateTime mutedUntil,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> unmuteChat({
+    required String roomId,
+    required String uid,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> sendMessage({
     required String roomId,
     String? targetUid,

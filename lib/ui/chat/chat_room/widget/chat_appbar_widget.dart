@@ -18,8 +18,11 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onAddMembersTap;
   final VoidCallback? onGroupInfoTap;
   final VoidCallback? onGroupMediaTap;
+  final VoidCallback? onMuteTap;
+  final VoidCallback? onUnmuteTap;
   final bool canViewPresence;
   final bool isGroup;
+  final bool isMuted;
   final String? subtitle;
   const ChatAppbarWidget({
     super.key,
@@ -33,8 +36,11 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
     this.onAddMembersTap,
     this.onGroupInfoTap,
     this.onGroupMediaTap,
+    this.onMuteTap,
+    this.onUnmuteTap,
     this.canViewPresence = true,
     this.isGroup = false,
+    this.isMuted = false,
     this.subtitle,
   });
 
@@ -133,12 +139,24 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
       return PopupMenuButton<String>(
         onSelected: (value) {
           if (value == 'search') onSearchTap?.call();
+          if (value == 'mute') onMuteTap?.call();
+          if (value == 'unmute') onUnmuteTap?.call();
         },
         itemBuilder: (_) => [
           PopupMenuItem(
             value: 'search',
             child:
                 Text(AppTranslationKey.text(AppTranslationKey.searchMessages)),
+          ),
+          PopupMenuItem(
+            value: isMuted ? 'unmute' : 'mute',
+            child: Text(
+              AppTranslationKey.text(
+                isMuted
+                    ? AppTranslationKey.unmuteNotifications
+                    : AppTranslationKey.muteNotifications,
+              ),
+            ),
           ),
         ],
       );
@@ -156,17 +174,50 @@ class ChatAppbarWidget extends StatelessWidget implements PreferredSizeWidget {
         }
         if (value == 'media') onGroupMediaTap?.call();
         if (value == 'search') onSearchTap?.call();
+        if (value == 'mute') onMuteTap?.call();
+        if (value == 'unmute') onUnmuteTap?.call();
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'add', child: Text('Add members')),
-        PopupMenuItem(value: 'info', child: Text('Group info')),
-        PopupMenuItem(value: 'media', child: Text('Group media')),
-        PopupMenuItem(value: 'search', child: Text('Search')),
-        PopupMenuItem(value: 'mute', child: Text('Mute notifications')),
+      itemBuilder: (_) => [
         PopupMenuItem(
-            value: 'disappearing', child: Text('Disappearing messages')),
-        PopupMenuItem(value: 'theme', child: Text('Chat theme')),
-        PopupMenuItem(value: 'more', child: Text('More')),
+          value: 'add',
+          child: Text(AppTranslationKey.text(AppTranslationKey.addMembers)),
+        ),
+        PopupMenuItem(
+          value: 'info',
+          child: Text(AppTranslationKey.text(AppTranslationKey.groupInfo)),
+        ),
+        PopupMenuItem(
+          value: 'media',
+          child: Text(AppTranslationKey.text(AppTranslationKey.groupMedia)),
+        ),
+        PopupMenuItem(
+          value: 'search',
+          child: Text(AppTranslationKey.text(AppTranslationKey.search)),
+        ),
+        PopupMenuItem(
+          value: isMuted ? 'unmute' : 'mute',
+          child: Text(
+            AppTranslationKey.text(
+              isMuted
+                  ? AppTranslationKey.unmuteNotifications
+                  : AppTranslationKey.muteNotifications,
+            ),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'disappearing',
+          child: Text(
+            AppTranslationKey.text(AppTranslationKey.disappearingMessages),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'theme',
+          child: Text(AppTranslationKey.text(AppTranslationKey.chatTheme)),
+        ),
+        PopupMenuItem(
+          value: 'more',
+          child: Text(AppTranslationKey.text(AppTranslationKey.more)),
+        ),
       ],
     );
   }

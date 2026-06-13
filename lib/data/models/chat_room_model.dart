@@ -35,6 +35,13 @@ class ChatRoomModel {
   final List<String> admins;
   @HiveField(13)
   final String? createdBy;
+  @HiveField(14, defaultValue: <String, DateTime?>{})
+  @JsonKey(
+    fromJson: _mutedUntilFromJson,
+    toJson: _mutedUntilToJson,
+    defaultValue: <String, DateTime?>{},
+  )
+  final Map<String, DateTime?> mutedUntil;
 
   ChatRoomModel({
     required this.id,
@@ -50,9 +57,11 @@ class ChatRoomModel {
     this.photoUrl,
     this.admins = const [],
     this.createdBy,
+    this.mutedUntil = const {},
   });
 
-  factory ChatRoomModel.fromJson(Map<String, dynamic> json) => _$ChatRoomModelFromJson(json);
+  factory ChatRoomModel.fromJson(Map<String, dynamic> json) =>
+      _$ChatRoomModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatRoomModelToJson(this);
 
@@ -65,5 +74,26 @@ class ChatRoomModel {
   /// DateTime → Firestore Timestamp
   static dynamic _toTimestamp(DateTime? date) {
     return date;
+  }
+
+  static Map<String, DateTime?> _mutedUntilFromJson(dynamic value) {
+    if (value is! Map) return const {};
+
+    return value.map((key, mutedUntil) {
+      return MapEntry(key.toString(), _fromTimestamp(mutedUntil));
+    });
+  }
+
+  static Map<String, dynamic> _mutedUntilToJson(
+    Map<String, DateTime?> mutedUntil,
+  ) {
+    return mutedUntil.map((key, value) => MapEntry(key, value));
+  }
+
+  bool isMutedFor(String uid, {DateTime? now}) {
+    final mutedUntilForUser = mutedUntil[uid];
+    if (mutedUntilForUser == null) return false;
+
+    return mutedUntilForUser.isAfter(now ?? DateTime.now());
   }
 }

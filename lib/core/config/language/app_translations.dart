@@ -211,6 +211,19 @@ class AppTranslationKey {
   static const indonesian = 'indonesian';
   static const english = 'english';
   static const notifications = 'notifications';
+  static const muteNotifications = 'muteNotifications';
+  static const unmuteNotifications = 'unmuteNotifications';
+  static const mutedNotifications = 'mutedNotifications';
+  static const notificationsUnmuted = 'notificationsUnmuted';
+  static const muteFor8Hours = 'muteFor8Hours';
+  static const muteFor1Week = 'muteFor1Week';
+  static const muteAlways = 'muteAlways';
+  static const addMembers = 'addMembers';
+  static const groupInfo = 'groupInfo';
+  static const groupMedia = 'groupMedia';
+  static const disappearingMessages = 'disappearingMessages';
+  static const chatTheme = 'chatTheme';
+  static const more = 'more';
   static const dark = 'dark';
   static const light = 'light';
   static const personalInformation = 'personalInformation';
@@ -498,6 +511,19 @@ const Map<String, String> _id = {
   AppTranslationKey.indonesian: 'Indonesia',
   AppTranslationKey.english: 'Inggris',
   AppTranslationKey.notifications: 'Notifikasi',
+  AppTranslationKey.muteNotifications: 'Bisukan notifikasi',
+  AppTranslationKey.unmuteNotifications: 'Nyalakan notifikasi',
+  AppTranslationKey.mutedNotifications: 'Notifikasi dibisukan',
+  AppTranslationKey.notificationsUnmuted: 'Notifikasi dinyalakan',
+  AppTranslationKey.muteFor8Hours: '8 jam',
+  AppTranslationKey.muteFor1Week: '1 minggu',
+  AppTranslationKey.muteAlways: 'Selalu',
+  AppTranslationKey.addMembers: 'Tambah anggota',
+  AppTranslationKey.groupInfo: 'Info grup',
+  AppTranslationKey.groupMedia: 'Media grup',
+  AppTranslationKey.disappearingMessages: 'Pesan sementara',
+  AppTranslationKey.chatTheme: 'Tema chat',
+  AppTranslationKey.more: 'Lainnya',
   AppTranslationKey.dark: 'Gelap',
   AppTranslationKey.light: 'Terang',
   AppTranslationKey.personalInformation: 'Informasi Personal',
@@ -779,6 +805,19 @@ const Map<String, String> _en = {
   AppTranslationKey.indonesian: 'Indonesian',
   AppTranslationKey.english: 'English',
   AppTranslationKey.notifications: 'Notifications',
+  AppTranslationKey.muteNotifications: 'Mute notifications',
+  AppTranslationKey.unmuteNotifications: 'Unmute notifications',
+  AppTranslationKey.mutedNotifications: 'Notifications muted',
+  AppTranslationKey.notificationsUnmuted: 'Notifications unmuted',
+  AppTranslationKey.muteFor8Hours: '8 hours',
+  AppTranslationKey.muteFor1Week: '1 week',
+  AppTranslationKey.muteAlways: 'Always',
+  AppTranslationKey.addMembers: 'Add members',
+  AppTranslationKey.groupInfo: 'Group info',
+  AppTranslationKey.groupMedia: 'Group media',
+  AppTranslationKey.disappearingMessages: 'Disappearing messages',
+  AppTranslationKey.chatTheme: 'Chat theme',
+  AppTranslationKey.more: 'More',
   AppTranslationKey.dark: 'Dark',
   AppTranslationKey.light: 'Light',
   AppTranslationKey.personalInformation: 'Personal Information',

@@ -42,6 +42,8 @@ class ChatUserItemModel {
   final List<String> participants;
   @HiveField(16, defaultValue: <String>[])
   final List<String> admins;
+  @HiveField(17)
+  final DateTime? mutedUntil;
 
   ChatUserItemModel({
     required this.roomId,
@@ -61,9 +63,11 @@ class ChatUserItemModel {
     this.groupPhotoUrl,
     this.participants = const [],
     this.admins = const [],
+    this.mutedUntil,
   });
 
-  factory ChatUserItemModel.fromJson(Map<String, dynamic> json) => _$ChatUserItemModelFromJson(json);
+  factory ChatUserItemModel.fromJson(Map<String, dynamic> json) =>
+      _$ChatUserItemModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatUserItemModelToJson(this);
 
@@ -85,6 +89,8 @@ class ChatUserItemModel {
     String? groupPhotoUrl,
     List<String>? participants,
     List<String>? admins,
+    DateTime? mutedUntil,
+    bool clearMutedUntil = false,
   }) {
     return ChatUserItemModel(
       roomId: roomId ?? this.roomId,
@@ -96,7 +102,8 @@ class ChatUserItemModel {
       type: type ?? this.type,
       lastSenderId: lastSenderId ?? this.lastSenderId,
       lastMessageStatus: lastMessageStatus ?? this.lastMessageStatus,
-      lastMessageDeliveredTo: lastMessageDeliveredTo ?? this.lastMessageDeliveredTo,
+      lastMessageDeliveredTo:
+          lastMessageDeliveredTo ?? this.lastMessageDeliveredTo,
       lastMessageReadBy: lastMessageReadBy ?? this.lastMessageReadBy,
       isArchived: isArchived ?? this.isArchived,
       isGroup: isGroup ?? this.isGroup,
@@ -104,6 +111,9 @@ class ChatUserItemModel {
       groupPhotoUrl: groupPhotoUrl ?? this.groupPhotoUrl,
       participants: participants ?? this.participants,
       admins: admins ?? this.admins,
+      mutedUntil: clearMutedUntil ? null : mutedUntil ?? this.mutedUntil,
     );
   }
+
+  bool get isMuted => mutedUntil?.isAfter(DateTime.now()) == true;
 }

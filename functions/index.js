@@ -42,6 +42,33 @@ async function clearInvalidFcmToken(uid, token, error) {
   }
 }
 
+function firestoreDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value.toDate === 'function') {
+    return value.toDate();
+  }
+
+  return null;
+}
+
+function isChatMutedForUser(room, uid) {
+  const mutedUntil = room?.mutedUntil || {};
+  const mutedUntilForUser = firestoreDate(mutedUntil[uid]);
+
+  if (!mutedUntilForUser) {
+    return false;
+  }
+
+  return mutedUntilForUser.getTime() > Date.now();
+}
+
 async function commitBatchIfNeeded(batchState, force = false) {
   if (batchState.count === 0 || (!force && batchState.count < DELETE_BATCH_LIMIT)) {
     return;
@@ -309,7 +336,8 @@ exports.onNewMessage = onDocumentCreated(
       return;
     }
 
-    const participants = roomSnap.data().participants || [];
+    const room = roomSnap.data();
+    const participants = room.participants || [];
     logger.info('👥 Participants:', participants);
 
     // 🔥 Tentukan receiver (selain sender)
@@ -344,45 +372,56 @@ exports.onNewMessage = onDocumentCreated(
       return;
     }
 
+    const isMuted = isChatMutedForUser(room, receiverId);
+    logger.info('🔕 Chat muted for receiver:', isMuted);
+
+    const payload = {
+      token: fcmToken,
+
+      // 📦 Dipakai Flutter (navigasi + delivered marker)
+      data: {
+        type: 'chat',
+        roomId: event.params.roomId,
+        messageId: event.params.messageId,
+        receiverId: receiverId,
+        senderId: message.senderId ?? '',
+        senderName: message.senderName ?? '',
+        text: message.text ?? '',
+      },
+
+      // 🤖 Android config
+      android: {
+        priority: 'high',
+      },
+
+      // 🍎 iOS silent delivery for muted chats.
+      apns: {
+        payload: {
+          aps: isMuted
+            ? {
+                'content-available': 1,
+              }
+            : {
+                sound: 'default',
+              },
+        },
+      },
+    };
+
+    if (!isMuted) {
+      payload.notification = {
+        title: message.senderName || 'Pesan Baru',
+        body: message.text || 'Ada pesan baru',
+      };
+
+      payload.android.notification = {
+        channelId: 'chat_notification', // HARUS sama dengan Flutter
+      };
+    }
+
     // 🔔 Kirim notif
     try {
-      const response = await admin.messaging().send({
-        token: fcmToken,
-
-        // 🔔 Dipakai OS (background / terminated)
-        notification: {
-          title: message.senderName || 'Pesan Baru',
-          body: message.text || 'Ada pesan baru',
-        },
-
-        // 📦 Dipakai Flutter (navigasi)
-        data: {
-          type: 'chat',
-          roomId: event.params.roomId,
-          messageId: event.params.messageId,
-          receiverId: receiverId,
-          senderId: message.senderId ?? '',
-          senderName: message.senderName ?? '',
-          text: message.text ?? '',
-        },
-
-        // 🤖 Android config
-        android: {
-          priority: 'high',
-          notification: {
-            channelId: 'chat_notification', // HARUS sama dengan Flutter
-          },
-        },
-
-        // 🍎 iOS config
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-            },
-          },
-        },
-      });
+      const response = await admin.messaging().send(payload);
 
       logger.info('✅ FCM sent:', response);
     } catch (error) {
