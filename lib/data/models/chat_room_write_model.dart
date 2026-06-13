@@ -22,6 +22,15 @@ class ChatRoomWriteModel {
   final String? unarchiveUid;
 
   @JsonKey(includeToJson: false)
+  final String? muteUid;
+
+  @JsonKey(includeToJson: false)
+  final DateTime? muteUntil;
+
+  @JsonKey(includeToJson: false)
+  final String? unmuteUid;
+
+  @JsonKey(includeToJson: false)
   final bool useServerLastMessageAt;
 
   const ChatRoomWriteModel({
@@ -36,6 +45,9 @@ class ChatRoomWriteModel {
     this.unreadCount,
     this.archiveUid,
     this.unarchiveUid,
+    this.muteUid,
+    this.muteUntil,
+    this.unmuteUid,
     this.useServerLastMessageAt = false,
   });
 
@@ -74,6 +86,13 @@ class ChatRoomWriteModel {
   const ChatRoomWriteModel.unarchiveForUser(String uid)
       : this(unarchiveUid: uid);
 
+  const ChatRoomWriteModel.muteForUser({
+    required String uid,
+    required DateTime mutedUntil,
+  }) : this(muteUid: uid, muteUntil: mutedUntil);
+
+  const ChatRoomWriteModel.unmuteForUser(String uid) : this(unmuteUid: uid);
+
   Map<String, dynamic> toJson() => _$ChatRoomWriteModelToJson(this);
 
   Map<String, dynamic> toFirestoreJson() {
@@ -85,6 +104,9 @@ class ChatRoomWriteModel {
       if (archiveUid != null) 'archivedFor.$archiveUid': true,
       if (unarchiveUid != null)
         'archivedFor.$unarchiveUid': FieldValue.delete(),
+      if (muteUid != null && muteUntil != null)
+        'mutedUntil.$muteUid': muteUntil,
+      if (unmuteUid != null) 'mutedUntil.$unmuteUid': FieldValue.delete(),
     };
   }
 }

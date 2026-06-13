@@ -1331,6 +1331,30 @@ class ChatService implements ChatRepository {
         .update(ChatRoomUpdateModel.resetUnread(uid).toFirestoreJson());
   }
 
+  @override
+  Future<void> muteChatUntil({
+    required String roomId,
+    required String uid,
+    required DateTime mutedUntil,
+  }) {
+    return _chatRoomsRef.doc(roomId).update(
+          ChatRoomWriteModel.muteForUser(
+            uid: uid,
+            mutedUntil: mutedUntil,
+          ).toFirestoreJson(),
+        );
+  }
+
+  @override
+  Future<void> unmuteChat({
+    required String roomId,
+    required String uid,
+  }) {
+    return _chatRoomsRef
+        .doc(roomId)
+        .update(ChatRoomWriteModel.unmuteForUser(uid).toFirestoreJson());
+  }
+
   // -------------------------------
   // UPLOAD IMAGE
   // -------------------------------

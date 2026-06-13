@@ -237,6 +237,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   ),
                                 )
                             : null,
+                        isMuted: store.isMuted,
+                        onMuteTap: _showMuteOptions,
+                        onUnmuteTap: _unmuteNotifications,
                         onCallTap: isGroup || user == null || targetId == null
                             ? null
                             : () =>
@@ -801,6 +804,87 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       _selectedMessageIds.clear();
       store.clearReplyToMessage();
     });
+  }
+
+  Future<void> _showMuteOptions() async {
+    final selectedUntil = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final now = DateTime.now();
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: Text(AppTranslationKey.muteFor8Hours.tr),
+                onTap: () => Navigator.of(context).pop(
+                  now.add(const Duration(hours: 8)),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: Text(AppTranslationKey.muteFor1Week.tr),
+                onTap: () => Navigator.of(context).pop(
+                  now.add(const Duration(days: 7)),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: Text(AppTranslationKey.muteAlways.tr),
+                onTap: () => Navigator.of(context).pop(
+                  now.add(const Duration(days: 36500)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selectedUntil == null) return;
+
+    try {
+      await store.muteChatUntil(selectedUntil);
+      if (!mounted) return;
+
+      Get.snackbar(
+        AppTranslationKey.notifications.tr,
+        AppTranslationKey.mutedNotifications.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      Get.snackbar(
+        AppTranslationKey.notifications.tr,
+        AppTranslationKey.somethingWentWrong.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> _unmuteNotifications() async {
+    try {
+      await store.unmuteChat();
+      if (!mounted) return;
+
+      Get.snackbar(
+        AppTranslationKey.notifications.tr,
+        AppTranslationKey.notificationsUnmuted.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      Get.snackbar(
+        AppTranslationKey.notifications.tr,
+        AppTranslationKey.somethingWentWrong.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 
   void _hideSearch() {

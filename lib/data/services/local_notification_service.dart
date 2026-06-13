@@ -141,6 +141,7 @@ class LocalNotificationService implements LocalNotificationRepository {
     if (message.data['type'] == 'chat') {
       await markChatMessageDeliveredFromPayload(message.data);
       if (await _isArchivedChatNotification(message.data)) return;
+      if (await _isMutedChatNotification(message.data)) return;
     }
 
     final isCall = message.data['type'] == 'voice_call' ||
@@ -269,6 +270,71 @@ class LocalNotificationService implements LocalNotificationRepository {
       );
       return false;
     }
+  }
+
+  static Future<bool> _isMutedChatNotification(
+    Map<String, dynamic> data,
+  ) async {
+    final roomData = await _chatRoomDataFromPayload(
+      data,
+      reason: 'Check muted chat notification failed',
+    );
+    if (roomData == null) return false;
+
+    final uid = _notificationReceiverUid(data);
+    if (uid == null) return false;
+
+    final mutedUntil = Map<String, dynamic>.from(
+      roomData[ChatRoomField.mutedUntil] ?? {},
+    );
+    final mutedUntilForUser = _dateFromFirestore(mutedUntil[uid]);
+    if (mutedUntilForUser == null) return false;
+
+    return mutedUntilForUser.isAfter(DateTime.now());
+  }
+
+  static Future<Map<String, dynamic>?> _chatRoomDataFromPayload(
+    Map<String, dynamic> data, {
+    required String reason,
+  }) async {
+    final roomId = data['roomId'];
+    final uid = _notificationReceiverUid(data);
+
+    if (roomId is! String || roomId.isEmpty || uid == null) return null;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(FirebaseCollections.chatRooms)
+          .doc(roomId)
+          .get();
+      return snapshot.data();
+    } catch (error, stackTrace) {
+      await AppErrorLogger.recordError(
+        error,
+        stackTrace,
+        reason: reason,
+        context: {
+          'room_id': roomId,
+          'uid': uid,
+        },
+        showBottomSheet: false,
+      );
+      return null;
+    }
+  }
+
+  static String? _notificationReceiverUid(Map<String, dynamic> data) {
+    final receiverId = data['receiverId'];
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    return currentUid ??
+        (receiverId is String && receiverId.isNotEmpty ? receiverId : null);
+  }
+
+  static DateTime? _dateFromFirestore(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    return null;
   }
 
   static Future<void> _showIncomingCall(Map<String, dynamic> data) async {

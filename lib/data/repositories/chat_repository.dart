@@ -145,6 +145,17 @@ abstract class ChatRepository {
     required String uid,
   });
 
+  Future<void> muteChatUntil({
+    required String roomId,
+    required String uid,
+    required DateTime mutedUntil,
+  });
+
+  Future<void> unmuteChat({
+    required String roomId,
+    required String uid,
+  });
+
   Future<LocalImageModel> uploadImage(
       {required File file, required String roomId});
 }

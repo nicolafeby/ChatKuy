@@ -149,6 +149,10 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
   }
 
   PreferredSizeWidget _buildSelectionAppbar() {
+    final selectedItems = _selectedItems();
+    final shouldUnmute =
+        selectedItems.isNotEmpty && selectedItems.every((item) => item.isMuted);
+
     return AppBar(
       leading: IconButton(
         tooltip: AppTranslationKey.cancel.tr,
@@ -160,6 +164,17 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         style: TextStyle(fontSize: 24.sp),
       ),
       actions: [
+        IconButton(
+          tooltip: shouldUnmute
+              ? AppTranslationKey.unmuteNotifications.tr
+              : AppTranslationKey.muteNotifications.tr,
+          onPressed: shouldUnmute ? _unmuteSelectedChats : _muteSelectedChats,
+          icon: Icon(
+            shouldUnmute
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_off_outlined,
+          ),
+        ),
         IconButton(
           tooltip: _showArchivedChats
               ? AppTranslationKey.unarchive.tr
@@ -449,20 +464,7 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
                         ),
                       ],
                     ),
-                    trailing: item.unreadCount > 0
-                        ? CircleAvatar(
-                            radius: 10.r,
-                            backgroundColor: AppColor.accentColor,
-                            child: Text(
-                              item.unreadCount.toString(),
-                              style: const TextStyle(
-                                color: Color(0xFF063D34),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          )
-                        : null,
+                    trailing: _buildChatTrailing(item, isDark: isDark),
                     onTap: () {
                       if (_isSelectionMode) {
                         _toggleChatSelection(item);
@@ -641,6 +643,42 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         item.lastMessageStatus != null;
   }
 
+  Widget? _buildChatTrailing(
+    ChatUserItemModel item, {
+    required bool isDark,
+  }) {
+    if (item.unreadCount <= 0 && !item.isMuted) return null;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (item.unreadCount > 0)
+          CircleAvatar(
+            radius: 10.r,
+            backgroundColor: AppColor.accentColor,
+            child: Text(
+              item.unreadCount.toString(),
+              style: const TextStyle(
+                color: Color(0xFF063D34),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        if (item.isMuted) ...[
+          if (item.unreadCount > 0) 4.verticalSpace,
+          Icon(
+            Icons.notifications_off_outlined,
+            size: 16.r,
+            color: isDark ? Colors.white38 : Colors.black38,
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildSelectableAvatar({
     required String? image,
     required bool isSelected,
@@ -766,6 +804,68 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
     await _performUnarchiveChats(selectedItems);
   }
 
+  Future<void> _muteSelectedChats() async {
+    final selectedItems = _selectedItems();
+    if (selectedItems.isEmpty) {
+      _clearSelection();
+      return;
+    }
+
+    final mutedUntil = await _showMuteOptions();
+    if (mutedUntil == null) return;
+
+    await _performMuteChats(selectedItems, mutedUntil);
+  }
+
+  Future<void> _unmuteSelectedChats() async {
+    final selectedItems = _selectedItems();
+    if (selectedItems.isEmpty) {
+      _clearSelection();
+      return;
+    }
+
+    await _performUnmuteChats(selectedItems);
+  }
+
+  Future<DateTime?> _showMuteOptions() {
+    return showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final now = DateTime.now();
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: Text(AppTranslationKey.muteFor8Hours.tr),
+                onTap: () => Navigator.of(context).pop(
+                  now.add(const Duration(hours: 8)),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: Text(AppTranslationKey.muteFor1Week.tr),
+                onTap: () => Navigator.of(context).pop(
+                  now.add(const Duration(days: 7)),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: Text(AppTranslationKey.muteAlways.tr),
+                onTap: () => Navigator.of(context).pop(
+                  now.add(const Duration(days: 36500)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   List<ChatUserItemModel> _selectedItems() {
     return store.chatUsers
         .where((item) => _selectedRoomIds.contains(item.roomId))
@@ -817,6 +917,53 @@ class _ChatListScreenState extends State<ChatListScreen> with BaseLayout {
         Get.snackbar(
           AppTranslationKey.unarchiveChatFailed.tr,
           items.length == 1 ? items.first.user.name : '${items.length}',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
+  }
+
+  Future<void> _performMuteChats(
+    List<ChatUserItemModel> items,
+    DateTime mutedUntil,
+  ) async {
+    try {
+      await store.muteChatsUntil(items, mutedUntil);
+      if (mounted) {
+        _clearSelection(force: true);
+        Get.snackbar(
+          AppTranslationKey.notifications.tr,
+          AppTranslationKey.mutedNotifications.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        Get.snackbar(
+          AppTranslationKey.notifications.tr,
+          AppTranslationKey.somethingWentWrong.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
+  }
+
+  Future<void> _performUnmuteChats(List<ChatUserItemModel> items) async {
+    try {
+      await store.unmuteChats(items);
+      if (mounted) {
+        _clearSelection(force: true);
+        Get.snackbar(
+          AppTranslationKey.notifications.tr,
+          AppTranslationKey.notificationsUnmuted.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        Get.snackbar(
+          AppTranslationKey.notifications.tr,
+          AppTranslationKey.somethingWentWrong.tr,
           snackPosition: SnackPosition.BOTTOM,
         );
       }
