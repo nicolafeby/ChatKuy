@@ -375,6 +375,10 @@ exports.onNewMessage = onDocumentCreated(
     const isMuted = isChatMutedForUser(room, receiverId);
     logger.info('🔕 Chat muted for receiver:', isMuted);
 
+    const apsPayload = isMuted
+      ? {'content-available': 1}
+      : {sound: 'default'};
+
     const payload = {
       token: fcmToken,
 
@@ -397,13 +401,7 @@ exports.onNewMessage = onDocumentCreated(
       // 🍎 iOS silent delivery for muted chats.
       apns: {
         payload: {
-          aps: isMuted
-            ? {
-                'content-available': 1,
-              }
-            : {
-                sound: 'default',
-              },
+          aps: apsPayload,
         },
       },
     };
