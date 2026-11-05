@@ -29,6 +29,7 @@ concurrency:
 jobs:
   quality-check:
     name: Prepare, Test & Build APK
+    needs: deploy-firebase
     if: github.event_name == 'push'
     runs-on: self-hosted
     timeout-minutes: 90
@@ -243,8 +244,7 @@ jobs:
 
   deploy-firebase:
     name: Deploy Firebase Functions & Firestore
-    needs: cd
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.cd.result == 'success') }}
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -317,7 +317,7 @@ jobs:
         if: steps.firebase_changes.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Functions dependencies
         if: contains(steps.firebase_changes.outputs.targets, 'functions')
