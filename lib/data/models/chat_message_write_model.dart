@@ -69,7 +69,7 @@ class ChatMessageWriteModel {
   Map<String, Object?> toJson() => _$ChatMessageWriteModelToJson(this);
 
   Map<String, Object?> toFirestoreJson() {
-    return {
+    final data = <String, Object?>{
       ...toJson(),
       'createdAt': FieldValue.serverTimestamp(),
       'deliveredTo': <String, bool>{},
@@ -78,6 +78,11 @@ class ChatMessageWriteModel {
       'reactions': <String, String>{},
       'deletedForEveryone': false,
     };
+    data.remove('localImagePath');
+    data.remove('localVideoPath');
+    data.remove('localFilePath');
+    data.remove('localAudioPath');
+    return data;
   }
 
   static DateTime _dateToFirestore(DateTime value) => value;

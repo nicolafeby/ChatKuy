@@ -95,8 +95,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               34.verticalSpace,
               TextfieldWidget(
-                label: AppTranslationKey.usernameOrEmail.tr,
-                hintText: AppTranslationKey.enterUsernameOrEmail.tr,
+                label: AppTranslationKey.email.tr,
+                hintText: AppTranslationKey.enterEmail.tr,
                 textInputType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
                 onChanged: store.validateIdentifier,

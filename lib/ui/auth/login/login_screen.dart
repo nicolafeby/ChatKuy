@@ -1,5 +1,4 @@
 import 'package:chatkuy/core/constants/app_strings.dart';
-import 'package:chatkuy/core/constants/formatter.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/constants/asset.dart';
 import 'package:chatkuy/core/constants/color.dart';
@@ -19,7 +18,6 @@ import 'package:chatkuy/ui/_ui.dart';
 import 'package:chatkuy/core/config/language/app_translations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -153,15 +151,12 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               ),
               50.verticalSpace,
               TextfieldWidget(
-                label: AppTranslationKey.username.tr,
-                hintText: AppTranslationKey.enterUsername.tr,
+                label: AppTranslationKey.email.tr,
+                hintText: AppTranslationKey.enterEmail.tr,
                 textInputType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 onChanged: store.validateUsername,
                 errorText: store.error.username,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(AppFormatter.usernameRegex)
-                ],
               ),
               20.verticalSpace,
               TextfieldPasswordWidget.verify(
@@ -173,8 +168,7 @@ class _LoginScreenState extends State<LoginScreen> with BaseLayout {
               Align(
                 alignment: Alignment.centerRight,
                 child: InkWell(
-                  onTap: () =>
-                      Get.toNamed(AppRouteName.FORGOT_PASSWORD_SCREEN),
+                  onTap: () => Get.toNamed(AppRouteName.FORGOT_PASSWORD_SCREEN),
                   child: Text(
                     AppTranslationKey.forgotPassword.tr,
                     style: TextStyle(

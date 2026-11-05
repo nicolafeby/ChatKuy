@@ -24,6 +24,7 @@ import 'auth_service.mocks.dart';
   DocumentSnapshot,
   Query,
   QuerySnapshot,
+  WriteBatch,
 ])
 Future<void> authServiceTest() async {
   late MockFirebaseAuth auth;
@@ -34,10 +35,10 @@ Future<void> authServiceTest() async {
   late MockUserCredential mockCredential;
   late MockCollectionReference<Map<String, dynamic>> usersCollection;
   late MockDocumentReference<Map<String, dynamic>> userDoc;
+  late MockCollectionReference<Map<String, dynamic>> usernamesCollection;
+  late MockDocumentReference<Map<String, dynamic>> usernameDoc;
+  late MockWriteBatch writeBatch;
   late MockQueryDocumentSnapshot<Map<String, dynamic>> snapshot;
-
-  late MockQuery<Map<String, dynamic>> usersQuery;
-  late MockQuerySnapshot<Map<String, dynamic>> querySnapshot;
 
   setUp(() {
     auth = MockFirebaseAuth();
@@ -48,9 +49,10 @@ Future<void> authServiceTest() async {
     mockCredential = MockUserCredential();
     usersCollection = MockCollectionReference();
     userDoc = MockDocumentReference();
+    usernamesCollection = MockCollectionReference();
+    usernameDoc = MockDocumentReference();
+    writeBatch = MockWriteBatch();
     snapshot = MockQueryDocumentSnapshot();
-    usersQuery = MockQuery();
-    querySnapshot = MockQuerySnapshot();
   });
 
   test('LOGIN SUCCESS', () async {
@@ -65,18 +67,8 @@ Future<void> authServiceTest() async {
       password: '123456',
     )).thenAnswer((_) async => mockCredential);
 
-    // ---------- Firestore where(username) ----------
-    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
-
-    when(usersCollection.where(
-      UserModelFields.username,
-      isEqualTo: anyNamed('isEqualTo'),
-    )).thenReturn(usersQuery);
-
-    when(usersQuery.limit(1)).thenReturn(usersQuery);
-    when(usersQuery.get()).thenAnswer((_) async => querySnapshot);
-
-    when(querySnapshot.docs).thenReturn([snapshot]);
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
 
     // ---------- Firestore doc(uid) ----------
     when(usersCollection.doc('uid-1')).thenReturn(userDoc);
@@ -95,7 +87,7 @@ Future<void> authServiceTest() async {
     });
 
     final result = await service.login(
-      username: 'username',
+      username: 'test@mail.com',
       password: '123456',
     );
 
@@ -117,10 +109,15 @@ Future<void> authServiceTest() async {
       password: '123456',
     )).thenAnswer((_) async => mockCredential);
 
-    when(firestore.collection(FirebaseCollections.users)).thenReturn(usersCollection);
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
+    when(firestore.collection(FirebaseCollections.usernames))
+        .thenReturn(usernamesCollection);
 
     when(usersCollection.doc('uid-2')).thenReturn(userDoc);
-    when(userDoc.set(any)).thenAnswer((_) async {});
+    when(usernamesCollection.doc('username')).thenReturn(usernameDoc);
+    when(firestore.batch()).thenReturn(writeBatch);
+    when(writeBatch.commit()).thenAnswer((_) async => const []);
 
     final result = await service.register(
       email: 'new@mail.com',
@@ -133,7 +130,9 @@ Future<void> authServiceTest() async {
     expect(result.name, 'New User');
 
     verify(mockUser.sendEmailVerification()).called(1);
-    verify(userDoc.set(any)).called(1);
+    verify(writeBatch.set(usernameDoc, {'uid': 'uid-2'})).called(1);
+    verify(writeBatch.set(userDoc, any)).called(1);
+    verify(writeBatch.commit()).called(1);
   });
 
   test('LOGOUT', () async {

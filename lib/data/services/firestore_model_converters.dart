@@ -15,6 +15,17 @@ abstract class FirestoreModelConverters {
         );
   }
 
+  static CollectionReference<UserModel> publicProfilesRef(
+    FirebaseFirestore firestore,
+  ) {
+    return firestore
+        .collection(FirebaseCollections.publicProfiles)
+        .withConverter(
+          fromFirestore: (snapshot, _) => userFromSnapshot(snapshot),
+          toFirestore: (user, _) => user.toJson(),
+        );
+  }
+
   static CollectionReference<ChatRoomModel> chatRoomsRef(
     FirebaseFirestore firestore,
   ) {
@@ -73,6 +84,10 @@ abstract class FirestoreModelConverters {
     }
 
     return UserModel.fromJson({
+      'name': data['name'] ?? 'Deleted User',
+      'email': data['email'] ?? '',
+      'fcmToken': '',
+      'isEmailVerified': data['isEmailVerified'] ?? false,
       ..._normalizeUserDates(data),
       'id': snapshot.id,
     });

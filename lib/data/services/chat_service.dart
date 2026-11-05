@@ -428,6 +428,8 @@ class ChatService implements ChatRepository {
         final ref = firebaseStorage
             .ref()
             .child(StorageCollection.chatImages)
+            .child(roomId)
+            .child(uid)
             .child(imageNameFormat(roomId, imageFile));
 
         final uploadTask = ref.putFile(imageFile);
@@ -456,6 +458,8 @@ class ChatService implements ChatRepository {
         final ref = firebaseStorage
             .ref()
             .child(StorageCollection.chatVideos)
+            .child(roomId)
+            .child(uid)
             .child(mediaNameFormat(roomId, videoFile));
 
         final uploadTask = ref.putFile(videoFile);
@@ -484,6 +488,8 @@ class ChatService implements ChatRepository {
         final ref = firebaseStorage
             .ref()
             .child(StorageCollection.chatFiles)
+            .child(roomId)
+            .child(uid)
             .child(mediaNameFormat(roomId, file));
 
         final uploadTask = ref.putFile(file);
@@ -512,6 +518,8 @@ class ChatService implements ChatRepository {
         final ref = firebaseStorage
             .ref()
             .child(StorageCollection.chatAudios)
+            .child(roomId)
+            .child(uid)
             .child(mediaNameFormat(roomId, audioFile));
 
         final uploadTask = ref.putFile(audioFile);
@@ -910,18 +918,18 @@ class ChatService implements ChatRepository {
   }
 
   Future<List<UserModel>> _fetchUsersByIds(List<String> userIds) async {
-    final users = <UserModel>[];
-    for (var i = 0; i < userIds.length; i += 10) {
-      final chunk = userIds.skip(i).take(10).toList();
-      final snapshot = await firestore
-          .collection(FirebaseCollections.users)
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-
-      users.addAll(
-        snapshot.docs.map(FirestoreModelConverters.userFromSnapshot),
-      );
-    }
+    final snapshots = await Future.wait(
+      userIds.map(
+        (uid) => firestore
+            .collection(FirebaseCollections.publicProfiles)
+            .doc(uid)
+            .get(),
+      ),
+    );
+    final users = snapshots
+        .where((snapshot) => snapshot.exists && snapshot.data() != null)
+        .map(FirestoreModelConverters.userFromSnapshot)
+        .toList();
 
     return _sortUsersByParticipantOrder(users, userIds);
   }
@@ -1363,12 +1371,18 @@ class ChatService implements ChatRepository {
     required File file,
     required String roomId,
   }) async {
+    final uid = auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      throw StateError('User harus login sebelum mengunggah gambar');
+    }
     final localImagePath =
         await saveImageToLocal(imageFile: file, roomId: roomId);
 
     final ref = firebaseStorage
         .ref()
         .child(StorageCollection.chatImages)
+        .child(roomId)
+        .child(uid)
         .child(imageNameFormat(roomId, file));
 
     await ref.putFile(file);

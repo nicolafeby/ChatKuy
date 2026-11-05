@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 Future<void> authValidationStoresTest() async {
   group('LoginStore validation', () {
-    test('validates username and exposes isValid', () {
+    test('validates email and exposes isValid', () {
       final store = LoginStore(
         service: _FakeAuthRepository(),
         storageService: _FakeSecureStorageRepository(),
@@ -18,13 +18,13 @@ Future<void> authValidationStoresTest() async {
       );
 
       store.validateUsername('');
-      expect(store.error.username, 'Username tidak boleh kosong');
+      expect(store.error.username, 'Email tidak boleh kosong');
       expect(store.isValid, isFalse);
 
       store.validateUsername('abc');
-      expect(store.error.username, 'Username minimal 5 huruf');
+      expect(store.error.username, 'Format email tidak valid');
 
-      store.validateUsername('abcdef');
+      store.validateUsername('user@example.com');
       store.password = 'secret';
 
       expect(store.error.username, isNull);

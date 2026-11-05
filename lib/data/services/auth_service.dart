@@ -49,48 +49,11 @@ class AuthService implements AuthRepository {
     required String username,
     required String password,
   }) async {
-    final query = await firestore
-        .collection(FirebaseCollections.users)
-        .where(
-          UserModelFields.username,
-          isEqualTo: username.toLowerCase(),
-        )
-        .limit(1)
-        .get();
-
-    if (query.docs.isEmpty) {
-      throw Exception(AppStrings.userNotFound);
-    }
-
-    final userDoc = query.docs.first;
-    final rawUserData = userDoc.data();
-    if (_isDeletedAccount(rawUserData[UserModelFields.accountStatus])) {
-      throw FirebaseAuthException(
-        code: 'account-deleted',
-        message: 'Akun sudah dihapus atau sedang dalam proses penghapusan',
-      );
-    }
-
-    final userData = FirestoreModelConverters.userFromSnapshot(userDoc);
-    final pendingEmail = rawUserData[UserModelFields.pendingEmail] as String?;
-
-    UserCredential cred;
-    String emailUsed = userData.email;
-
-    try {
-      cred = await auth.signInWithEmailAndPassword(
-        email: userData.email,
-        password: password,
-      );
-    } on FirebaseAuthException catch (_) {
-      if (pendingEmail == null || pendingEmail.isEmpty) rethrow;
-
-      cred = await auth.signInWithEmailAndPassword(
-        email: pendingEmail,
-        password: password,
-      );
-      emailUsed = pendingEmail;
-    }
+    final emailUsed = username.trim().toLowerCase();
+    final cred = await auth.signInWithEmailAndPassword(
+      email: emailUsed,
+      password: password,
+    );
 
     final firebaseUser = cred.user!;
 
@@ -100,7 +63,18 @@ class AuthService implements AuthRepository {
     }
 
     final userRef =
-        firestore.collection(FirebaseCollections.users).doc(userDoc.id);
+        firestore.collection(FirebaseCollections.users).doc(firebaseUser.uid);
+    final userDoc = await userRef.get();
+    final rawUserData = userDoc.data();
+    if (rawUserData == null ||
+        _isDeletedAccount(rawUserData[UserModelFields.accountStatus])) {
+      await auth.signOut();
+      throw FirebaseAuthException(
+        code: 'account-deleted',
+        message: 'Akun tidak tersedia',
+      );
+    }
+    final userData = FirestoreModelConverters.userFromSnapshot(userDoc);
 
     final lastOnlineAt = DateTime.now();
     final updatedUser = userData.copyWith(
@@ -116,7 +90,7 @@ class AuthService implements AuthRepository {
       ).toFirestoreJson(),
     );
 
-    return updatedUser.copyWith(id: userDoc.id);
+    return updatedUser.copyWith(id: firebaseUser.uid);
   }
 
   @override
@@ -141,16 +115,28 @@ class AuthService implements AuthRepository {
       id: firebaseUser.uid,
       name: name,
       email: email,
-      username: username,
+      username: username.trim().toLowerCase(),
       isEmailVerified: false,
       isOnline: false,
       fcmToken: '',
     );
 
-    await firestore
-        .collection(FirebaseCollections.users)
-        .doc(user.id)
-        .set(user.toJson());
+    final batch = firestore.batch();
+    batch.set(
+      firestore.collection(FirebaseCollections.usernames).doc(user.username),
+      {'uid': user.id},
+    );
+    batch.set(
+      firestore.collection(FirebaseCollections.users).doc(user.id),
+      user.toJson(),
+    );
+
+    try {
+      await batch.commit();
+    } catch (_) {
+      await firebaseUser.delete();
+      rethrow;
+    }
 
     return user;
   }
@@ -198,60 +184,22 @@ class AuthService implements AuthRepository {
 
   @override
   Future<void> sendPasswordResetLink({required String identifier}) async {
-    final rawIdentifier = identifier.trim();
     final normalizedIdentifier = identifier.trim().toLowerCase();
-    if (normalizedIdentifier.isEmpty) return;
-
-    QuerySnapshot<Map<String, dynamic>>? query;
-
-    if (normalizedIdentifier.contains('@')) {
-      for (final emailToCheck in {rawIdentifier, normalizedIdentifier}) {
-        query = await firestore
-            .collection(FirebaseCollections.users)
-            .where(
-              UserModelFields.email,
-              isEqualTo: emailToCheck,
-            )
-            .limit(1)
-            .get();
-
-        if (query.docs.isNotEmpty) break;
-      }
-    } else {
-      query = await firestore
-          .collection(FirebaseCollections.users)
-          .where(
-            UserModelFields.username,
-            isEqualTo: normalizedIdentifier,
-          )
-          .limit(1)
-          .get();
-    }
-
-    if (query == null || query.docs.isEmpty) return;
-
-    final userDoc = query.docs.first;
-    final rawUserData = userDoc.data();
-    if (_isDeletedAccount(rawUserData[UserModelFields.accountStatus])) {
+    if (normalizedIdentifier.isEmpty || !normalizedIdentifier.contains('@')) {
       return;
     }
-
-    final userData = FirestoreModelConverters.userFromSnapshot(userDoc);
-    await auth.sendPasswordResetEmail(email: userData.email);
+    await auth.sendPasswordResetEmail(email: normalizedIdentifier);
   }
 
   @override
   Future<bool> checkUsernameAvailable(String username) async {
-    final query = await firestore
-        .collection(FirebaseCollections.users)
-        .where(
-          UserModelFields.username,
-          isEqualTo: username.toLowerCase(),
-        )
-        .limit(1)
+    final normalizedUsername = username.trim().toLowerCase();
+    if (normalizedUsername.isEmpty) return false;
+    final doc = await firestore
+        .collection(FirebaseCollections.usernames)
+        .doc(normalizedUsername)
         .get();
-
-    return query.docs.isEmpty;
+    return !doc.exists;
   }
 
   @override
@@ -259,30 +207,8 @@ class AuthService implements AuthRepository {
     required String email,
     String? currentUid,
   }) async {
-    final normalizedEmail = email.trim().toLowerCase();
-    final emailsToCheck = {
-      email.trim(),
-      normalizedEmail,
-    };
-
-    for (final emailToCheck in emailsToCheck) {
-      final query = await firestore
-          .collection(FirebaseCollections.users)
-          .where(
-            UserModelFields.email,
-            isEqualTo: emailToCheck,
-          )
-          .limit(1)
-          .get();
-
-      if (query.docs.isEmpty) continue;
-
-      final matchedDoc = query.docs.first;
-      if (currentUid != null && matchedDoc.id == currentUid) continue;
-
-      return false;
-    }
-
+    // Firebase Auth remains the authority for email uniqueness. Querying a
+    // private users collection before authentication would expose user emails.
     return true;
   }
 
@@ -320,10 +246,29 @@ class AuthService implements AuthRepository {
   @override
   Future<void> editUserProfile(
       {required String uid, required EditProfileModel data}) async {
-    await firestore
-        .collection(FirebaseCollections.users)
-        .doc(uid)
-        .update(data.toJson());
+    final userRef = firestore.collection(FirebaseCollections.users).doc(uid);
+    final current = await userRef.get();
+    final oldUsername = current.data()?[UserModelFields.username] as String?;
+    final newUsername = data.username.trim().toLowerCase();
+    final batch = firestore.batch();
+
+    if (oldUsername != newUsername) {
+      batch.set(
+        firestore.collection(FirebaseCollections.usernames).doc(newUsername),
+        {'uid': uid},
+      );
+      if (oldUsername != null && oldUsername.isNotEmpty) {
+        batch.delete(
+          firestore.collection(FirebaseCollections.usernames).doc(oldUsername),
+        );
+      }
+    }
+
+    batch.update(userRef, {
+      ...data.toJson(),
+      UserModelFields.username: newUsername,
+    });
+    await batch.commit();
   }
 
   @override

@@ -460,7 +460,7 @@ class LocalNotificationService implements LocalNotificationRepository {
 
     try {
       final callerSnap = await FirebaseFirestore.instance
-          .collection(FirebaseCollections.users)
+          .collection(FirebaseCollections.publicProfiles)
           .doc(callerId)
           .get();
       return _callKitAvatarUrl(callerSnap.data()?[FriendField.photoUrl]);

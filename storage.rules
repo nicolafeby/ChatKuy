@@ -1,10 +1,66 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    function isRoomParticipant(roomId) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && firestore.get(
+          /databases/(default)/documents/chat_rooms/$(roomId)
+        ).data.participants.hasAny([request.auth.uid]);
+    }
+
+    function validSize(maxBytes) {
+      return request.resource != null && request.resource.size <= maxBytes;
+    }
+
+    function isUploader(uploaderId) {
+      return request.auth != null && request.auth.uid == uploaderId;
+    }
+
+    match /chat_images/{roomId}/{uploaderId}/{fileName} {
+      allow read: if isRoomParticipant(roomId);
+      allow delete: if isRoomParticipant(roomId) && isUploader(uploaderId);
+      allow create, update: if isRoomParticipant(roomId) && isUploader(uploaderId)
+        && validSize(10 * 1024 * 1024)
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /chat_videos/{roomId}/{uploaderId}/{fileName} {
+      allow read: if isRoomParticipant(roomId);
+      allow delete: if isRoomParticipant(roomId) && isUploader(uploaderId);
+      allow create, update: if isRoomParticipant(roomId) && isUploader(uploaderId)
+        && validSize(50 * 1024 * 1024)
+        && request.resource.contentType.matches('video/.*');
+    }
+
+    match /chat_audios/{roomId}/{uploaderId}/{fileName} {
+      allow read: if isRoomParticipant(roomId);
+      allow delete: if isRoomParticipant(roomId) && isUploader(uploaderId);
+      allow create, update: if isRoomParticipant(roomId) && isUploader(uploaderId)
+        && validSize(15 * 1024 * 1024)
+        && request.resource.contentType.matches('audio/.*');
+    }
+
+    match /chat_files/{roomId}/{uploaderId}/{fileName} {
+      allow read: if isRoomParticipant(roomId);
+      allow delete: if isRoomParticipant(roomId) && isUploader(uploaderId);
+      allow create, update: if isRoomParticipant(roomId) && isUploader(uploaderId)
+        && validSize(25 * 1024 * 1024)
+        && request.resource.contentType.matches(
+          '(application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document|application/vnd\\.ms-excel|application/vnd\\.openxmlformats-officedocument\\.spreadsheetml\\.sheet|text/plain|text/csv)'
+        );
+    }
+
+    // Legacy objects remain readable by room participants during migration,
+    // but can no longer be created, overwritten, or deleted by clients.
+    match /{legacyType}/{roomId}/{fileName} {
+      allow read: if legacyType in [
+          'chat_images', 'chat_videos', 'chat_audios', 'chat_files'
+        ] && isRoomParticipant(roomId);
+      allow write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

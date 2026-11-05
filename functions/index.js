@@ -2,6 +2,7 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const {
   onDocumentCreated,
   onDocumentUpdated,
+  onDocumentWritten,
 } = require('firebase-functions/v2/firestore');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
@@ -18,7 +19,7 @@ function callKitAvatarUrl(value) {
     return '';
   }
 
-  return value.startsWith('http://') || value.startsWith('https://')
+  return value.startsWith('https://')
     ? value
     : '';
 }
@@ -69,6 +70,49 @@ function isChatMutedForUser(room, uid) {
   return mutedUntilForUser.getTime() > Date.now();
 }
 
+function publicProfileFromUser(uid, user) {
+  if (user.accountStatus === ACCOUNT_STATUS_DELETED) {
+    return {
+      id: uid,
+      name: 'Deleted User',
+      isDeleted: true,
+    };
+  }
+
+  return {
+    id: uid,
+    name: user.name || '',
+    username: user.username || '',
+    photoUrl: user.photoUrl || null,
+    gender: user.gender || null,
+    isEmailVerified: user.isEmailVerified === true,
+    isOnline: user.isOnlineStatusVisible === false ? false : user.isOnline === true,
+    lastOnlineAt: user.isOnlineStatusVisible === false
+      ? null
+      : user.lastOnlineAt || null,
+    email: user.isEmailVisible === true ? user.email || '' : '',
+    birthDate: user.isBirthDateVisible === true ? user.birthDate || null : null,
+    isEmailVisible: user.isEmailVisible === true,
+    isBirthDateVisible: user.isBirthDateVisible === true,
+    isOnlineStatusVisible: user.isOnlineStatusVisible === true,
+  };
+}
+
+exports.syncPublicProfile = onDocumentWritten('users/{uid}', async (event) => {
+  const publicRef = admin.firestore()
+    .collection('public_profiles')
+    .doc(event.params.uid);
+
+  if (!event.data?.after.exists) {
+    await publicRef.delete();
+    return;
+  }
+
+  await publicRef.set(
+    publicProfileFromUser(event.params.uid, event.data.after.data())
+  );
+});
+
 async function commitBatchIfNeeded(batchState, force = false) {
   if (batchState.count === 0 || (!force && batchState.count < DELETE_BATCH_LIMIT)) {
     return;
@@ -101,73 +145,6 @@ async function deleteQuery(query) {
 
 async function deleteCollection(collectionRef) {
   await deleteQuery(collectionRef);
-}
-
-function storagePathFromDownloadUrl(value) {
-  if (!value || typeof value !== 'string') {
-    return null;
-  }
-
-  try {
-    const url = new URL(value);
-    const marker = '/o/';
-    const markerIndex = url.pathname.indexOf(marker);
-
-    if (markerIndex >= 0) {
-      return decodeURIComponent(url.pathname.substring(markerIndex + marker.length));
-    }
-
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    if (pathParts.length > 1) {
-      return decodeURIComponent(pathParts.slice(1).join('/'));
-    }
-  } catch (error) {
-    logger.warn('⚠️ Failed to parse storage URL', {
-      error: error?.message,
-    });
-  }
-
-  return null;
-}
-
-async function deleteStorageFileFromUrl(bucket, url) {
-  const storagePath = storagePathFromDownloadUrl(url);
-  if (!storagePath) {
-    return;
-  }
-
-  try {
-    await bucket.file(storagePath).delete({ ignoreNotFound: true });
-  } catch (error) {
-    logger.warn('⚠️ Failed to delete storage file', {
-      storagePath,
-      error: error?.message,
-    });
-  }
-}
-
-async function cleanupMessageStorage(bucket, message) {
-  await Promise.all([
-    deleteStorageFileFromUrl(bucket, message.imageUrl),
-    deleteStorageFileFromUrl(bucket, message.videoUrl),
-    deleteStorageFileFromUrl(bucket, message.fileUrl),
-    deleteStorageFileFromUrl(bucket, message.audioUrl),
-  ]);
-}
-
-async function deleteRoomMessagesAndStorage(roomRef, bucket) {
-  const batchState = {
-    batch: admin.firestore().batch(),
-    count: 0,
-  };
-  const snap = await roomRef.collection('messages').get();
-
-  for (const doc of snap.docs) {
-    await cleanupMessageStorage(bucket, doc.data());
-    await queueDelete(batchState, doc.ref);
-  }
-
-  await commitBatchIfNeeded(batchState, true);
 }
 
 async function cleanupFriendData(db, uid) {
@@ -216,16 +193,44 @@ async function cleanupFriendData(db, uid) {
   );
 }
 
-async function cleanupChatData(db, uid) {
-  const bucket = admin.storage().bucket();
+async function detachUserFromChatData(db, uid) {
   const roomSnap = await db
     .collection('chat_rooms')
     .where('participants', 'array-contains', uid)
     .get();
 
   for (const roomDoc of roomSnap.docs) {
-    await deleteRoomMessagesAndStorage(roomDoc.ref, bucket);
-    await roomDoc.ref.delete();
+    await db.runTransaction(async (transaction) => {
+      const freshRoom = await transaction.get(roomDoc.ref);
+      if (!freshRoom.exists) return;
+
+      const room = freshRoom.data();
+      const participants = (room.participants || []).filter(
+        (participantUid) => participantUid !== uid
+      );
+      let admins = (room.admins || []).filter(
+        (adminUid) => adminUid !== uid
+      );
+
+      if (room.isGroup === true && admins.length === 0 && participants.length > 0) {
+        admins = [participants[0]];
+      }
+
+      const update = {
+        participants,
+        [`unreadCount.${uid}`]: admin.firestore.FieldValue.delete(),
+        [`typing.${uid}`]: admin.firestore.FieldValue.delete(),
+        [`mutedUntil.${uid}`]: admin.firestore.FieldValue.delete(),
+        [`archivedFor.${uid}`]: admin.firestore.FieldValue.delete(),
+        [`deletedChatListFor.${uid}`]: true,
+      };
+
+      if (room.isGroup === true) {
+        update.admins = admins;
+      }
+
+      transaction.update(roomDoc.ref, update);
+    });
   }
 }
 
@@ -238,7 +243,12 @@ async function cleanupCallData(db, uid) {
   for (const callDoc of callSnap.docs) {
     await deleteCollection(callDoc.ref.collection('caller_candidates'));
     await deleteCollection(callDoc.ref.collection('callee_candidates'));
-    await callDoc.ref.delete();
+    await callDoc.ref.update({
+      participants: admin.firestore.FieldValue.arrayRemove(uid),
+      deletedParticipantIds: admin.firestore.FieldValue.arrayUnion(uid),
+      status: 'ended',
+      endedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
   }
 }
 
@@ -253,6 +263,7 @@ exports.onAccountDeletionRequested = onDocumentUpdated(
     const uid = event.params.uid;
     const before = event.data.before.data();
     const after = event.data.after.data();
+    const username = after.username;
 
     if (
       before.accountStatus === after.accountStatus ||
@@ -283,8 +294,12 @@ exports.onAccountDeletionRequested = onDocumentUpdated(
       { merge: true }
     );
 
+    if (username) {
+      await db.collection('usernames').doc(username).delete();
+    }
+
     await cleanupFriendData(db, uid);
-    await cleanupChatData(db, uid);
+    await detachUserFromChatData(db, uid);
     await cleanupCallData(db, uid);
 
     await deleteCollection(userRef.collection('friends'));
@@ -298,8 +313,6 @@ exports.onAccountDeletionRequested = onDocumentUpdated(
         throw error;
       }
     }
-
-    await userRef.delete();
 
     logger.info('✅ Account deletion cleanup completed:', uid);
   }
@@ -316,7 +329,6 @@ exports.onNewMessage = onDocumentCreated(
     }
 
     const message = event.data.data();
-    logger.info('📩 Message:', message);
 
     const senderId = message.senderId;
     if (!senderId) {
@@ -340,92 +352,74 @@ exports.onNewMessage = onDocumentCreated(
     const participants = room.participants || [];
     logger.info('👥 Participants:', participants);
 
-    // 🔥 Tentukan receiver (selain sender)
-    const receiverId = participants.find(
-      (uid) => uid !== senderId
+    const receiverIds = participants.filter((uid) => uid !== senderId);
+    if (receiverIds.length === 0) {
+      logger.error('❌ receivers not resolved');
+      return;
+    }
+
+    const receiverSnaps = await admin.firestore().getAll(
+      ...receiverIds.map((uid) =>
+        admin.firestore().collection('users').doc(uid)
+      )
     );
+    const recipients = receiverSnaps
+      .map((snap) => ({
+        uid: snap.id,
+        token: snap.exists ? snap.data().fcmToken : null,
+      }))
+      .filter((recipient) => recipient.token);
 
-    if (!receiverId) {
-      logger.error('❌ receiverId not resolved');
+    if (recipients.length === 0) {
+      logger.info('No chat notification recipients with an FCM token');
       return;
     }
 
-    logger.info('👤 Receiver ID:', receiverId);
-
-    // 🔥 Ambil FCM token
-    const userSnap = await admin
-      .firestore()
-      .collection('users')
-      .doc(receiverId)
-      .get();
-
-    if (!userSnap.exists) {
-      logger.error('❌ receiver user not found');
-      return;
-    }
-
-    const fcmToken = userSnap.data().fcmToken;
-    logger.info('📱 FCM Token:', fcmToken);
-
-    if (!fcmToken) {
-      logger.error('❌ fcmToken missing');
-      return;
-    }
-
-    const isMuted = isChatMutedForUser(room, receiverId);
-    logger.info('🔕 Chat muted for receiver:', isMuted);
-
-    const apsPayload = isMuted
-      ? {'content-available': 1}
-      : {sound: 'default'};
-
-    const payload = {
-      token: fcmToken,
-
-      // 📦 Dipakai Flutter (navigasi + delivered marker)
-      data: {
-        type: 'chat',
-        roomId: event.params.roomId,
-        messageId: event.params.messageId,
-        receiverId: receiverId,
-        senderId: message.senderId ?? '',
-        senderName: message.senderName ?? '',
-        text: message.text ?? '',
-      },
-
-      // 🤖 Android config
-      android: {
-        priority: 'high',
-      },
-
-      // 🍎 iOS silent delivery for muted chats.
-      apns: {
-        payload: {
-          aps: apsPayload,
+    const payloads = recipients.map(({uid, token}) => {
+      const isMuted = isChatMutedForUser(room, uid);
+      const payload = {
+        token,
+        data: {
+          type: 'chat',
+          roomId: event.params.roomId,
+          messageId: event.params.messageId,
+          receiverId: uid,
+          senderId: message.senderId ?? '',
+          senderName: message.senderName ?? '',
+          text: message.text ?? '',
         },
-      },
-    };
-
-    if (!isMuted) {
-      payload.notification = {
-        title: message.senderName || 'Pesan Baru',
-        body: message.text || 'Ada pesan baru',
+        android: {priority: 'high'},
+        apns: {
+          payload: {
+            aps: isMuted ? {'content-available': 1} : {sound: 'default'},
+          },
+        },
       };
 
-      payload.android.notification = {
-        channelId: 'chat_notification', // HARUS sama dengan Flutter
-      };
-    }
+      if (!isMuted) {
+        payload.notification = {
+          title: message.senderName || 'Pesan Baru',
+          body: message.text || 'Ada pesan baru',
+        };
+        payload.android.notification = {channelId: 'chat_notification'};
+      }
+      return payload;
+    });
 
-    // 🔔 Kirim notif
-    try {
-      const response = await admin.messaging().send(payload);
-
-      logger.info('✅ FCM sent:', response);
-    } catch (error) {
-      await clearInvalidFcmToken(receiverId, fcmToken, error);
-      throw error;
-    }
+    const response = await admin.messaging().sendEach(payloads);
+    await Promise.all(response.responses.map((result, index) => {
+      if (result.success) return null;
+      const recipient = recipients[index];
+      return clearInvalidFcmToken(
+        recipient.uid,
+        recipient.token,
+        result.error
+      );
+    }));
+    logger.info('✅ Chat notifications sent', {
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+    });
   }
 );
 
@@ -443,6 +437,30 @@ exports.onNewVoiceCall = onDocumentCreated(
 
     if (!callerId || !calleeId) {
       logger.error('❌ callerId/calleeId missing');
+      return;
+    }
+
+    const participants = Array.isArray(call.participants)
+      ? call.participants
+      : [];
+    const roomId = call.roomId;
+    const roomSnap = roomId
+      ? await admin.firestore().collection('chat_rooms').doc(roomId).get()
+      : null;
+    const roomParticipants = roomSnap?.exists
+      ? roomSnap.data().participants || []
+      : [];
+    const hasValidCallBinding = callerId !== calleeId &&
+      participants.length === 2 &&
+      participants.includes(callerId) &&
+      participants.includes(calleeId) &&
+      roomParticipants.includes(callerId) &&
+      roomParticipants.includes(calleeId);
+
+    if (!hasValidCallBinding) {
+      logger.error('❌ rejected call with inconsistent participants', {
+        callId: event.params.callId,
+      });
       return;
     }
 

@@ -31,7 +31,7 @@ class FriendService implements FriendRepository {
       firestore.collection(FirestorePaths.userFriends(_uid));
 
   CollectionReference<UserModel> get _usersModelRef =>
-      FirestoreModelConverters.usersRef(firestore);
+      FirestoreModelConverters.publicProfilesRef(firestore);
 
   Box<UserModel> get _userBox => Hive.box<UserModel>('user_model');
 
@@ -58,24 +58,15 @@ class FriendService implements FriendRepository {
         .toSet()
         .toList();
 
-    // 2. Ambil user data (chunked whereIn)
+    // 2. Ambil profil satu per satu. Rules sengaja melarang list/query profil
+    // publik untuk mencegah bulk scraping.
     final Map<String, UserModel> usersById = {};
-    const chunkSize = 10;
-
-    for (var i = 0; i < friendUids.length; i += chunkSize) {
-      final chunk = friendUids.sublist(
-        i,
-        (i + chunkSize > friendUids.length) ? friendUids.length : i + chunkSize,
-      );
-
-      final snap = await _usersModelRef
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-
-      for (final doc in snap.docs) {
-        final user = doc.data();
-        usersById[doc.id] = user;
-      }
+    final snapshots = await Future.wait(
+      friendUids.map((uid) => _usersModelRef.doc(uid).get()),
+    );
+    for (final doc in snapshots) {
+      final user = doc.data();
+      if (user != null) usersById[doc.id] = user;
     }
 
     if (usersById.isNotEmpty) {

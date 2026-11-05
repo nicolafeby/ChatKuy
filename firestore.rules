@@ -6,6 +6,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function hasVerifiedEmail() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
     }
@@ -15,27 +19,15 @@ service cloud.firestore {
     }
 
     function isExistingRoomParticipant() {
-      return signedIn()
+      return hasVerifiedEmail()
         && resource.data.participants is list
         && request.auth.uid in resource.data.participants;
     }
 
-    function isDirectRoomIdParticipant(roomId) {
-      return signedIn()
-        && resource.data.isGroup != true
-        && roomId.matches('(^|_)' + request.auth.uid + '(_|$)');
-    }
-
     function isParentRoomParticipant(roomId) {
-      return signedIn()
+      return hasVerifiedEmail()
         && room(roomId).data.participants is list
         && request.auth.uid in room(roomId).data.participants;
-    }
-
-    function isParentDirectRoomIdParticipant(roomId) {
-      return signedIn()
-        && room(roomId).data.isGroup != true
-        && roomId.matches('(^|_)' + request.auth.uid + '(_|$)');
     }
 
     function roomAfter(roomId) {
@@ -43,40 +35,70 @@ service cloud.firestore {
     }
 
     function isParentRoomParticipantAfter(roomId) {
-      return signedIn()
+      return hasVerifiedEmail()
         && roomAfter(roomId).data.participants is list
         && request.auth.uid in roomAfter(roomId).data.participants;
     }
 
     function isCallParticipant() {
-      return signedIn()
+      return hasVerifiedEmail()
         && resource.data.participants is list
         && request.auth.uid in resource.data.participants;
     }
 
     function isExistingCallParticipant(callId) {
-      return signedIn()
+      return hasVerifiedEmail()
         && get(/databases/$(database)/documents/calls/$(callId)).data.participants is list
         && request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.participants;
     }
 
-    function isCreatingCallAsParticipant() {
-      return signedIn()
+    function isCreatingCallAsParticipant(callId) {
+      return hasVerifiedEmail()
+        && request.resource.data.keys().hasOnly([
+          'roomId', 'callerId', 'calleeId', 'callerName', 'calleeName',
+          'type', 'participants', 'status', 'videoUpgradeStatus', 'createdAt'
+        ])
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
-        && request.auth.uid in request.resource.data.participants
-        && request.resource.data.callerId == request.auth.uid;
+        && request.resource.data.callerId == request.auth.uid
+        && request.resource.data.calleeId is string
+        && request.resource.data.calleeId != request.auth.uid
+        && request.resource.data.participants.hasOnly([
+          request.auth.uid,
+          request.resource.data.calleeId
+        ])
+        && request.resource.data.roomId is string
+        && roomAfter(request.resource.data.roomId).data.participants.hasAll([
+          request.auth.uid,
+          request.resource.data.calleeId
+        ])
+        && request.resource.data.status == 'calling'
+        && request.resource.data.videoUpgradeStatus == 'none'
+        && request.resource.data.type in ['voice', 'video']
+        && request.resource.data.createdAt == request.time;
     }
 
     function isCreatingDirectRoomAsParticipant() {
-      return signedIn()
+      return hasVerifiedEmail()
+        && request.resource.data.keys().hasOnly([
+          'participants', 'unreadCount', 'lastMessage', 'lastMessageAt',
+          'lastSenderId'
+        ])
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
-        && request.auth.uid in request.resource.data.participants;
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants[0]
+          != request.resource.data.participants[1]
+        && request.resource.data.lastMessageAt == request.time;
     }
 
     function isCreatingGroupRoomAsAdmin() {
-      return signedIn()
+      return hasVerifiedEmail()
+        && request.resource.data.keys().hasOnly([
+          'participants', 'admins', 'createdBy', 'name', 'photoUrl',
+          'isGroup', 'unreadCount', 'lastMessage', 'lastMessageAt',
+          'lastSenderId'
+        ])
         && request.resource.data.isGroup == true
         && request.resource.data.participants is list
         && request.resource.data.participants.size() >= 2
@@ -85,7 +107,10 @@ service cloud.firestore {
         && request.resource.data.admins.size() == 1
         && request.auth.uid in request.resource.data.admins
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.name is string;
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.lastMessageAt == request.time;
     }
 
     function keepsParticipantsUnchanged() {
@@ -102,8 +127,129 @@ service cloud.firestore {
       ]);
     }
 
+    function changesOnlyRoomState() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'lastMessage',
+        'lastMessageAt',
+        'lastSenderId',
+        'unreadCount',
+        'deletedChatListFor',
+        'deletedMessagesFor',
+        'archivedFor',
+        'mutedUntil',
+        'typing',
+        'type',
+        'imageUrl'
+      ]);
+    }
+
+    function changesOnlyOwnRoomState() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'unreadCount',
+          'deletedChatListFor',
+          'deletedMessagesFor',
+          'archivedFor',
+          'mutedUntil',
+          'typing'
+        ])
+        && request.resource.data.get('unreadCount', {}).diff(
+          resource.data.get('unreadCount', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('deletedChatListFor', {}).diff(
+          resource.data.get('deletedChatListFor', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('deletedMessagesFor', {}).diff(
+          resource.data.get('deletedMessagesFor', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('archivedFor', {}).diff(
+          resource.data.get('archivedFor', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('mutedUntil', {}).diff(
+          resource.data.get('mutedUntil', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('typing', {}).diff(
+          resource.data.get('typing', {})
+        ).affectedKeys().hasOnly([request.auth.uid]);
+    }
+
+    function isValidMessageSummaryUpdate() {
+      return changesOnlyRoomState()
+        && (
+          request.resource.data.lastSenderId == request.auth.uid ||
+          (
+            resource.data.type == 'call'
+            && request.resource.data.type == 'call'
+            && request.resource.data.lastSenderId == resource.data.lastSenderId
+          )
+        )
+        && request.resource.data.lastMessageAt == request.time;
+    }
+
+    function changesOnlyGroupAdminFields() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'participants',
+        'admins',
+        'name',
+        'photoUrl',
+        'unreadCount',
+        'deletedChatListFor'
+      ]);
+    }
+
+    function hasValidGroupAdminUpdate() {
+      return changesOnlyGroupAdminFields()
+        && request.resource.data.isGroup == true
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() >= 1
+        && request.resource.data.participants.size() <= 100
+        && request.resource.data.admins is list
+        && request.resource.data.admins.size() >= 1
+        && request.resource.data.admins.hasOnly(
+          request.resource.data.participants
+        )
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 100;
+    }
+
+    function hasValidMessageShape(roomId, messageId) {
+      return request.resource.data.keys().hasOnly([
+          'senderId', 'senderName', 'text', 'imageUrl', 'videoUrl',
+          'fileUrl', 'fileName', 'fileSize', 'fileExtension',
+          'contactName', 'contactPhone', 'audioUrl', 'audioDurationSeconds',
+          'createdAt', 'createdAtClient', 'clientMessageId', 'type',
+          'replyToMessageId', 'replyToSenderId', 'replyToSenderName',
+          'replyToText', 'replyToType', 'mentionedUserIds',
+          'mentionedUserNames', 'deliveredTo', 'readBy', 'deletedFor',
+          'reactions', 'deletedForEveryone', 'callId', 'callStatus',
+          'callType', 'callDurationSeconds'
+        ])
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.type is string
+        && request.resource.data.type in [
+          'text', 'image', 'video', 'file', 'contact', 'audio', 'call'
+        ]
+        && request.resource.data.get('text', '') is string
+        && request.resource.data.get('text', '').size() <= 10000
+        && hasValidSharedMessageFields()
+        && (
+          request.resource.data.type != 'call' ||
+          (
+            request.resource.data.callId == messageId
+            && getAfter(
+              /databases/$(database)/documents/calls/$(messageId)
+            ).data.roomId == roomId
+            && getAfter(
+              /databases/$(database)/documents/calls/$(messageId)
+            ).data.callerId == request.auth.uid
+          )
+        );
+    }
+
     function isExistingGroupAdmin() {
-      return signedIn()
+      return hasVerifiedEmail()
         && resource.data.isGroup == true
         && resource.data.admins is list
         && request.auth.uid in resource.data.admins;
@@ -113,16 +259,201 @@ service cloud.firestore {
       return resource.data.type == 'call'
         && request.resource.data.type == 'call'
         && resource.data.callId == request.resource.data.callId
+        && request.resource.data.get('text', '') is string
+        && request.resource.data.get('text', '').size() <= 10000
+        && request.resource.data.callStatus in [
+          'calling', 'ringing', 'active', 'declined', 'ended', 'missed'
+        ]
+        && request.resource.data.callType in ['voice', 'video']
+        && request.resource.data.callDurationSeconds is int
+        && request.resource.data.callDurationSeconds >= 0
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'text',
           'callStatus',
           'callType',
-          'callDurationSeconds',
+          'callDurationSeconds'
+        ]);
+    }
+
+    function hasValidUserFields() {
+      return request.resource.data.id == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.username is string
+        && request.resource.data.username.matches('^[a-z0-9_]{3,30}$')
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 320
+        && request.resource.data.get('fcmToken', '') is string
+        && request.resource.data.get('fcmToken', '').size() <= 4096
+        && (
+          request.resource.data.get('photoUrl', null) == null ||
+          (
+            request.resource.data.photoUrl is string
+            && request.resource.data.photoUrl.size() <= 2048
+          )
+        )
+        && request.resource.data.get('pendingEmail', '') is string
+        && request.resource.data.get('pendingEmail', '').size() <= 320;
+    }
+
+    function hasValidSharedMessageFields() {
+      return request.resource.data.senderName is string
+        && request.resource.data.senderName.size() <= 100
+        && request.resource.data.get('imageUrl', '') is string
+        && request.resource.data.get('imageUrl', '').size() <= 2048
+        && request.resource.data.get('videoUrl', '') is string
+        && request.resource.data.get('videoUrl', '').size() <= 2048
+        && request.resource.data.get('audioUrl', '') is string
+        && request.resource.data.get('audioUrl', '').size() <= 2048
+        && request.resource.data.get('fileUrl', '') is string
+        && request.resource.data.get('fileUrl', '').size() <= 2048
+        && request.resource.data.get('fileName', '') is string
+        && request.resource.data.get('fileName', '').size() <= 255
+        && request.resource.data.get('contactName', '') is string
+        && request.resource.data.get('contactName', '').size() <= 100
+        && request.resource.data.get('contactPhone', '') is string
+        && request.resource.data.get('contactPhone', '').size() <= 32
+        && request.resource.data.get('mentionedUserIds', []).size() <= 100;
+    }
+
+    function publicProfile(uid) {
+      return get(
+        /databases/$(database)/documents/public_profiles/$(uid)
+      ).data;
+    }
+
+    function isValidIncomingFriendRequest(uid, requestId) {
+      return hasVerifiedEmail()
+        && request.resource.data.keys().hasOnly([
+          'fromUid', 'toUid', 'username', 'displayName', 'photoUrl',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid == uid
+        && uid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.username
+          == publicProfile(request.auth.uid).username
+        && request.resource.data.displayName
+          == publicProfile(request.auth.uid).name
+        && request.resource.data.get('photoUrl', null)
+          == publicProfile(request.auth.uid).get('photoUrl', null)
+        && getAfter(
+          /databases/$(database)/documents/users/$(request.auth.uid)/outgoing_friend_requests/$(requestId)
+        ).data.fromUid == request.auth.uid
+        && getAfter(
+          /databases/$(database)/documents/users/$(request.auth.uid)/outgoing_friend_requests/$(requestId)
+        ).data.toUid == uid;
+    }
+
+    function isValidOutgoingFriendRequest(uid, requestId) {
+      return hasVerifiedEmail()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'fromUid', 'toUid', 'username', 'displayName', 'photoUrl',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.fromUid == uid
+        && request.resource.data.toUid != uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.username
+          == publicProfile(request.resource.data.toUid).username
+        && request.resource.data.displayName
+          == publicProfile(request.resource.data.toUid).name
+        && request.resource.data.get('photoUrl', null)
+          == publicProfile(request.resource.data.toUid).get('photoUrl', null)
+        && getAfter(
+          /databases/$(database)/documents/users/$(request.resource.data.toUid)/friend_requests/$(requestId)
+        ).data.fromUid == uid
+        && getAfter(
+          /databases/$(database)/documents/users/$(request.resource.data.toUid)/friend_requests/$(requestId)
+        ).data.toUid == request.resource.data.toUid;
+    }
+
+    function hasPendingFriendRequest(recipientUid, senderUid, requestId) {
+      let friendRequest = get(
+        /databases/$(database)/documents/users/$(recipientUid)/friend_requests/$(requestId)
+      );
+      return friendRequest.data.fromUid == senderUid
+        && friendRequest.data.toUid == recipientUid
+        && friendRequest.data.status == 'pending';
+    }
+
+    function isAcceptingValidFriendRequest(uid, friendUid) {
+      return hasVerifiedEmail()
+        && request.resource.data.keys().hasOnly(['uid', 'requestId', 'createdAt'])
+        && request.resource.data.uid == friendUid
+        && request.resource.data.requestId is string
+        && request.resource.data.createdAt == request.time
+        && (
+          (
+            request.auth.uid == uid
+            && hasPendingFriendRequest(
+              uid,
+              friendUid,
+              request.resource.data.requestId
+            )
+          ) ||
+          (
+            request.auth.uid == friendUid
+            && hasPendingFriendRequest(
+              friendUid,
+              uid,
+              request.resource.data.requestId
+            )
+          )
+        );
+    }
+
+    function isValidCallUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'offer', 'answer', 'status', 'answeredAt', 'endedAt',
+          'videoUpgradeStatus', 'videoUpgradeRequestedBy',
+          'videoUpgradeRequestedAt', 'videoUpgradedAt',
+          'videoOffer', 'videoAnswer'
+        ])
+        && request.resource.data.status in [
+          'calling', 'ringing', 'active', 'declined', 'ended', 'missed'
+        ]
+        && request.resource.data.type in ['voice', 'video']
+        && request.resource.data.videoUpgradeStatus in [
+          'none', 'requested', 'accepted', 'declined'
+        ]
+        && request.resource.data.get('videoUpgradeRequestedBy', request.auth.uid)
+          in request.resource.data.participants;
+    }
+
+    function hasValidCandidateShape() {
+      return request.resource.data.keys().hasOnly([
+          'candidate', 'sdpMid', 'sdpMLineIndex', 'createdAt'
+        ])
+        && request.resource.data.candidate is string
+        && request.resource.data.candidate.size() <= 10000
+        && request.resource.data.createdAt == request.time;
+    }
+
+    function isUpdatingOwnMessageState() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'deliveredTo',
           'readBy',
           'deletedFor',
           'reactions'
-        ]);
+        ])
+        && request.resource.data.get('deliveredTo', {}).diff(
+          resource.data.get('deliveredTo', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('readBy', {}).diff(
+          resource.data.get('readBy', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('deletedFor', {}).diff(
+          resource.data.get('deletedFor', {})
+        ).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('reactions', {}).diff(
+          resource.data.get('reactions', {})
+        ).affectedKeys().hasOnly([request.auth.uid]);
     }
 
     function isUpdatingOwnTextMessage() {
@@ -167,35 +498,78 @@ service cloud.firestore {
 
     function isVerifiedOwnEmailUpdate() {
       return request.resource.data.email == request.auth.token.email
-        && resource.data.pendingEmail == request.auth.token.email;
+        && resource.data.pendingEmail == request.auth.token.email
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'email',
+          'pendingEmail',
+          'isEmailVerified',
+          'isOnline',
+          'lastOnlineAt'
+        ]);
+    }
+
+    function isRequestingOwnDeletion() {
+      return resource.data.get('accountStatus', 'active') != 'pending_delete'
+        && request.resource.data.get('accountStatus', '') == 'pending_delete'
+        && request.resource.data.deletionRequestedAt == request.time
+        && request.resource.data.isOnline == false
+        && request.resource.data.fcmToken == ''
+        && request.auth.token.auth_time is int
+        && request.time.toMillis() / 1000 - request.auth.token.auth_time < 300
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'accountStatus',
+          'deletionRequestedAt',
+          'isOnline',
+          'fcmToken'
+        ]);
     }
 
     match /users/{uid} {
-      // Public read is kept for the current username-login flow.
-      // Move public fields to a separate profile collection before tightening this.
-      allow get, list: if true;
+      allow read: if isOwner(uid);
 
       allow create: if isOwner(uid)
-        && request.resource.data.id == uid
-        && request.resource.data.email == request.auth.token.email;
+        && hasValidUserFields()
+        && request.resource.data.email == request.auth.token.email
+        && getAfter(
+          /databases/$(database)/documents/usernames/$(request.resource.data.username)
+        ).data.uid == uid;
 
       allow update: if isOwner(uid)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'email'])
+        && hasValidUserFields()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name',
+          'photoUrl',
+          'gender',
+          'birthDate',
+          'isEmailVisible',
+          'isBirthDateVisible',
+          'isOnlineStatusVisible',
+          'isOnline',
+          'lastOnlineAt',
+          'fcmToken',
+          'pendingEmail'
+        ])
         || isOwner(uid)
+        && hasValidUserFields()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'username', 'photoUrl', 'gender', 'birthDate',
+          'isEmailVisible', 'isBirthDateVisible', 'isOnlineStatusVisible'
+        ])
+        && getAfter(
+          /databases/$(database)/documents/usernames/$(request.resource.data.username)
+        ).data.uid == uid
+        || isOwner(uid)
+        && hasValidUserFields()
         && request.resource.data.diff(resource.data).affectedKeys().hasAny(['email'])
-        && isVerifiedOwnEmailUpdate();
+        && isVerifiedOwnEmailUpdate()
+        || isOwner(uid) && isRequestingOwnDeletion();
 
       allow delete: if false;
 
       match /friends/{friendUid} {
         allow read: if isOwner(uid);
 
-        allow create: if request.resource.data.uid == friendUid
-          && request.resource.data.createdAt == request.time
-          && (
-            isOwner(uid) ||
-            (signedIn() && request.auth.uid == friendUid)
-          );
+        allow create: if isAcceptingValidFriendRequest(uid, friendUid);
 
         allow delete: if isOwner(uid);
         allow update: if false;
@@ -204,10 +578,7 @@ service cloud.firestore {
       match /friend_requests/{requestId} {
         allow read: if isOwner(uid);
 
-        allow create: if signedIn()
-          && request.resource.data.toUid == uid
-          && request.resource.data.fromUid == request.auth.uid
-          && request.resource.data.status == 'pending';
+        allow create: if isValidIncomingFriendRequest(uid, requestId);
 
         allow delete: if signedIn()
           && (request.auth.uid == uid || request.auth.uid == resource.data.fromUid);
@@ -218,9 +589,7 @@ service cloud.firestore {
       match /outgoing_friend_requests/{requestId} {
         allow read: if isOwner(uid);
 
-        allow create: if isOwner(uid)
-          && request.resource.data.fromUid == uid
-          && request.resource.data.status == 'pending';
+        allow create: if isValidOutgoingFriendRequest(uid, requestId);
 
         allow delete: if signedIn()
           && (request.auth.uid == uid || request.auth.uid == resource.data.toUid);
@@ -229,42 +598,50 @@ service cloud.firestore {
       }
     }
 
-    match /chat_rooms/{roomId} {
-      allow get: if isExistingRoomParticipant()
-        || isDirectRoomIdParticipant(roomId);
+    match /public_profiles/{uid} {
+      allow get: if hasVerifiedEmail();
+      allow list: if false;
+      allow write: if false;
+    }
 
-      allow list: if signedIn();
+    match /usernames/{username} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /chat_rooms/{roomId} {
+      allow get, list: if isExistingRoomParticipant();
 
       allow create: if isCreatingDirectRoomAsParticipant()
         || isCreatingGroupRoomAsAdmin();
 
-      allow update: if (isExistingRoomParticipant() || isDirectRoomIdParticipant(roomId))
+      allow update: if isExistingRoomParticipant()
         && (
-          (keepsParticipantsUnchanged() && keepsGroupAdminFieldsUnchanged()) ||
-          isExistingGroupAdmin()
+          (keepsParticipantsUnchanged()
+            && keepsGroupAdminFieldsUnchanged()
+            && (changesOnlyOwnRoomState() || isValidMessageSummaryUpdate())) ||
+          (isExistingGroupAdmin() && hasValidGroupAdminUpdate())
         );
 
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if isParentRoomParticipant(roomId)
-          || isParentDirectRoomIdParticipant(roomId);
+        allow read: if isParentRoomParticipant(roomId);
 
         allow create: if (
             isParentRoomParticipant(roomId) ||
-            isParentDirectRoomIdParticipant(roomId) ||
             isParentRoomParticipantAfter(roomId)
           )
-          && request.resource.data.senderId == request.auth.uid;
+          && hasValidMessageShape(roomId, messageId);
 
         allow update: if isParentRoomParticipant(roomId)
           && (
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'deliveredTo',
-              'readBy',
-              'deletedFor',
-              'reactions'
-            ]) ||
+            isUpdatingOwnMessageState() ||
             isUpdatingOwnTextMessage() ||
             isDeletingOwnMessageForEveryone() ||
             isUpdatingCallMessage()
@@ -275,26 +652,30 @@ service cloud.firestore {
     }
 
     match /calls/{callId} {
-      allow get: if isCallParticipant();
+      allow get, list: if isCallParticipant();
 
-      allow list: if signedIn();
-
-      allow create: if isCreatingCallAsParticipant();
+      allow create: if isCreatingCallAsParticipant(callId);
 
       allow update: if isCallParticipant()
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants', 'callerId', 'calleeId']);
+        && isValidCallUpdate();
 
       allow delete: if false;
 
       match /caller_candidates/{candidateId} {
         allow read: if isExistingCallParticipant(callId);
-        allow create: if isExistingCallParticipant(callId);
+        allow create: if isExistingCallParticipant(callId)
+          && get(/databases/$(database)/documents/calls/$(callId)).data.callerId
+            == request.auth.uid
+          && hasValidCandidateShape();
         allow update, delete: if false;
       }
 
       match /callee_candidates/{candidateId} {
         allow read: if isExistingCallParticipant(callId);
-        allow create: if isExistingCallParticipant(callId);
+        allow create: if isExistingCallParticipant(callId)
+          && get(/databases/$(database)/documents/calls/$(callId)).data.calleeId
+            == request.auth.uid
+          && hasValidCandidateShape();
         allow update, delete: if false;
       }
     }

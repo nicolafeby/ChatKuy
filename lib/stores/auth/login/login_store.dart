@@ -43,14 +43,12 @@ abstract class _LoginStore with Store {
 
   @action
   void validateUsername(String value) {
-    username = value;
-
-    final int letterCount = RegExp(r'[a-z]').allMatches(username ?? '').length;
+    username = value.trim();
 
     if (username?.isEmpty == true) {
-      error.username = 'Username tidak boleh kosong';
-    } else if ((letterCount) <= 5) {
-      error.username = 'Username minimal 5 huruf';
+      error.username = 'Email tidak boleh kosong';
+    } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(username!)) {
+      error.username = 'Format email tidak valid';
     } else {
       error.username = null;
     }

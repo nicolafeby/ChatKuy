@@ -15,6 +15,7 @@ import 'package:chatkuy/data/services/local_notification_service.dart';
 import 'package:chatkuy/data/services/presence_service.dart';
 import 'package:chatkuy/ui/update/update_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -29,6 +30,27 @@ import 'di/injection.dart';
 const _enableUpdateCheckInDebug = bool.fromEnvironment(
   'ENABLE_UPDATE_CHECK_IN_DEBUG',
 );
+const _appCheckWebSiteKey = String.fromEnvironment(
+  'APP_CHECK_RECAPTCHA_SITE_KEY',
+);
+
+Future<void> _activateFirebaseAppCheck() async {
+  if (kIsWeb && _appCheckWebSiteKey.isEmpty) {
+    throw StateError(
+      'APP_CHECK_RECAPTCHA_SITE_KEY wajib diisi untuk build web',
+    );
+  }
+
+  await FirebaseAppCheck.instance.activate(
+    providerWeb: kIsWeb ? ReCaptchaV3Provider(_appCheckWebSiteKey) : null,
+    providerAndroid: kDebugMode
+        ? const AndroidDebugProvider()
+        : const AndroidPlayIntegrityProvider(),
+    providerApple: kDebugMode
+        ? const AppleDebugProvider()
+        : const AppleAppAttestWithDeviceCheckFallbackProvider(),
+  );
+}
 
 class _CallKitLifecycleObserver extends WidgetsBindingObserver {
   @override
@@ -45,6 +67,7 @@ class _CallKitLifecycleObserver extends WidgetsBindingObserver {
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await _activateFirebaseAppCheck();
 
   try {
     if (message.data['type'] == 'chat') {
@@ -80,11 +103,13 @@ Future<void> main() async {
         DeviceOrientation.portraitUp,
       ]);
       await Firebase.initializeApp();
+      await _activateFirebaseAppCheck();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       isCrashlyticsReady = true;
       await AppErrorLogger.setUserId(FirebaseAuth.instance.currentUser?.uid);
 
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         AppErrorLogger.recordError(
           error,
@@ -115,7 +140,8 @@ Future<void> main() async {
         },
       );
 
-      final initialCallArgument = await LocalNotificationService.takeInitialAcceptedCallArgument();
+      final initialCallArgument =
+          await LocalNotificationService.takeInitialAcceptedCallArgument();
 
       runApp(MyApp(
         initialCallArgument: initialCallArgument,
@@ -164,7 +190,8 @@ Future<void> _checkForUpdateAfterFirstFrame() async {
   if (Get.currentRoute == AppRouteName.APP_UPDATE_SCREEN) return;
   if (Get.currentRoute == AppRouteName.CALL_SCREEN) return;
 
-  final nextRouteName = Get.currentRoute.isEmpty ? AppRouteName.BASE_SCREEN : Get.currentRoute;
+  final nextRouteName =
+      Get.currentRoute.isEmpty ? AppRouteName.BASE_SCREEN : Get.currentRoute;
   InitialRouteArgument.appUpdate = AppUpdateScreenArgument(
     updateInfo: updateInfo,
     nextRouteName: nextRouteName,

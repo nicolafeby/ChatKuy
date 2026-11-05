@@ -53,12 +53,14 @@ class AppErrorLogger {
         'auth_email_hash': error.email.hashCode,
     });
 
-    developer.log(
-      '$reason | error_ticket_id=$ticketId',
-      name: 'ChatKuy',
-      error: error,
-      stackTrace: stackTrace,
-    );
+    if (kDebugMode) {
+      developer.log(
+        '$reason | error_ticket_id=$ticketId',
+        name: 'ChatKuy',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
 
     if (showBottomSheet) {
       _showErrorBottomSheet(
@@ -76,7 +78,7 @@ class AppErrorLogger {
       }
 
       await FirebaseCrashlytics.instance.recordError(
-        error,
+        _redactedError(error),
         stackTrace,
         reason: '$reason | error_ticket_id=$ticketId',
         fatal: fatal,
@@ -85,6 +87,13 @@ class AppErrorLogger {
     } catch (_) {}
 
     return ticketId;
+  }
+
+  static Object _redactedError(Object error) {
+    if (error is FirebaseException) {
+      return '${error.runtimeType}(plugin=${error.plugin}, code=${error.code})';
+    }
+    return error.runtimeType.toString();
   }
 
   static Map<String, Object?> _sanitizeContext(Map<String, Object?> context) {

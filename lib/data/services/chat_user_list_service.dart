@@ -20,7 +20,7 @@ class ChatUserListService implements ChatUserListRepository {
       firestore.collection(FirebaseCollections.chatRooms);
 
   CollectionReference<UserModel> get _usersModelRef =>
-      FirestoreModelConverters.usersRef(firestore);
+      FirestoreModelConverters.publicProfilesRef(firestore);
 
   CollectionReference<ChatMessageModel> _messagesModelRef(String roomId) =>
       FirestoreModelConverters.messagesRef(
