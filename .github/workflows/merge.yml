@@ -89,6 +89,38 @@ jobs:
       - name: Run flutter test
         run: flutter test --no-pub
 
+      - name: Prepare Android release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+
+          required_vars=(
+            ANDROID_KEYSTORE_BASE64
+            ANDROID_KEYSTORE_PASSWORD
+            ANDROID_KEY_ALIAS
+            ANDROID_KEY_PASSWORD
+          )
+
+          for variable_name in "${required_vars[@]}"; do
+            if [ -z "${!variable_name:-}" ]; then
+              echo "::error::GitHub secret $variable_name is required to create an installable release APK."
+              exit 1
+            fi
+          done
+
+          keystore_path="$RUNNER_TEMP/chatkuy-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Build APK
         run: |
           set -Eeuo pipefail
@@ -139,6 +171,21 @@ jobs:
           log "Build finished. Listing APK output files:"
           ls -lah build/app/outputs/flutter-apk/
           echo "::endgroup::"
+
+      - name: Verify APK signature
+        run: |
+          set -Eeuo pipefail
+
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$apksigner_path" ]; then
+            echo "::error::apksigner was not found in $ANDROID_HOME/build-tools."
+            exit 1
+          fi
+
+          "$apksigner_path" verify \
+            --verbose \
+            --print-certs \
+            build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

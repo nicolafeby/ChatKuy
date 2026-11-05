@@ -1,5 +1,10 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -32,11 +37,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (
+            !releaseKeystorePath.isNullOrBlank() &&
+            !releaseKeystorePassword.isNullOrBlank() &&
+            !releaseKeyAlias.isNullOrBlank() &&
+            !releaseKeyPassword.isNullOrBlank()
+        ) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Production signing must be supplied by the release pipeline.
-            // Never fall back to the publicly known Android debug key.
-            signingConfig = null
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }
