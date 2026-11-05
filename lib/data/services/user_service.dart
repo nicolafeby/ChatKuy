@@ -2,21 +2,25 @@ import 'package:chatkuy/data/models/user_model.dart';
 import 'package:chatkuy/data/repositories/user_repository.dart';
 import 'package:chatkuy/data/services/firestore_model_converters.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive/hive.dart';
 
 class UserService implements UserRepository {
-  UserService(this.firestore);
+  UserService(this.firestore, this.auth);
 
   final FirebaseFirestore firestore;
+  final FirebaseAuth auth;
 
   Box<UserModel> get _userBox => Hive.box<UserModel>('user_model');
 
-  CollectionReference<UserModel> get _usersRef =>
-      FirestoreModelConverters.usersRef(firestore);
+  CollectionReference<UserModel> _profileRef(String uid) =>
+      uid == auth.currentUser?.uid
+          ? FirestoreModelConverters.usersRef(firestore)
+          : FirestoreModelConverters.publicProfilesRef(firestore);
 
   @override
   Future<UserModel> getUser(String userId) async {
-    final doc = await _usersRef.doc(userId).get();
+    final doc = await _profileRef(userId).doc(userId).get();
 
     final user = doc.data();
     if (user == null) {
@@ -28,13 +32,15 @@ class UserService implements UserRepository {
 
   @override
   Future<void> updateUser(UserModel user) {
-    return _usersRef.doc(user.id).update(user.toJson());
+    return FirestoreModelConverters.usersRef(firestore)
+        .doc(user.id)
+        .update(user.toJson());
   }
 
   // 🔥 INI YANG KITA BUTUHKAN UNTUK CHAT ROOM
   @override
   Stream<UserModel> watchUser(String userId) {
-    return _usersRef
+    return _profileRef(userId)
         .doc(userId)
         .snapshots()
         .where((doc) => doc.exists)

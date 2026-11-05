@@ -15,7 +15,7 @@ class FriendRequestService implements FriendRequestRepository {
   final FirebaseFirestore firestore;
 
   CollectionReference<UserModel> get _usersModelRef =>
-      FirestoreModelConverters.usersRef(firestore);
+      FirestoreModelConverters.publicProfilesRef(firestore);
 
   CollectionReference<FriendRequestModel> get _incomingRequestsModelRef =>
       FirestoreModelConverters.incomingFriendRequestsRef(
@@ -85,18 +85,20 @@ class FriendRequestService implements FriendRequestRepository {
     // ============================
     // CARI USER BERDASARKAN USERNAME
     // ============================
-    final query = await _usersModelRef
-        .where(FriendField.username, isEqualTo: username)
-        .limit(1)
+    final normalizedUsername = username.trim().toLowerCase();
+    final usernameDoc = await firestore
+        .collection(FirebaseCollections.usernames)
+        .doc(normalizedUsername)
         .get();
-
-    if (query.docs.isEmpty) {
+    final targetUid = usernameDoc.data()?['uid'] as String?;
+    if (targetUid == null || targetUid.isEmpty) {
       throw Exception('Username tidak ditemukan');
     }
-
-    final targetSnap = query.docs.first;
+    final targetSnap = await _usersModelRef.doc(targetUid).get();
     final targetUser = targetSnap.data();
-    final targetUid = targetSnap.id;
+    if (targetUser == null) {
+      throw Exception('Username tidak ditemukan');
+    }
 
     // ============================
     // VALIDASI DASAR
@@ -282,7 +284,7 @@ class FriendRequestService implements FriendRequestRepository {
       firestore.doc(
         FirestorePaths.userFriendDoc(myUid, fromUid),
       ),
-      FriendLinkModel(uid: fromUid).toFirestoreJson(),
+      FriendLinkModel(uid: fromUid, requestId: requestId).toFirestoreJson(),
     );
 
     // ============================
@@ -292,7 +294,7 @@ class FriendRequestService implements FriendRequestRepository {
       firestore.doc(
         FirestorePaths.userFriendDoc(fromUid, myUid),
       ),
-      FriendLinkModel(uid: myUid).toFirestoreJson(),
+      FriendLinkModel(uid: myUid, requestId: requestId).toFirestoreJson(),
     );
 
     await batch.commit();

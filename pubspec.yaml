@@ -79,6 +79,7 @@ dependencies:
   firebase_remote_config: ^6.5.1
   url_launcher: ^6.3.2
   open_filex: ^4.7.0
+  firebase_app_check: ^0.4.9
 
 dev_dependencies:
   flutter_test:

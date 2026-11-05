@@ -32,8 +32,10 @@ class HiveEncryptionService implements HiveEncryptionRepository {
   Future<void> clearSensitiveData() async {
     await Future.wait([
       _clearHiveBoxes(),
-      _clearChatImages(),
-      _clearChatVideos(),
+      _clearChatMedia(StorageCollection.chatImages),
+      _clearChatMedia(StorageCollection.chatVideos),
+      _clearChatMedia(StorageCollection.chatAudios),
+      _clearChatMedia(StorageCollection.chatFiles),
     ]);
   }
 
@@ -82,18 +84,9 @@ class HiveEncryptionService implements HiveEncryptionRepository {
     await Hive.box<T>(name).clear();
   }
 
-  Future<void> _clearChatImages() async {
+  Future<void> _clearChatMedia(String collection) async {
     final directory = await getApplicationDocumentsDirectory();
-    final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
-
-    if (await chatDir.exists()) {
-      await chatDir.delete(recursive: true);
-    }
-  }
-
-  Future<void> _clearChatVideos() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final chatDir = Directory('${directory.path}/${StorageCollection.chatVideos}');
+    final chatDir = Directory('${directory.path}/$collection');
 
     if (await chatDir.exists()) {
       await chatDir.delete(recursive: true);

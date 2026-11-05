@@ -25,7 +25,9 @@ abstract class _ForgotPasswordStore with Store {
     identifier = value.trim();
 
     if (identifier?.isEmpty == true) {
-      error.identifier = 'Username atau email tidak boleh kosong';
+      error.identifier = 'Email tidak boleh kosong';
+    } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(identifier!)) {
+      error.identifier = 'Format email tidak valid';
     } else {
       error.identifier = null;
     }
@@ -42,6 +44,7 @@ abstract class _ForgotPasswordStore with Store {
 
       resetPasswordFuture = ObservableFuture(future);
       await resetPasswordFuture;
+      onSuccess();
     } on FirebaseAuthException catch (e, stackTrace) {
       await AppErrorLogger.recordError(
         e,

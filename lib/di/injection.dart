@@ -42,9 +42,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 final getIt = GetIt.I;
 
 Future<void> setupDI() async {
-  getIt.registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance);
-  getIt.registerLazySingleton<FirebaseMessaging>(() => FirebaseMessaging.instance);
-  getIt.registerLazySingleton<FirebaseRemoteConfig>(() => FirebaseRemoteConfig.instance);
+  getIt.registerLazySingleton<FirebaseFirestore>(
+      () => FirebaseFirestore.instance);
+  getIt.registerLazySingleton<FirebaseMessaging>(
+      () => FirebaseMessaging.instance);
+  getIt.registerLazySingleton<FirebaseRemoteConfig>(
+      () => FirebaseRemoteConfig.instance);
   getIt.registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance);
 
   registerService();
@@ -53,11 +56,15 @@ Future<void> setupDI() async {
 }
 
 void registerService() {
-  getIt.registerLazySingleton<AuthRepository>(() => AuthService(FirebaseAuth.instance, FirebaseFirestore.instance));
+  getIt.registerLazySingleton<AuthRepository>(
+      () => AuthService(FirebaseAuth.instance, FirebaseFirestore.instance));
 
-  getIt.registerLazySingleton<UserRepository>(() => UserService(FirebaseFirestore.instance));
+  getIt.registerLazySingleton<UserRepository>(
+    () => UserService(FirebaseFirestore.instance, FirebaseAuth.instance),
+  );
 
-  getIt.registerLazySingleton<SecureStorageRepository>(() => SecureStorageService());
+  getIt.registerLazySingleton<SecureStorageRepository>(
+      () => SecureStorageService());
 
   getIt.registerLazySingleton<HiveEncryptionRepository>(
     () => HiveEncryptionService(getIt<SecureStorageRepository>()),
@@ -91,7 +98,8 @@ void registerService() {
   );
 
   getIt.registerLazySingleton<FriendRequestRepository>(
-    () => FriendRequestService(FirebaseAuth.instance, FirebaseFirestore.instance),
+    () =>
+        FriendRequestService(FirebaseAuth.instance, FirebaseFirestore.instance),
   );
 
   getIt.registerLazySingleton<ChatUserListRepository>(

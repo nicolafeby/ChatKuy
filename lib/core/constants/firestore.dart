@@ -3,6 +3,8 @@
 /// ==============================
 abstract class FirebaseCollections {
   static const users = 'users';
+  static const publicProfiles = 'public_profiles';
+  static const usernames = 'usernames';
   static const chatRooms = 'chat_rooms';
   static const calls = 'calls';
 }
