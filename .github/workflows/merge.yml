@@ -29,6 +29,7 @@ concurrency:
 jobs:
   quality-check:
     name: Prepare, Test & Build APK
+    needs: deploy-firebase
     if: github.event_name == 'push'
     runs-on: self-hosted
     timeout-minutes: 90
@@ -176,9 +177,22 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          apksigner_path="$(command -v apksigner || true)"
+
           if [ -z "$apksigner_path" ]; then
-            echo "::error::apksigner was not found in $ANDROID_HOME/build-tools."
+            android_sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+
+            if [ -z "$android_sdk_root" ] && [ -f android/local.properties ]; then
+              android_sdk_root="$(sed -n 's/^sdk\.dir=//p' android/local.properties | tail -n 1)"
+            fi
+
+            if [ -n "$android_sdk_root" ] && [ -d "$android_sdk_root/build-tools" ]; then
+              apksigner_path="$(find "$android_sdk_root/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+            fi
+          fi
+
+          if [ -z "$apksigner_path" ] || [ ! -x "$apksigner_path" ]; then
+            echo "::error::apksigner was not found. Ensure Android SDK Build Tools are installed on the runner."
             exit 1
           fi
 
@@ -230,8 +244,7 @@ jobs:
 
   deploy-firebase:
     name: Deploy Firebase Functions & Firestore
-    needs: cd
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.cd.result == 'success') }}
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -304,7 +317,7 @@ jobs:
         if: steps.firebase_changes.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Functions dependencies
         if: contains(steps.firebase_changes.outputs.targets, 'functions')
