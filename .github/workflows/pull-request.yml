@@ -83,9 +83,49 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Configure Firebase Emulator ports
+        shell: bash
+        run: |
+          port_base=$((20000 + (GITHUB_RUN_ID % 4000) * 5))
+          firebase_ci_config="$RUNNER_TEMP/firebase-ci.json"
+
+          export FIRESTORE_PORT="$port_base"
+          export STORAGE_PORT=$((port_base + 1))
+          export HUB_PORT=$((port_base + 2))
+          export LOGGING_PORT=$((port_base + 3))
+          export FIRESTORE_WEBSOCKET_PORT=$((port_base + 4))
+          export FIREBASE_CI_CONFIG="$firebase_ci_config"
+
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const config = JSON.parse(fs.readFileSync("firebase.json", "utf8"));
+            config.firestore = config.firestore.map((database) => ({
+              ...database,
+              rules: path.resolve(database.rules),
+              indexes: path.resolve(database.indexes)
+            }));
+            config.storage.rules = path.resolve(config.storage.rules);
+            config.emulators = {
+              firestore: {
+                host: "127.0.0.1",
+                port: Number(process.env.FIRESTORE_PORT),
+                websocketPort: Number(process.env.FIRESTORE_WEBSOCKET_PORT)
+              },
+              storage: {host: "127.0.0.1", port: Number(process.env.STORAGE_PORT)},
+              hub: {host: "127.0.0.1", port: Number(process.env.HUB_PORT)},
+              logging: {host: "127.0.0.1", port: Number(process.env.LOGGING_PORT)},
+              ui: {enabled: false}
+            };
+            fs.writeFileSync(process.env.FIREBASE_CI_CONFIG, JSON.stringify(config));
+          '
+
+          echo "FIREBASE_CI_CONFIG=$firebase_ci_config" >> "$GITHUB_ENV"
+
       - name: Test Firestore and Storage rules
         run: |
           firebase emulators:exec \
+            --config "$FIREBASE_CI_CONFIG" \
             --project demo-chatkuy \
             --only firestore,storage \
             --log-verbosity QUIET \
