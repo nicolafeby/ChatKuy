@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:chatkuy/core/utils/app_error_logger.dart';
+import 'package:chatkuy/core/utils/chat_message_presentation.dart';
+import 'package:chatkuy/core/utils/mention_parser.dart';
 import 'package:chatkuy/core/helpers/image_compress_helper.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/helpers/video_compress_helper.dart';
@@ -131,7 +133,8 @@ abstract class _ChatRoomStore with Store {
     return messages.where((message) {
       final text = message.text?.toLowerCase() ?? '';
       final replyText = message.replyToText?.toLowerCase() ?? '';
-      final typeLabel = _messageTypeLabel(message.type).toLowerCase();
+      final typeLabel =
+          ChatMessagePresentation.typeLabel(message.type).toLowerCase();
 
       return text.contains(query) ||
           replyText.contains(query) ||
@@ -954,80 +957,25 @@ abstract class _ChatRoomStore with Store {
   }
 
   List<UserModel> _mentionedMembersFromText(String? text) {
-    final messageText = text?.trim();
-    final members = groupMembers?.value ?? const <UserModel>[];
-    if (messageText == null || messageText.isEmpty || members.isEmpty) {
-      return const [];
-    }
-
-    final lowerText = messageText.toLowerCase();
-    final mentioned = <String, UserModel>{};
-    for (final member in members) {
-      if (member.id == currentUid) continue;
-      final name = member.name.trim();
-      if (name.isEmpty) continue;
-
-      final username = member.username?.trim();
-      final patterns = <String>[
-        '@${name.toLowerCase()}',
-        if (username != null && username.isNotEmpty)
-          '@${username.toLowerCase()}',
-      ];
-
-      if (patterns.any(lowerText.contains)) {
-        mentioned[member.id] = member;
-      }
-    }
-
-    return mentioned.values.toList();
+    return MentionParser.mentionedUsers(
+      text: text,
+      users: groupMembers?.value ?? const <UserModel>[],
+      excludedUserId: currentUid,
+    );
   }
 
   String? _activeMentionQuery(String text, int cursor) {
-    if (cursor <= 0 || cursor > text.length) return null;
-
-    final start = text.lastIndexOf('@', cursor - 1);
-    if (start == -1) return null;
-    if (start > 0 && !RegExp(r'\s').hasMatch(text[start - 1])) return null;
-
-    final query = text.substring(start + 1, cursor);
-    if (query.contains(RegExp(r'\s'))) return null;
-    return query;
+    return MentionParser.activeQuery(text, cursor);
   }
 
   String? _replyPreviewText(ChatMessageModel? message) {
-    if (message == null) return null;
-
-    final messageText = message.text?.trim();
-    if (messageText != null && messageText.isNotEmpty) return messageText;
-    if (message.type == MessageType.image) return 'Foto';
-    if (message.type == MessageType.video) return 'Video';
-    if (message.type == MessageType.call) return 'Panggilan';
-    if (message.type == MessageType.file) return 'Dokumen';
-    if (message.type == MessageType.contact) return 'Kontak';
-    if (message.type == MessageType.audio) return 'Pesan suara';
-    return null;
-  }
-
-  String _messageTypeLabel(MessageType type) {
-    if (type == MessageType.image) return 'Foto';
-    if (type == MessageType.video) return 'Video';
-    if (type == MessageType.call) return 'Panggilan';
-    if (type == MessageType.file) return 'Dokumen';
-    if (type == MessageType.contact) return 'Kontak';
-    if (type == MessageType.audio) return 'Pesan suara';
-    return 'Pesan';
+    return ChatMessagePresentation.preview(message);
   }
 
   String? _resolveLastMessage(ChatMessageModel message) {
-    final text = message.text?.trim();
-    if (text != null && text.isNotEmpty) return text;
-    if (message.type == MessageType.image) return 'Foto';
-    if (message.type == MessageType.video) return 'Video';
-    if (message.type == MessageType.call) return 'Panggilan';
-    if (message.type == MessageType.file) return 'Dokumen';
-    if (message.type == MessageType.contact) return 'Kontak';
-    if (message.type == MessageType.audio) return 'Pesan suara';
-    return null;
+    final text =
+        ChatMessagePresentation.resolveText(message.text, message.type);
+    return text.isEmpty ? null : text;
   }
 
   @action

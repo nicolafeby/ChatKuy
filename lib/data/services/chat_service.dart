@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
+import 'package:chatkuy/core/utils/chat_message_presentation.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_message_update_model.dart';
@@ -614,20 +615,8 @@ class ChatService implements ChatRepository {
     }
   }
 
-  String _fallbackLastMessage(MessageType type) {
-    if (type == MessageType.image) return 'Foto';
-    if (type == MessageType.video) return 'Video';
-    if (type == MessageType.call) return 'Panggilan';
-    if (type == MessageType.file) return 'Dokumen';
-    if (type == MessageType.contact) return 'Kontak';
-    if (type == MessageType.audio) return 'Pesan suara';
-    return '';
-  }
-
   String _resolveLastMessage(String? text, MessageType type) {
-    final messageText = text?.trim();
-    if (messageText != null && messageText.isNotEmpty) return messageText;
-    return _fallbackLastMessage(type);
+    return ChatMessagePresentation.resolveText(text, type);
   }
 
   MessageType _messageTypeFromString(dynamic value) {
@@ -778,12 +767,7 @@ class ChatService implements ChatRepository {
   }
 
   String? _replyPreviewText(ChatMessageModel? message) {
-    if (message == null) return null;
-
-    final messageText = message.text?.trim();
-    if (messageText != null && messageText.isNotEmpty) return messageText;
-
-    return _fallbackLastMessage(message.type);
+    return ChatMessagePresentation.preview(message);
   }
 
   String? _existingFilePath(dynamic path) {

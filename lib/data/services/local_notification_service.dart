@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/constants/routes.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
+import 'package:chatkuy/data/models/call_notification_payload.dart';
 import 'package:chatkuy/data/models/call_write_models.dart';
 import 'package:chatkuy/data/models/chat_message_update_model.dart';
 import 'package:chatkuy/data/repositories/local_notification_repository.dart';
@@ -562,66 +563,19 @@ class LocalNotificationService implements LocalNotificationRepository {
   static Map<String, dynamic> _extractCallKitData(CallEvent event) {
     final body = event.body;
     if (body is! Map) return _lastIncomingCall?.data ?? {};
-
-    final mappedBody = Map<String, dynamic>.from(body);
-    final extra = mappedBody['extra'];
-    if (extra is Map) {
-      return Map<String, dynamic>.from(extra);
-    }
-
-    final nestedBody = mappedBody['body'];
-    if (nestedBody is Map) {
-      final nestedExtra = nestedBody['extra'];
-      if (nestedExtra is Map) {
-        return Map<String, dynamic>.from(nestedExtra);
-      }
-      final nested = Map<String, dynamic>.from(nestedBody);
-      if (_hasCallKeys(nested)) return nested;
-    }
-
-    final data = mappedBody['data'];
-    if (data is Map) {
-      final dataExtra = data['extra'];
-      if (dataExtra is Map) {
-        return Map<String, dynamic>.from(dataExtra);
-      }
-      final mappedData = Map<String, dynamic>.from(data);
-      if (_hasCallKeys(mappedData)) return mappedData;
-    }
-
-    if (!_hasCallKeys(mappedBody)) {
-      return _lastIncomingCall?.data ?? mappedBody;
-    }
-
-    return mappedBody;
+    return CallKitPayloadExtractor.extract(
+      Map<String, dynamic>.from(body),
+      fallback: _lastIncomingCall?.data,
+    );
   }
 
   static Map<String, dynamic> _extractCallKitMapData(
     Map<String, dynamic> data,
   ) {
-    final extra = data['extra'];
-    if (extra is Map) {
-      return Map<String, dynamic>.from(extra);
-    }
-
-    final nestedBody = data['body'];
-    if (nestedBody is Map) {
-      final nested = Map<String, dynamic>.from(nestedBody);
-      final nestedExtra = nested['extra'];
-      if (nestedExtra is Map) {
-        return Map<String, dynamic>.from(nestedExtra);
-      }
-      if (_hasCallKeys(nested)) return nested;
-    }
-
-    if (_hasCallKeys(data)) return data;
-    return _lastIncomingCall?.data ?? data;
-  }
-
-  static bool _hasCallKeys(Map<String, dynamic> data) {
-    return data['callId'] is String &&
-        data['roomId'] is String &&
-        data['callerId'] is String;
+    return CallKitPayloadExtractor.extract(
+      data,
+      fallback: _lastIncomingCall?.data,
+    );
   }
 
   static Future<void> processPendingLaunchNotification() async {
@@ -676,7 +630,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       if (callMap['isAccepted'] != true) continue;
 
       final data = _extractCallKitMapData(callMap);
-      if (!_hasCallKeys(data)) continue;
+      if (!CallKitPayloadExtractor.hasRequiredKeys(data)) continue;
 
       final callId = data['callId']?.toString();
       if (callId != null) {
@@ -718,7 +672,7 @@ class LocalNotificationService implements LocalNotificationRepository {
       }
 
       final data = _extractCallKitMapData(callMap);
-      if (!_hasCallKeys(data)) continue;
+      if (!CallKitPayloadExtractor.hasRequiredKeys(data)) continue;
 
       final shouldOpen = await _shouldOpenAcceptedCall(callId);
       if (!shouldOpen) continue;

@@ -22,7 +22,9 @@ class ImagePickerHelper {
   }) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
-        source: source == PickImageSource.camera ? ImageSource.camera : ImageSource.gallery,
+        source: source == PickImageSource.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
         imageQuality: imageQuality,
         maxWidth: maxWidth,
         maxHeight: maxHeight,
@@ -48,7 +50,9 @@ class ImagePickerHelper {
   }) async {
     try {
       final XFile? pickedFile = await _picker.pickVideo(
-        source: source == PickImageSource.camera ? ImageSource.camera : ImageSource.gallery,
+        source: source == PickImageSource.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
         maxDuration: maxDuration,
       );
 
