@@ -206,6 +206,96 @@ test('sender may update an image-message summary but may not impersonate', async
   }));
 });
 
+test('first direct message may create its room and message atomically', async () => {
+  const aliceDb = authenticated('alice').firestore();
+  const roomRef = doc(aliceDb, 'chat_rooms/alice_bob');
+  const messageRef = doc(
+    aliceDb,
+    'chat_rooms/alice_bob/messages/message-1'
+  );
+  const batch = writeBatch(aliceDb);
+
+  batch.set(roomRef, {
+    participants: ['alice', 'bob'],
+    unreadCount: {alice: 0, bob: 1},
+    lastMessage: 'hello',
+    lastMessageAt: serverTimestamp(),
+    lastSenderId: 'alice',
+  });
+  batch.set(messageRef, {
+    senderId: 'alice',
+    senderName: 'Alice',
+    text: 'hello',
+    createdAt: serverTimestamp(),
+    createdAtClient: new Date(),
+    type: 'text',
+    mentionedUserIds: [],
+    mentionedUserNames: [],
+    deliveredTo: {},
+    readBy: {},
+    deletedFor: {},
+    reactions: {},
+    deletedForEveryone: false,
+  });
+
+  await assertSucceeds(batch.commit());
+});
+
+test('message batch may update a legacy direct room', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'chat_rooms/legacy-room'), {
+      participants: ['alice', 'bob'],
+      deletedMessagesFor: {alice: {'old-message': true}},
+      encryptedPayload: {data: 'ciphertext', v: 1, alg: 'legacy'},
+      unreadCount: {alice: 0, bob: 0},
+      archivedFor: {},
+      mutedUntil: {},
+      lastSenderId: 'bob',
+      'unreadCount.alice': 7,
+      'unreadCount.bob': 0,
+      type: 'image',
+      imageUrl: 'https://example.test/image.png',
+      lastMessageAt: new Date(0),
+      lastMessage: 'old',
+      typing: {alice: false, bob: false},
+    });
+  });
+
+  const aliceDb = authenticated('alice').firestore();
+  const roomRef = doc(aliceDb, 'chat_rooms/legacy-room');
+  const messageRef = doc(
+    aliceDb,
+    'chat_rooms/legacy-room/messages/new-message'
+  );
+  const batch = writeBatch(aliceDb);
+
+  batch.update(roomRef, {
+    lastMessage: 'hello',
+    lastSenderId: 'alice',
+    type: 'text',
+    lastMessageAt: serverTimestamp(),
+    'unreadCount.alice': 0,
+    'unreadCount.bob': 1,
+  });
+  batch.set(messageRef, {
+    senderId: 'alice',
+    senderName: 'Alice',
+    text: 'hello',
+    createdAt: serverTimestamp(),
+    createdAtClient: new Date(),
+    type: 'text',
+    mentionedUserIds: [],
+    mentionedUserNames: [],
+    deliveredTo: {},
+    readBy: {},
+    deletedFor: {},
+    reactions: {},
+    deletedForEveryone: false,
+  });
+
+  await assertSucceeds(batch.commit());
+});
+
 test('account deletion requires authentication from the last five minutes', async () => {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const freshDb = authenticated('alice', {

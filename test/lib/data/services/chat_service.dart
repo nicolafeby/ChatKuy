@@ -232,7 +232,7 @@ Future<void> chatServiceTest() async {
       null,
     )).called(1);
 
-    verify(mockBatch.set(
+    verify(mockBatch.update(
       roomDoc,
       argThat(predicate<Map>((data) {
         return data[ChatRoomField.lastMessage] == 'Hi' &&
@@ -245,7 +245,6 @@ Future<void> chatServiceTest() async {
             data.containsKey('${ChatRoomField.archivedFor}.user-1') &&
             !data.containsKey('${ChatRoomField.archivedFor}.user-2');
       })),
-      any,
     )).called(1);
 
     verify(mockBatch.commit()).called(1);
@@ -300,85 +299,17 @@ Future<void> chatServiceTest() async {
                 .contains('user-1') &&
             (data[ChatRoomField.participants] as List<String>)
                 .contains('user-2') &&
-            data['${ChatRoomField.unreadCount}.user-1'] == 0 &&
-            data.containsKey('${ChatRoomField.unreadCount}.user-2');
+            data[ChatRoomField.unreadCount] is Map<String, int> &&
+            (data[ChatRoomField.unreadCount] as Map<String, int>)['user-1'] ==
+                0 &&
+            (data[ChatRoomField.unreadCount] as Map<String, int>)['user-2'] ==
+                1 &&
+            !data.containsKey(ChatRoomField.type) &&
+            !data.containsKey(ChatRoomField.imageUrl);
       })),
-      any,
     )).called(1);
 
     verify(mockBatch.commit()).called(1);
-  });
-
-  test('sendMessage retries existing direct room without participants update',
-      () async {
-    final retryBatch = MockWriteBatch();
-
-    when(auth.currentUser).thenReturn(mockUser);
-    when(mockUser.uid).thenReturn('user-1');
-
-    when(firestore.collection(FirebaseCollections.chatRooms))
-        .thenReturn(roomsCollection);
-    when(roomsCollection.doc('user-1_user-2')).thenReturn(roomDoc);
-    when(roomDoc.collection(FirestoreCollection.messages))
-        .thenReturn(messagesCollection);
-
-    when(messagesCollection.doc()).thenReturn(messageDocRef);
-    when(messageDocRef.id).thenReturn('msg-1');
-
-    var batchCallCount = 0;
-    when(firestore.batch()).thenAnswer((_) {
-      batchCallCount += 1;
-      return batchCallCount == 1 ? mockBatch : retryBatch;
-    });
-
-    when(firestore.collection(FirebaseCollections.users))
-        .thenReturn(usersCollection);
-    when(usersCollection.doc('user-1')).thenReturn(userDoc);
-    when(userDoc.get()).thenAnswer((_) async => userSnapshot);
-    when(userSnapshot.data()).thenReturn({
-      FriendField.name: 'Budi',
-    });
-
-    when(roomDoc.get()).thenThrow(
-      FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'permission-denied',
-      ),
-    );
-
-    when(mockBatch.commit()).thenThrow(
-      FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'permission-denied',
-      ),
-    );
-    when(retryBatch.commit()).thenAnswer((_) async {});
-
-    await service.sendMessage(
-      roomId: 'user-1_user-2',
-      targetUid: 'user-2',
-      text: 'Existing room',
-      type: MessageType.text,
-    );
-
-    verify(mockBatch.set(
-      roomDoc,
-      argThat(predicate<Map>((data) {
-        return data.containsKey(ChatRoomField.participants);
-      })),
-      any,
-    )).called(1);
-
-    verify(retryBatch.set(
-      roomDoc,
-      argThat(predicate<Map<String, dynamic>>((data) {
-        return data[ChatRoomField.lastMessage] == 'Existing room' &&
-            !data.containsKey(ChatRoomField.participants);
-      })),
-      any,
-    )).called(1);
-
-    verify(retryBatch.commit()).called(1);
   });
 
   // ==========================================================

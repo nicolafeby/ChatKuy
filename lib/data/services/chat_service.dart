@@ -4,6 +4,7 @@ import 'package:chatkuy/core/constants/firestore.dart';
 import 'package:chatkuy/core/helpers/image_saver_helper.dart';
 import 'package:chatkuy/core/utils/chat_message_presentation.dart';
 import 'package:chatkuy/core/utils/app_error_logger.dart';
+import 'package:chatkuy/core/utils/chat_file_types.dart';
 import 'package:chatkuy/data/models/chat_message_model.dart';
 import 'package:chatkuy/data/models/chat_message_update_model.dart';
 import 'package:chatkuy/data/models/chat_message_write_model.dart';
@@ -420,6 +421,17 @@ class ChatService implements ChatRepository {
       }
 
       if (file != null) {
+        final contentType = chatDocumentContentType(
+          resolvedFileName ?? file.path,
+        );
+        if (contentType == null) {
+          throw ArgumentError.value(
+            resolvedFileName ?? file.path,
+            'file',
+            'Unsupported chat document type',
+          );
+        }
+
         final ref = firebaseStorage
             .ref()
             .child(StorageCollection.chatFiles)
@@ -427,7 +439,10 @@ class ChatService implements ChatRepository {
             .child(uid)
             .child(mediaNameFormat(roomId, file));
 
-        final uploadTask = ref.putFile(file);
+        final uploadTask = ref.putFile(
+          file,
+          SettableMetadata(contentType: contentType),
+        );
 
         await for (final snapshot in uploadTask.snapshotEvents) {
           final totalBytes = snapshot.totalBytes;
@@ -505,21 +520,32 @@ class ChatService implements ChatRepository {
         mentionedUserNames: mentionedUserNames,
       ).toFirestoreJson();
 
-      final roomUpdates = ChatRoomMessageUpdateModel(
-        lastMessage: _resolveLastMessage(text, type),
-        senderId: uid,
-        imageUrl: uploadedImageUrl,
-        type: type.name,
-        participants: roomExists ? null : participants,
-        recipientUids: recipientUids,
-      ).toFirestoreJson();
+      final lastMessage = _resolveLastMessage(text, type);
+      final roomUpdates = roomExists
+          ? ChatRoomMessageUpdateModel(
+              lastMessage: lastMessage,
+              senderId: uid,
+              imageUrl: uploadedImageUrl,
+              type: type.name,
+              recipientUids: recipientUids,
+            ).toFirestoreJson()
+          : <String, dynamic>{
+              ChatRoomField.participants: participants,
+              ChatRoomField.unreadCount: {
+                uid: 0,
+                for (final recipientUid in recipientUids) recipientUid: 1,
+              },
+              ChatRoomField.lastMessage: lastMessage,
+              ChatRoomField.lastMessageAt: FieldValue.serverTimestamp(),
+              ChatRoomField.lastSenderId: uid,
+            };
 
-      await _commitMessageAndRoom(
+      await _commitMessageAndRoomBatch(
         messageRef: messageRef,
         roomRef: roomRef,
         messageData: messageData,
         roomUpdates: roomUpdates,
-        canRetryWithoutParticipants: !roomExists && targetUid != null,
+        roomExists: roomExists,
       );
     } catch (e, stackTrace) {
       AppErrorLogger.recordError(
@@ -597,46 +623,21 @@ class ChatService implements ChatRepository {
     }
   }
 
-  Future<void> _commitMessageAndRoom({
-    required DocumentReference<Map<String, dynamic>> messageRef,
-    required DocumentReference<Map<String, dynamic>> roomRef,
-    required Map<String, Object?> messageData,
-    required Map<String, dynamic> roomUpdates,
-    required bool canRetryWithoutParticipants,
-  }) async {
-    try {
-      await _commitMessageAndRoomBatch(
-        messageRef: messageRef,
-        roomRef: roomRef,
-        messageData: messageData,
-        roomUpdates: roomUpdates,
-      );
-    } on FirebaseException catch (e) {
-      if (e.code != 'permission-denied' || !canRetryWithoutParticipants) {
-        rethrow;
-      }
-
-      final retryRoomUpdates = Map<String, dynamic>.from(roomUpdates)..remove(ChatRoomField.participants);
-
-      await _commitMessageAndRoomBatch(
-        messageRef: messageRef,
-        roomRef: roomRef,
-        messageData: messageData,
-        roomUpdates: retryRoomUpdates,
-      );
-    }
-  }
-
   Future<void> _commitMessageAndRoomBatch({
     required DocumentReference<Map<String, dynamic>> messageRef,
     required DocumentReference<Map<String, dynamic>> roomRef,
     required Map<String, Object?> messageData,
     required Map<String, dynamic> roomUpdates,
+    required bool roomExists,
   }) async {
     final batch = firestore.batch();
 
     batch.set(messageRef, messageData);
-    batch.set(roomRef, roomUpdates, SetOptions(merge: true));
+    if (roomExists) {
+      batch.update(roomRef, roomUpdates);
+    } else {
+      batch.set(roomRef, roomUpdates);
+    }
 
     await batch.commit();
   }

@@ -146,26 +146,32 @@ class AuthService implements AuthRepository {
     if (firebaseUser == null) return false;
 
     await firebaseUser.reload();
+    final reloadedUser = auth.currentUser;
 
-    if (!firebaseUser.emailVerified) {
+    if (reloadedUser == null || !reloadedUser.emailVerified) {
       return false;
     }
 
-    final doc = await _usersRef.doc(firebaseUser.uid).get();
+    // Firestore rules read email_verified from the ID token. Reloading the
+    // user updates the profile, but the cached token may still contain the
+    // pre-verification claim until it is explicitly refreshed.
+    await reloadedUser.getIdToken(true);
+
+    final doc = await _usersRef.doc(reloadedUser.uid).get();
 
     final currentUser = doc.data();
     if (currentUser == null) {
-      throw StateError('User ${firebaseUser.uid} not found');
+      throw StateError('User ${reloadedUser.uid} not found');
     }
 
-    final verifiedEmail = firebaseUser.email;
+    final verifiedEmail = reloadedUser.email;
     if (verifiedEmail == null || verifiedEmail.isEmpty) {
       return false;
     }
 
     await firestore
         .collection(FirebaseCollections.users)
-        .doc(firebaseUser.uid)
+        .doc(reloadedUser.uid)
         .update(
           UserEmailUpdateModel.verified(email: verifiedEmail).toFirestoreJson(),
         );
@@ -306,9 +312,11 @@ class AuthService implements AuthRepository {
       return false;
     }
 
+    await reloadedUser!.getIdToken(true);
+
     await firestore
         .collection(FirebaseCollections.users)
-        .doc(reloadedUser!.uid)
+        .doc(reloadedUser.uid)
         .update(
           UserEmailUpdateModel.verified(email: verifiedEmail).toFirestoreJson(),
         );
