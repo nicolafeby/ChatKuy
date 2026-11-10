@@ -10,6 +10,7 @@ import 'package:chatkuy/core/helpers/contact_picker_dialog.dart';
 import 'package:chatkuy/core/helpers/emoji_picker_overlay.dart';
 import 'package:chatkuy/core/helpers/image_picker_source_helper.dart';
 import 'package:chatkuy/core/helpers/permission_handler_helper.dart';
+import 'package:chatkuy/core/utils/chat_file_types.dart';
 import 'package:chatkuy/core/widgets/base_layout.dart';
 import 'package:chatkuy/core/widgets/bottomsheet_widget.dart';
 import 'package:chatkuy/ui/chat/chat_room/widget/attachment_model.dart';
@@ -41,7 +42,8 @@ class ChatField extends StatelessWidget with BaseLayout {
   Widget build(BuildContext context) {
     final colorScheme = colorSchemeOf(context);
     final isDarkMode = isDarkModeOf(context);
-    final fieldColor = isDarkMode ? const Color(0xFF18232C) : Colors.grey.shade200;
+    final fieldColor =
+        isDarkMode ? const Color(0xFF18232C) : Colors.grey.shade200;
 
     return SafeArea(
       top: false,
@@ -75,7 +77,8 @@ class ChatField extends StatelessWidget with BaseLayout {
                         style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
                           hintText: AppTranslationKey.message.tr,
-                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                          hintStyle:
+                              TextStyle(color: colorScheme.onSurfaceVariant),
                           border: InputBorder.none,
                           focusedBorder: InputBorder.none,
                         ),
@@ -96,13 +99,15 @@ class ChatField extends StatelessWidget with BaseLayout {
                               if (image == null) return;
 
                               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                                  arguments: ChatAttachImageArgument(image: image, store: store));
+                                  arguments: ChatAttachImageArgument(
+                                      image: image, store: store));
                             },
                             onDenied: (p0) {
                               Get.bottomSheet(BottomsheetWidget(
                                 asset: AppAsset.imgFaceSad,
                                 title: AppStrings.oopsTerjadiKesalahan,
-                                message: AppTranslationKey.galleryPermissionDenied.tr,
+                                message: AppTranslationKey
+                                    .galleryPermissionDenied.tr,
                               ));
                             },
                           );
@@ -129,13 +134,15 @@ class ChatField extends StatelessWidget with BaseLayout {
                               if (image == null) return;
 
                               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                                  arguments: ChatAttachImageArgument(image: image, store: store));
+                                  arguments: ChatAttachImageArgument(
+                                      image: image, store: store));
                             },
                             onDenied: (p0) {
                               Get.bottomSheet(BottomsheetWidget(
                                 asset: AppAsset.imgFaceSad,
                                 title: AppStrings.oopsTerjadiKesalahan,
-                                message: AppTranslationKey.cameraPermissionDenied.tr,
+                                message:
+                                    AppTranslationKey.cameraPermissionDenied.tr,
                               ));
                             },
                           );
@@ -157,7 +164,8 @@ class ChatField extends StatelessWidget with BaseLayout {
               backgroundColor: Colors.green,
               child: IconButton(
                 icon: Icon(Icons.send, color: Colors.white, size: 20.r),
-                onPressed: () => onSend.call(store.messageController.text.trim()),
+                onPressed: () =>
+                    onSend.call(store.messageController.text.trim()),
               ),
             ),
           ],
@@ -235,7 +243,8 @@ class ChatFieldV2 extends StatefulWidget {
   }
 }
 
-class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, BaseLayout {
+class _ChatFieldV2State extends State<ChatFieldV2>
+    with WidgetsBindingObserver, BaseLayout {
   bool _showAboveSheet = false;
   bool _showEmojiPicker = false;
   bool _isRecording = false;
@@ -278,7 +287,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
 
   @override
   void didChangeMetrics() {
-    final bottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    final bottomInset =
+        View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
 
     if (bottomInset > 0 && bottomInset > (_keyboardHeight ?? 0)) {
       setState(() {
@@ -338,7 +348,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
               if (image == null) return;
 
               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
+                  arguments: ChatAttachImageArgument(
+                      image: image, store: widget.store));
             },
             onDenied: (p0) {
               Get.bottomSheet(BottomsheetWidget(
@@ -366,7 +377,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
               if (image == null) return;
 
               Get.toNamed(AppRouteName.CHAT_ATTACH_IMAGE_SCREEN,
-                  arguments: ChatAttachImageArgument(image: image, store: widget.store));
+                  arguments: ChatAttachImageArgument(
+                      image: image, store: widget.store));
             },
             onDenied: (p0) {
               Get.bottomSheet(BottomsheetWidget(
@@ -418,7 +430,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
           AttachmentOverlay.hide();
           final result = await FilePicker.platform.pickFiles(
             allowMultiple: false,
-            type: FileType.any,
+            type: FileType.custom,
+            allowedExtensions: chatDocumentExtensions,
             withData: false,
           );
 
@@ -467,12 +480,15 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
               contacts: contacts.where((contact) => contact.phones.isNotEmpty),
               onContactSelect: (contact) async {
                 final phones = contact['phones'];
-                final phone = phones is List && phones.isNotEmpty ? phones.first['number']?.toString() : null;
+                final phone = phones is List && phones.isNotEmpty
+                    ? phones.first['number']?.toString()
+                    : null;
                 if (phone == null || phone.trim().isEmpty) return;
 
                 try {
                   await widget.store.sendContactMessage(
-                    name: contact['displayName']?.toString() ?? AppTranslationKey.contact.tr,
+                    name: contact['displayName']?.toString() ??
+                        AppTranslationKey.contact.tr,
                     phone: phone,
                   );
                 } catch (_) {
@@ -564,7 +580,9 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
     _recordingTimer?.cancel();
 
     final path = await _audioRecorder.stop();
-    final duration = startedAt == null ? _recordingDuration : DateTime.now().difference(startedAt);
+    final duration = startedAt == null
+        ? _recordingDuration
+        : DateTime.now().difference(startedAt);
 
     if (!mounted) return;
     setState(() {
@@ -691,7 +709,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
   Widget build(BuildContext context) {
     final colorScheme = colorSchemeOf(context);
     final isDarkMode = isDarkModeOf(context);
-    final textFieldFillColor = isDarkMode ? const Color(0xFF202C33) : Colors.white;
+    final textFieldFillColor =
+        isDarkMode ? const Color(0xFF202C33) : Colors.white;
 
     return PopScope(
       canPop: _showEmojiPicker == false && _showAboveSheet == false,
@@ -740,22 +759,28 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
                             textCapitalization: widget.textCapitalization,
                             decoration: InputDecoration(
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(widget.textFieldRadius),
+                                borderRadius: BorderRadius.circular(
+                                    widget.textFieldRadius),
                                 borderSide: BorderSide.none,
                               ),
                               filled: true,
                               fillColor: textFieldFillColor,
                               hintText: widget.hintText.tr,
-                              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              hintStyle: TextStyle(
+                                  color: colorScheme.onSurfaceVariant),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 10),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(widget.textFieldRadius),
+                                borderRadius: BorderRadius.circular(
+                                    widget.textFieldRadius),
                                 borderSide: BorderSide.none,
                               ),
                               prefixIcon: widget.showEmogyIcon
                                   ? IconButton(
                                       icon: Icon(
-                                        _showEmojiPicker ? Icons.keyboard_alt_outlined : widget.emojiIcon,
+                                        _showEmojiPicker
+                                            ? Icons.keyboard_alt_outlined
+                                            : widget.emojiIcon,
                                         color: colorScheme.onSurfaceVariant,
                                       ),
                                       onPressed: _toggleEmojiKeyboard,
@@ -767,13 +792,21 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
                                         )
                                       : null),
                               suffixIcon: widget.showAttachmentIcon &&
-                                      ((widget.attachmentConfig?.showCamera ?? true) ||
-                                          (widget.attachmentConfig?.showGallery ?? true) ||
-                                          (widget.attachmentConfig?.showAudio ?? true) ||
-                                          (widget.attachmentConfig?.showDoc ?? true) ||
-                                          (widget.attachmentConfig?.showContact ?? true))
+                                      ((widget
+                                                  .attachmentConfig?.showCamera ??
+                                              true) ||
+                                          (widget.attachmentConfig?.showGallery ??
+                                              true) ||
+                                          (widget.attachmentConfig?.showAudio ??
+                                              true) ||
+                                          (widget.attachmentConfig?.showDoc ??
+                                              true) ||
+                                          (widget.attachmentConfig
+                                                  ?.showContact ??
+                                              true))
                                   ? IconButton(
-                                      icon: Icon(widget.attachmentIcon, color: colorScheme.onSurfaceVariant),
+                                      icon: Icon(widget.attachmentIcon,
+                                          color: colorScheme.onSurfaceVariant),
                                       onPressed: () => showAttachment(context),
                                     )
                                   : null,
@@ -802,7 +835,8 @@ class _ChatFieldV2State extends State<ChatFieldV2> with WidgetsBindingObserver, 
                             _hasText ? widget.sendIcon : Icons.mic,
                             color: Colors.white,
                           ),
-                          onPressed: _hasText ? widget.onSendTap : _toggleRecording,
+                          onPressed:
+                              _hasText ? widget.onSendTap : _toggleRecording,
                         ),
                       ),
                     ],

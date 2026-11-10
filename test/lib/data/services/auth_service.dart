@@ -35,6 +35,9 @@ Future<void> authServiceTest() async {
   late MockUserCredential mockCredential;
   late MockCollectionReference<Map<String, dynamic>> usersCollection;
   late MockDocumentReference<Map<String, dynamic>> userDoc;
+  late MockCollectionReference<UserModel> usersModelCollection;
+  late MockDocumentReference<UserModel> userModelDoc;
+  late MockDocumentSnapshot<UserModel> userModelSnapshot;
   late MockCollectionReference<Map<String, dynamic>> usernamesCollection;
   late MockDocumentReference<Map<String, dynamic>> usernameDoc;
   late MockWriteBatch writeBatch;
@@ -49,6 +52,9 @@ Future<void> authServiceTest() async {
     mockCredential = MockUserCredential();
     usersCollection = MockCollectionReference();
     userDoc = MockDocumentReference();
+    usersModelCollection = MockCollectionReference();
+    userModelDoc = MockDocumentReference();
+    userModelSnapshot = MockDocumentSnapshot();
     usernamesCollection = MockCollectionReference();
     usernameDoc = MockDocumentReference();
     writeBatch = MockWriteBatch();
@@ -140,6 +146,40 @@ Future<void> authServiceTest() async {
     verify(writeBatch.set(usernameDoc, {'uid': 'uid-2'})).called(1);
     verify(writeBatch.set(userDoc, any)).called(1);
     verify(writeBatch.commit()).called(1);
+  });
+
+  test('refresh verification forces a fresh ID token for Firestore rules',
+      () async {
+    when(auth.currentUser).thenReturn(mockUser);
+    when(mockUser.uid).thenReturn('uid-1');
+    when(mockUser.email).thenReturn('test@mail.com');
+    when(mockUser.emailVerified).thenReturn(true);
+    when(mockUser.reload()).thenAnswer((_) async {});
+    when(mockUser.getIdToken(true)).thenAnswer((_) async => 'fresh-token');
+
+    when(firestore.collection(FirebaseCollections.users))
+        .thenReturn(usersCollection);
+    when(usersCollection.withConverter<UserModel>(
+      fromFirestore: anyNamed('fromFirestore'),
+      toFirestore: anyNamed('toFirestore'),
+    )).thenReturn(usersModelCollection);
+    when(usersModelCollection.doc('uid-1')).thenReturn(userModelDoc);
+    when(userModelDoc.get()).thenAnswer((_) async => userModelSnapshot);
+    when(userModelSnapshot.data()).thenReturn(
+      UserModel(
+        id: 'uid-1',
+        name: 'Test User',
+        email: 'test@mail.com',
+        username: 'username',
+        isEmailVerified: false,
+        fcmToken: '',
+      ),
+    );
+    when(usersCollection.doc('uid-1')).thenReturn(userDoc);
+
+    expect(await service.refreshEmailVerification(), isTrue);
+    verify(mockUser.getIdToken(true)).called(1);
+    verify(userDoc.update(any)).called(1);
   });
 
   test('LOGOUT', () async {
