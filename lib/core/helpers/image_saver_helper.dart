@@ -14,74 +14,59 @@ class LocalImageModel {
 }
 
 Future<String> saveImageToLocal({required File imageFile, required String roomId}) async {
-  final directory = await getApplicationDocumentsDirectory();
-
-  final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
-  if (!await chatDir.exists()) {
-    await chatDir.create(recursive: true);
-  }
-
-  final fileName = imageNameFormat(roomId, imageFile);
-
-  final newPath = '${chatDir.path}/$fileName';
-
-  final newFile = await imageFile.copy(newPath);
-
-  return newFile.path;
+  return _saveMediaToLocal(
+    file: imageFile,
+    roomId: roomId,
+    collection: StorageCollection.chatImages,
+  );
 }
 
 Future<String> saveVideoToLocal({
   required File videoFile,
   required String roomId,
 }) async {
-  final directory = await getApplicationDocumentsDirectory();
-
-  final chatDir = Directory('${directory.path}/${StorageCollection.chatVideos}');
-  if (!await chatDir.exists()) {
-    await chatDir.create(recursive: true);
-  }
-
-  final fileName = mediaNameFormat(roomId, videoFile);
-  final newPath = '${chatDir.path}/$fileName';
-  final newFile = await videoFile.copy(newPath);
-
-  return newFile.path;
+  return _saveMediaToLocal(
+    file: videoFile,
+    roomId: roomId,
+    collection: StorageCollection.chatVideos,
+  );
 }
 
 Future<String> saveFileToLocal({
   required File file,
   required String roomId,
 }) async {
-  final directory = await getApplicationDocumentsDirectory();
-
-  final chatDir = Directory('${directory.path}/${StorageCollection.chatFiles}');
-  if (!await chatDir.exists()) {
-    await chatDir.create(recursive: true);
-  }
-
-  final fileName = mediaNameFormat(roomId, file);
-  final newPath = '${chatDir.path}/$fileName';
-  final newFile = await file.copy(newPath);
-
-  return newFile.path;
+  return _saveMediaToLocal(
+    file: file,
+    roomId: roomId,
+    collection: StorageCollection.chatFiles,
+  );
 }
 
 Future<String> saveAudioToLocal({
   required File audioFile,
   required String roomId,
 }) async {
-  final directory = await getApplicationDocumentsDirectory();
+  return _saveMediaToLocal(
+    file: audioFile,
+    roomId: roomId,
+    collection: StorageCollection.chatAudios,
+  );
+}
 
-  final chatDir = Directory('${directory.path}/${StorageCollection.chatAudios}');
-  if (!await chatDir.exists()) {
-    await chatDir.create(recursive: true);
+Future<String> _saveMediaToLocal({
+  required File file,
+  required String roomId,
+  required String collection,
+}) async {
+  final directory = await getApplicationDocumentsDirectory();
+  final chatDirectory = Directory('${directory.path}/$collection');
+  if (!await chatDirectory.exists()) {
+    await chatDirectory.create(recursive: true);
   }
 
-  final fileName = mediaNameFormat(roomId, audioFile);
-  final newPath = '${chatDir.path}/$fileName';
-  final newFile = await audioFile.copy(newPath);
-
-  return newFile.path;
+  final fileName = mediaNameFormat(roomId, file);
+  return (await file.copy('${chatDirectory.path}/$fileName')).path;
 }
 
 Future<String> getOrDownloadImage({required String imageUrl}) async {

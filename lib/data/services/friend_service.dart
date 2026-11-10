@@ -74,21 +74,23 @@ class FriendService implements FriendRepository {
     }
 
     // 3. Build FriendModel (preserve order)
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      final uid = data[FriendField.uid] as String;
-      final user = usersById[uid];
+    return snapshot.docs
+        .map<FriendModel?>((doc) {
+          final data = doc.data();
+          final uid = data[FriendField.uid];
+          if (uid is! String || uid.isEmpty) return null;
 
-      if (user == null) {
-        throw StateError('User $uid not found in users collection');
-      }
+          final user = usersById[uid];
+          if (user == null) return null;
 
-      return FriendModel(
-        uid: uid,
-        user: user,
-        createdAt: _dateFromTimestamp(data[FriendField.createdAt]),
-      );
-    }).toList();
+          return FriendModel(
+            uid: uid,
+            user: user,
+            createdAt: _dateFromTimestamp(data[FriendField.createdAt]),
+          );
+        })
+        .whereType<FriendModel>()
+        .toList();
   }
 
   DateTime _dateFromTimestamp(dynamic value) {

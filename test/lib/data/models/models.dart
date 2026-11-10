@@ -77,6 +77,21 @@ Future<void> modelsTest() async {
     });
   });
 
+  group('UserPresenceModel', () {
+    test('keeps lastOnlineAt as DateTime for Firestore writes', () {
+      final lastOnlineAt = DateTime(2024, 1, 1);
+      final presence = UserPresenceModel(
+        isOnline: true,
+        lastOnlineAt: lastOnlineAt,
+      );
+
+      final firestoreJson = presence.toFirestoreJson();
+
+      expect(firestoreJson['isOnline'], isTrue);
+      expect(firestoreJson['lastOnlineAt'], same(lastOnlineAt));
+    });
+  });
+
   group('ChatMessageModel', () {
     test('copyWith updates media/status fields and keeps message metadata', () {
       final createdAt = DateTime(2024, 1, 1);

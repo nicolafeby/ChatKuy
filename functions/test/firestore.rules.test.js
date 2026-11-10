@@ -11,9 +11,12 @@ const {
   doc,
   getDoc,
   getDocs,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } = require('firebase/firestore');
 const {
@@ -109,6 +112,33 @@ test('private user document is owner-only', async () => {
   await assertFails(getDoc(doc(guestDb, 'users/alice')));
 });
 
+test('legacy user may update operational fields without rewriting profile schema', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users/legacy'), {
+      email: 'legacy@example.com',
+      username: 'Legacy User',
+      name: 'Legacy User',
+      fcmToken: null,
+      isOnline: null,
+      lastOnlineAt: null,
+    });
+  });
+
+  const legacyDb = authenticated('legacy').firestore();
+  const otherDb = authenticated('bob').firestore();
+  const legacyRef = doc(legacyDb, 'users/legacy');
+
+  await assertSucceeds(updateDoc(legacyRef, {
+    isOnline: true,
+    lastOnlineAt: serverTimestamp(),
+  }));
+  await assertSucceeds(updateDoc(legacyRef, {fcmToken: 'new-token'}));
+  await assertFails(updateDoc(doc(otherDb, 'users/legacy'), {
+    isOnline: false,
+  }));
+  await assertFails(updateDoc(legacyRef, {name: 'Bypass validation'}));
+});
+
 test('public profiles allow targeted get but reject bulk listing', async () => {
   const aliceDb = authenticated('alice').firestore();
 
@@ -123,6 +153,17 @@ test('non-participant cannot read a room or its messages', async () => {
   await assertFails(
     getDoc(doc(malloryDb, 'chat_rooms/room-1/messages/message-1'))
   );
+});
+
+test('participant may query their rooms ordered by last message time', async () => {
+  const aliceDb = authenticated('alice').firestore();
+  const roomsQuery = query(
+    collection(aliceDb, 'chat_rooms'),
+    where('participants', 'array-contains', 'alice'),
+    orderBy('lastMessageAt', 'desc')
+  );
+
+  await assertSucceeds(getDocs(roomsQuery));
 });
 
 test('unverified accounts cannot access shared chat data', async () => {
@@ -264,6 +305,29 @@ test('call creation must match the room caller and callee', async () => {
     ...baseCall,
     calleeId: 'mallory',
   }));
+});
+
+test('participant may query call history ordered by creation time', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'calls/history-call'), {
+      participants: ['alice', 'bob'],
+      callerId: 'alice',
+      calleeId: 'bob',
+      type: 'voice',
+      status: 'ended',
+      videoUpgradeStatus: 'none',
+      createdAt: new Date(),
+    });
+  });
+
+  const aliceDb = authenticated('alice').firestore();
+  const callsQuery = query(
+    collection(aliceDb, 'calls'),
+    where('participants', 'array-contains', 'alice'),
+    orderBy('createdAt', 'desc')
+  );
+
+  await assertSucceeds(getDocs(callsQuery));
 });
 
 test('call candidates may only be written by the matching call role', async () => {

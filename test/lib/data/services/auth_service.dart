@@ -95,6 +95,13 @@ Future<void> authServiceTest() async {
     expect(result.id, 'uid-1');
     expect(result.name, 'Test User');
     expect(result.fcmToken, 'FCM Token');
+
+    final update = verify(userDoc.update(captureAny)).captured.single
+        as Map<String, dynamic>;
+    expect(update['isOnline'], isTrue);
+    expect(update['lastOnlineAt'], isA<DateTime>());
+    expect(update, isNot(contains('email')));
+    expect(update, isNot(contains('pendingEmail')));
   });
 
   test('REGISTER SUCCESS', () async {

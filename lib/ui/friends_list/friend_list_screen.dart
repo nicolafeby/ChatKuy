@@ -22,8 +22,7 @@ class FriendListScreen extends StatefulWidget {
   State<FriendListScreen> createState() => _FriendListScreenState();
 }
 
-class _FriendListScreenState extends State<FriendListScreen>
-    with AutomaticKeepAliveClientMixin, BaseLayout {
+class _FriendListScreenState extends State<FriendListScreen> with AutomaticKeepAliveClientMixin, BaseLayout {
   final FriendListStore store = FriendListStore(
     friendRepository: getIt<FriendRepository>(),
     chatRepository: getIt<ChatRepository>(),
@@ -46,10 +45,8 @@ class _FriendListScreenState extends State<FriendListScreen>
 
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor:
-          isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
-      surfaceTintColor:
-          isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
+      backgroundColor: isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
+      surfaceTintColor: isDarkModeOf(context) ? const Color(0xFF111B21) : Colors.white,
       title: Text(
         AppTranslationKey.friends.tr,
         style: TextStyle(
@@ -95,11 +92,8 @@ class _FriendListScreenState extends State<FriendListScreen>
           decoration: InputDecoration(
             isDense: true,
             filled: true,
-            fillColor: isDarkModeOf(context)
-                ? const Color(0xFF202C33)
-                : const Color(0xFFF0F2F5),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+            fillColor: isDarkModeOf(context) ? const Color(0xFF202C33) : const Color(0xFFF0F2F5),
+            contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20.r),
               borderSide: BorderSide.none,
@@ -150,8 +144,7 @@ class _FriendListScreenState extends State<FriendListScreen>
           children: [
             if (!_isSearching)
               ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
                 leading: CircleAvatar(
                   radius: 24.r,
                   backgroundColor: AppColor.primaryColor.withValues(
@@ -163,8 +156,7 @@ class _FriendListScreenState extends State<FriendListScreen>
                     size: 24.r,
                   ),
                 ),
-                onTap: () =>
-                    Get.toNamed(AppRouteName.FRIEND_REQUEST_LIST_SCREEN),
+                onTap: () => Get.toNamed(AppRouteName.FRIEND_REQUEST_LIST_SCREEN),
                 title: Text(
                   AppTranslationKey.friendRequests.tr,
                   style: TextStyle(
@@ -198,8 +190,7 @@ class _FriendListScreenState extends State<FriendListScreen>
                   final user = friend.user;
 
                   return ListTile(
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
                     onTap: () => Get.toNamed(
                       AppRouteName.USER_PROFILE_SCREEN,
                       arguments: UserProfileArgument(targetUser: user),
