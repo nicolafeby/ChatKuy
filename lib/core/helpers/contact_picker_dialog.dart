@@ -58,8 +58,7 @@ class _ContactPickerDialogState extends State<ContactPickerDialog> {
       _filteredContacts = widget.contacts.where((contact) {
         final name = contact.displayName.toLowerCase();
         final phone = contact.phones.firstOrNull?.number.toLowerCase() ?? '';
-        return name.contains(query.toLowerCase()) ||
-            phone.contains(query.toLowerCase());
+        return name.contains(query.toLowerCase()) || phone.contains(query.toLowerCase());
       }).toList();
     });
   }
@@ -104,17 +103,13 @@ class _ContactPickerDialogState extends State<ContactPickerDialog> {
             ? Center(child: Text(AppTranslationKey.noContactsFound.tr))
             : ListView.separated(
                 itemCount: _filteredContacts.length,
-                separatorBuilder: (_, __) =>
-                    Divider(height: 1, color: Colors.grey[200]),
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
                 itemBuilder: (context, index) {
                   final contact = _filteredContacts[index];
 
-                  final displayName = contact.displayName.isNotEmpty
-                      ? contact.displayName
-                      : 'Unnamed Contact';
+                  final displayName = contact.displayName.isNotEmpty ? contact.displayName : 'Unnamed Contact';
 
-                  final phone =
-                      contact.phones.firstOrNull?.number ?? 'No number';
+                  final phone = contact.phones.firstOrNull?.number ?? 'No number';
 
                   return ListTile(
                     leading: CircleAvatar(
@@ -142,8 +137,7 @@ class _ContactPickerDialogState extends State<ContactPickerDialog> {
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(phone),
-                    trailing:
-                        const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                     onTap: () {
                       Navigator.pop(context);
 
@@ -167,9 +161,7 @@ class _ContactPickerDialogState extends State<ContactPickerDialog> {
                                     'country': a.country,
                                   })
                               .toList(),
-                          'avatar': contact.photo != null
-                              ? base64Encode(contact.photo!)
-                              : null,
+                          'avatar': contact.photo != null ? base64Encode(contact.photo!) : null,
                         };
 
                         widget.onContactSelect!(contactJson);

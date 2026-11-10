@@ -26,24 +26,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
-const _enableUpdateCheckInDebug =
-    bool.fromEnvironment('ENABLE_UPDATE_CHECK_IN_DEBUG');
-const _appCheckWebSiteKey =
-    String.fromEnvironment('APP_CHECK_RECAPTCHA_SITE_KEY');
+const _enableUpdateCheckInDebug = bool.fromEnvironment('ENABLE_UPDATE_CHECK_IN_DEBUG');
+const _appCheckWebSiteKey = String.fromEnvironment('APP_CHECK_RECAPTCHA_SITE_KEY');
 
 Future<void> activateFirebaseAppCheck() async {
   if (kIsWeb && _appCheckWebSiteKey.isEmpty) {
-    throw StateError(
-        'APP_CHECK_RECAPTCHA_SITE_KEY wajib diisi untuk build web');
+    throw StateError('APP_CHECK_RECAPTCHA_SITE_KEY wajib diisi untuk build web');
   }
   await FirebaseAppCheck.instance.activate(
     providerWeb: kIsWeb ? ReCaptchaV3Provider(_appCheckWebSiteKey) : null,
-    providerAndroid: kDebugMode
-        ? const AndroidDebugProvider()
-        : const AndroidPlayIntegrityProvider(),
-    providerApple: kDebugMode
-        ? const AppleDebugProvider()
-        : const AppleAppAttestWithDeviceCheckFallbackProvider(),
+    providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+    providerApple: kDebugMode ? const AppleDebugProvider() : const AppleAppAttestWithDeviceCheckFallbackProvider(),
   );
 }
 
@@ -82,11 +75,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class AppBootstrapper {
   AppBootstrapper._();
 
-  static final WidgetsBindingObserver _lifecycleObserver =
-      _CallKitLifecycleObserver();
+  static final WidgetsBindingObserver _lifecycleObserver = _CallKitLifecycleObserver();
 
-  static Future<CallArgument?> initialize(
-      {VoidCallback? onCrashlyticsReady}) async {
+  static Future<CallArgument?> initialize({VoidCallback? onCrashlyticsReady}) async {
     WidgetsFlutterBinding.ensureInitialized();
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     await Firebase.initializeApp();
@@ -155,8 +146,7 @@ class AppBootstrapper {
         Get.currentRoute == AppRouteName.CALL_SCREEN) {
       return;
     }
-    final nextRouteName =
-        Get.currentRoute.isEmpty ? AppRouteName.BASE_SCREEN : Get.currentRoute;
+    final nextRouteName = Get.currentRoute.isEmpty ? AppRouteName.BASE_SCREEN : Get.currentRoute;
     InitialRouteArgument.appUpdate = AppUpdateScreenArgument(
       updateInfo: updateInfo,
       nextRouteName: nextRouteName,

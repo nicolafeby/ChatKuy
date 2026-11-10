@@ -1,6 +1,7 @@
-const admin = require('firebase-admin');
+const {initializeApp} = require('firebase-admin/app');
+const {getFirestore} = require('firebase-admin/firestore');
 
-admin.initializeApp();
+initializeApp();
 
 function publicProfileFromUser(uid, user) {
   return {
@@ -24,7 +25,7 @@ function publicProfileFromUser(uid, user) {
 }
 
 async function migrate() {
-  const db = admin.firestore();
+  const db = getFirestore();
   const users = await db.collection('users').get();
   const usernameOwners = new Map();
 

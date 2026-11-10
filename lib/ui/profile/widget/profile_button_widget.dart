@@ -5,11 +5,7 @@ class ProfileButtonWidget extends StatelessWidget {
   final Widget title;
   final Widget leading;
   final VoidCallback onTap;
-  const ProfileButtonWidget(
-      {super.key,
-      required this.title,
-      required this.leading,
-      required this.onTap});
+  const ProfileButtonWidget({super.key, required this.title, required this.leading, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

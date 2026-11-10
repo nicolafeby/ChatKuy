@@ -57,8 +57,7 @@ Future<void> coreUtilsTest() async {
       expect(
         ErrorTicketVisibility.visibleTicketId(
           ticketId: 'ERR-123',
-          message:
-              'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
+          message: 'Maaf, terjadi kendala pada aplikasi. Silakan coba lagi dalam beberapa saat.',
         ),
         'ERR-123',
       );
@@ -106,8 +105,7 @@ Future<void> coreUtilsTest() async {
 
     test('matches users by display name or username', () {
       expect(
-        MentionParser.mentionedUsers(text: 'Hai @andiw', users: users)
-            .map((user) => user.id),
+        MentionParser.mentionedUsers(text: 'Hai @andiw', users: users).map((user) => user.id),
         ['andi'],
       );
     });

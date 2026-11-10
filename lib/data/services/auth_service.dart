@@ -84,8 +84,7 @@ class AuthService implements AuthRepository {
     );
 
     await userRef.update(
-      UserEmailUpdateModel.loginVerified(
-        email: emailUsed,
+      UserEmailUpdateModel.loginPresence(
         lastOnlineAt: lastOnlineAt,
       ).toFirestoreJson(),
     );

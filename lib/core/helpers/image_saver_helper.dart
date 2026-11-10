@@ -10,12 +10,10 @@ class LocalImageModel {
   final String localImagePath;
   final String downloadUrl;
 
-  const LocalImageModel(
-      {required this.localImagePath, required this.downloadUrl});
+  const LocalImageModel({required this.localImagePath, required this.downloadUrl});
 }
 
-Future<String> saveImageToLocal(
-    {required File imageFile, required String roomId}) async {
+Future<String> saveImageToLocal({required File imageFile, required String roomId}) async {
   return _saveMediaToLocal(
     file: imageFile,
     roomId: roomId,
@@ -74,8 +72,7 @@ Future<String> _saveMediaToLocal({
 Future<String> getOrDownloadImage({required String imageUrl}) async {
   final directory = await getApplicationDocumentsDirectory();
 
-  final chatDir =
-      Directory('${directory.path}/${StorageCollection.chatImages}');
+  final chatDir = Directory('${directory.path}/${StorageCollection.chatImages}');
   if (!await chatDir.exists()) {
     await chatDir.create(recursive: true);
   }

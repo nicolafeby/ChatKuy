@@ -37,14 +37,11 @@ class UserEmailUpdateModel {
           clearPendingEmail: true,
         );
 
-  const UserEmailUpdateModel.loginVerified({
-    required String email,
+  const UserEmailUpdateModel.loginPresence({
     required DateTime lastOnlineAt,
   }) : this(
-          email: email,
           isOnline: true,
           lastOnlineAt: lastOnlineAt,
-          clearPendingEmail: true,
         );
 
   Map<String, dynamic> toJson() => _$UserEmailUpdateModelToJson(this);

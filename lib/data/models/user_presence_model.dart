@@ -12,7 +12,13 @@ class UserPresenceModel {
     required this.lastOnlineAt,
   });
 
-  factory UserPresenceModel.fromJson(Map<String, dynamic> json) => _$UserPresenceModelFromJson(json);
+  factory UserPresenceModel.fromJson(Map<String, dynamic> json) =>
+      _$UserPresenceModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$UserPresenceModelToJson(this);
+
+  Map<String, Object> toFirestoreJson() => {
+        'isOnline': isOnline,
+        'lastOnlineAt': lastOnlineAt,
+      };
 }

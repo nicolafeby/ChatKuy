@@ -5,7 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 
-class PresenceService with WidgetsBindingObserver implements PresenceRepository {
+class PresenceService
+    with WidgetsBindingObserver
+    implements PresenceRepository {
   PresenceService(this.auth, this.firestore);
 
   final FirebaseAuth auth;
@@ -52,8 +54,10 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
 
     var isOnlineStatusVisible = true;
     try {
-      final userDoc = await firestore.collection(FirebaseCollections.users).doc(uid).get();
-      isOnlineStatusVisible = userDoc.data()?['isOnlineStatusVisible'] as bool? ?? true;
+      final userDoc =
+          await firestore.collection(FirebaseCollections.users).doc(uid).get();
+      isOnlineStatusVisible =
+          userDoc.data()?['isOnlineStatusVisible'] as bool? ?? true;
     } catch (_) {
       isOnlineStatusVisible = true;
     }
@@ -68,7 +72,10 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
       lastOnlineAt: DateTime.now(),
     );
 
-    await firestore.collection(FirebaseCollections.users).doc(uid).update(presence.toJson());
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(uid)
+        .update(presence.toFirestoreJson());
     _markPresenceWritten(true);
   }
 
@@ -83,7 +90,10 @@ class PresenceService with WidgetsBindingObserver implements PresenceRepository 
       lastOnlineAt: DateTime.now(),
     );
 
-    await firestore.collection(FirebaseCollections.users).doc(uid).update(presence.toJson());
+    await firestore
+        .collection(FirebaseCollections.users)
+        .doc(uid)
+        .update(presence.toFirestoreJson());
     _markPresenceWritten(false);
   }
 

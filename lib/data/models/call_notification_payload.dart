@@ -25,9 +25,7 @@ class CallNotificationPayload {
       callId: callId,
       roomId: roomId,
       callerId: callerId,
-      isVideoCall: data['type'] == 'video_call' ||
-          data['callType'] == 'video' ||
-          data['type'] == 'video',
+      isVideoCall: data['type'] == 'video_call' || data['callType'] == 'video' || data['type'] == 'video',
       callerName: _optionalString(data['callerName'] ?? data['title']),
       callerPhotoUrl: _optionalString(data['callerPhotoUrl']),
     );
