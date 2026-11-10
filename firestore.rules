@@ -319,6 +319,43 @@ service cloud.firestore {
         );
     }
 
+    function isValidProfileUpdate(uid) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let usernameChanged = affected.hasAny(['username']);
+      return affected.hasOnly([
+          'name',
+          'username',
+          'photoUrl',
+          'gender',
+          'birthDate',
+          'isEmailVisible',
+          'isBirthDateVisible',
+          'isOnlineStatusVisible'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.username is string
+        && request.resource.data.username.matches('^[a-z0-9_]{3,30}$')
+        && (
+          request.resource.data.get('photoUrl', null) == null ||
+          (
+            request.resource.data.photoUrl is string
+            && request.resource.data.photoUrl.size() <= 2048
+          )
+        )
+        && (
+          request.resource.data.get('gender', null) == null
+          || request.resource.data.gender in ['male', 'female', 'secret']
+        )
+        && (
+          !usernameChanged
+          || getAfter(
+            /databases/$(database)/documents/usernames/$(request.resource.data.username)
+          ).data.uid == uid
+        );
+    }
+
     function hasValidSharedMessageFields() {
       return request.resource.data.senderName is string
         && request.resource.data.senderName.size() <= 100
@@ -557,6 +594,7 @@ service cloud.firestore {
         ).data.uid == uid;
 
       allow update: if isOwner(uid) && isValidOperationalUserUpdate()
+        || isOwner(uid) && isValidProfileUpdate(uid)
         || isOwner(uid)
         && hasValidUserFields()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([

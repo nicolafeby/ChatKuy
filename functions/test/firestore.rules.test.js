@@ -139,6 +139,45 @@ test('legacy user may update operational fields without rewriting profile schema
   await assertFails(updateDoc(legacyRef, {name: 'Bypass validation'}));
 });
 
+test('owner may edit profile fields but cannot bypass verified email flow', async () => {
+  const aliceDb = authenticated('alice', {
+    email: 'alice@example.com',
+  }).firestore();
+  const aliceRef = doc(aliceDb, 'users/alice');
+
+  await assertSucceeds(updateDoc(aliceRef, {
+    name: 'Alice Updated',
+    username: 'alice',
+    gender: 'female',
+    birthDate: '2000-01-01T00:00:00.000',
+  }));
+  await assertFails(updateDoc(aliceRef, {
+    email: 'unverified@example.com',
+  }));
+});
+
+test('legacy owner may edit profile without satisfying the entire new schema', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users/legacy-profile'), {
+      email: 'legacy@example.com',
+      username: 'legacy_profile',
+      name: 'Legacy Profile',
+      fcmToken: null,
+    });
+  });
+
+  const legacyDb = authenticated('legacy-profile').firestore();
+  const legacyRef = doc(legacyDb, 'users/legacy-profile');
+
+  await assertSucceeds(updateDoc(legacyRef, {
+    name: 'Updated Legacy',
+    username: 'legacy_profile',
+    gender: 'secret',
+    birthDate: null,
+  }));
+  await assertFails(updateDoc(legacyRef, {id: 'someone-else'}));
+});
+
 test('public profiles allow targeted get but reject bulk listing', async () => {
   const aliceDb = authenticated('alice').firestore();
 

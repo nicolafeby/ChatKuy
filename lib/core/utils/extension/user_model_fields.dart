@@ -10,6 +10,8 @@ extension UserModelFields on UserModel {
   static const deletedAt = 'deletedAt';
   static const username = 'username';
   static const photoUrl = 'photoUrl';
+  static const gender = 'gender';
+  static const birthDate = 'birthDate';
   static const isEmailVerified = 'isEmailVerified';
   static const isOnline = 'isOnline';
   static const lastOnlineAt = 'lastOnlineAt';
