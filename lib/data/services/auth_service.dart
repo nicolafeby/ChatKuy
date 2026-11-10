@@ -270,8 +270,13 @@ class AuthService implements AuthRepository {
     }
 
     batch.update(userRef, {
-      ...data.toJson(),
+      // Email changes have their own verified flow. Including `email` in a
+      // regular profile update makes the whole batch fail when the form value
+      // differs from the stored/authenticated email.
+      UserModelFields.name: data.name,
+      UserModelFields.gender: data.gender.name,
       UserModelFields.username: newUsername,
+      UserModelFields.birthDate: data.birthDate?.toIso8601String(),
     });
     await batch.commit();
   }
